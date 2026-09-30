@@ -1,7 +1,7 @@
 # Gradle 开发指南
 
 > 创建日期: 2026-09-30 12:28
-> 最后更新: 2026-09-30 12:28
+> 最后更新: 2026-09-30 15:31
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
@@ -87,7 +87,7 @@ forRepository {
 
 - 构建提示 GTNH convention `2.0.34` 可用；当前仍使用 `2.0.33`，本次未执行 `updateBuildScript`。
 - Spotless 上游配置输出 `indentWithSpaces` 弃用和 Eclipse JDT 版本写法提示；不阻止构建。
-- `usesMixins = true`、`mixinsPackage = mixins` 已在迁入配置中开启，但 `src/` 中没有 Mixin 实现。`reobfJar` 输出 `mixins.srg does not exist`，本次任务仍成功。此提示不代表已经有可工作的 Mixin；本次保留了用户的配置。
+- Mixin 已初始化空引导、early / late JSON 和两个加载入口，实际依赖 UniMixins `0.3.1`。当前没有 `@Mixin` 类，`reobfJar` 仍输出 `mixins.srg does not exist`；不手写 refmap 或空映射文件。配置和添加注入流程见 [Mixin 开发指南](Mixin开发指南.md)，初始化前描述见 [归档](../archive/development/Mixin初始化前状态.md)。
 - 配置缓存会因为文件修改、Git 状态输入变化或动态插件版本缓存到期而重算；出现重新配置消息不等于构建失败。
 
 ## 验证结果（2026-09-30）
@@ -104,6 +104,10 @@ forRepository {
 
 生成普通模组 JAR、`-dev.jar` 和 `-sources.jar`。构建成功不代表迁入的全部运行时模组已经共同通过游戏启动测试，也不代表规划中的机器或配方已实现。
 
+### Mixin 初始化验证（2026-09-30 15:31）
+
+`compileJava processResources jar reobfJar checkstyleMain` 全部通过，退出码 0；检查本次 JAR 已包含两个加载器、三份 JSON，manifest 的 `FMLCorePlugin`、`MixinConfigs` 正确。完整 `build` 退出码 1，因现有原型代码的 Spotless 格式问题阻断；未运行全仓库 `spotlessApply`。两个新增 Java 文件通过 `spotlessIdeHook` 定向核验，输出 `IS CLEAN`，不表示全仓库格式检查通过。未执行游戏启动或实际注入验收。
+
 ## 参考
 
 - [Gradle 9.4.0 仓库内容过滤文档](https://docs.gradle.org/9.4.0/userguide/filtering_repository_content.html)。
@@ -117,3 +121,4 @@ forRepository {
 | 时间 | 作者 | 变更说明 |
 | --- | --- | --- |
 | 2026-09-30 12:28 | DAYGood_Time | 记录环境、初始化根因、格式及本地 JAR 修复，补充实际构建和依赖解析结果 |
+| 2026-09-30 15:31 | DAYGood_Time | 同步 Mixin 空配置、打包核验及既有 Spotless 阻断；归档初始化前提示 |

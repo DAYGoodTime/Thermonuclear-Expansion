@@ -1,0 +1,56 @@
+package com.lin.thermonuclear.nuclear;
+
+import net.minecraft.item.ItemStack;
+
+import gregtech.api.items.ItemRadioactiveCellIC;
+
+public final class GTFuelRodAdapter implements FuelRodAdapter {
+
+    @Override
+    public boolean accepts(ItemStack stack) {
+        if (stack == null || !(stack.getItem() instanceof ItemRadioactiveCellIC rod)) return false;
+        return FuelRodAdapter.inheritsSemantics(rod.getClass(), ItemRadioactiveCellIC.class)
+            && (rod.numberOfCells == 1 || rod.numberOfCells == 2 || rod.numberOfCells == 4)
+            && Float.isFinite(rod.sEnergy)
+            && rod.sEnergy > 0
+            && Float.isFinite(rod.sHeat)
+            && rod.sHeat > 0
+            && rod.getMaxDamageEx() > 0
+            && rod.sDepleted != null;
+    }
+
+    @Override
+    public int remainingCycles(ItemStack stack) {
+        ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
+        return Math.max(0, rod.getMaxDamageEx() - Math.max(0, rod.getDamageOfStack(stack)));
+    }
+
+    @Override
+    public void consumeCycles(ItemStack stack, int cycles) {
+        ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
+        rod.setDamageForStack(stack, Math.max(0, rod.getDamageOfStack(stack)) + cycles);
+    }
+
+    @Override
+    public double baseEUt(ItemStack stack) {
+        ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
+        return rod.sEnergy * (double) rod.numberOfCells
+            * (1 + rod.numberOfCells / 2)
+            * FuelRodAdapter.nuclearEnergyMultiplier();
+    }
+
+    @Override
+    public double heatPerCycle(ItemStack stack) {
+        ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
+        int pulses = 1 + rod.numberOfCells / 2;
+        // GT rounds heat separately for each cell, as its processChamber does.
+        return (double) rod.numberOfCells * Math.round(pulses * (pulses + 1) / 2 * rod.sHeat);
+    }
+
+    @Override
+    public ItemStack depleted(ItemStack stack) {
+        ItemStack result = ((ItemRadioactiveCellIC) stack.getItem()).sDepleted.copy();
+        result.stackSize = 1;
+        return result;
+    }
+}

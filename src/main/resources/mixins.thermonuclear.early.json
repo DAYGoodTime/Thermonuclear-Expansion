@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8.5-GTNH",
+  "package": "com.lin.thermonuclear.mixins.early",
+  "refmap": "mixins.thermonuclear.refmap.json",
+  "target": "@env(DEFAULT)",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [],
+  "client": [],
+  "server": []
+}

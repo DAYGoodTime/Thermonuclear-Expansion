@@ -1,6 +1,10 @@
 package com.lin.thermonuclear;
 
+import com.lin.thermonuclear.loader.MachineLoader;
+import com.lin.thermonuclear.registry.WorkingFluids;
+
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
@@ -13,14 +17,21 @@ public class CommonProxy {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
 
         Thermonuclear.LOG.info(Config.greeting);
-        Thermonuclear.LOG.info("I am MyMod at version " + Tags.VERSION);
+        Thermonuclear.LOG.info("Thermonuclear prototype at version " + Tags.VERSION);
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
-    public void init(FMLInitializationEvent event) {}
+    public void init(FMLInitializationEvent event) {
+        MachineLoader.register();
+    }
 
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {}
+
+    public void loadComplete(FMLLoadCompleteEvent event) {
+        // BW/GT material loaders have finished before resolving their registered fluid instances.
+        WorkingFluids.resolve();
+    }
 
     // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {}
