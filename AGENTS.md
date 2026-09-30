@@ -1,0 +1,24 @@
+# Thermonuclear Expansion 开发上下文
+
+## 阅读入口
+
+- 文档索引：`docs/README.md`。
+- 当前项目事实：`docs/wiki/development/项目知识库.md`。
+- 外部知识使用边界：`docs/wiki/references/迁入资料使用说明.md`。
+- 本地代码参考：`docs/wiki/references/GT-Not-Leisure参考索引.md`。
+- 产品规划：`GTNH-Thermonuclear-Expansion-Plan.md`；这是规划，不是已实现功能。
+- 构建与排障：`docs/wiki/development/Gradle开发指南.md`。
+
+## 项目约束
+
+- 面向 GTNH 的 Minecraft 1.7.10 / Forge 附属模组，mod ID 为 `thermonuclear`，根包为 `com.lin.thermonuclear`。
+- 当前只有 Forge 入口、代理和示例配置；不要声称热交换机、涡轮机或机器基类已经实现。
+- `docs/knowledge.md` 和 `docs/GT5U-NOTES.md` 是 MessTech 来源资料。`com.MessTech`、`MT*` 类、机器 ID、`tmp/` 源码目录和验证脚本不属于本仓库。
+- 查询 GT5U API 时以本项目实际解析的依赖为准；迁入资料中的版本、签名和数值必须核对。
+- 编写或修改功能前，先在 `D:\DEV\mcmod\GT-Not-Leisure` 检索并阅读相关实现。按参考索引限定目录，核对具体类、父类、注册调用和资源；不要整库通读或仅凭类名照搬。
+- 实现前简要说明找到的参考路径、可复用思路和版本差异；未找到相关代码时明确说明检索范围，再继续本项目实现。参考目录不可访问时告知用户，不假装已完成参考核验。
+- GT-Not-Leisure 仅作为只读参考，不自动添加构建依赖、不修改参考仓库、不复用其机器 ID 或平衡数值；复制代码或资源前核对来源许可证与署名要求。
+- 不擅自确定规划中的冲突、机器 ID、流体注册名和最终平衡数值。
+- 保持现有 GTNH convention / RetroFuturaGradle 构建方式，使用仓库的 Gradle Wrapper。
+- 不覆盖用户未提交的修改，不把生成的 `Tags.java` 当作手写源文件维护。
+- 更新构建流程、依赖或实现入口后同步维护项目知识库；文档使用中文、相对链接，区分事实、规划和验证结果。

@@ -1,4 +1,4 @@
-package com.myname.mymodid;
+package com.lin.thermonuclear;
 
 public class ClientProxy extends CommonProxy {
 

@@ -1,4 +1,4 @@
-package com.myname.mymodid;
+package com.lin.thermonuclear;
 
 import java.io.File;
 

@@ -34,5 +34,86 @@
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
 dependencies {
-    //runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.7.69-GTNH:dev")
+    elytraModpackVersion {
+        // 在这配置的gtnh版本 用于自动拉取依赖版本
+        gtnhVersion = "2.9.0-beta-3"
+        // 是否不缓存拉取的依赖清单文件
+        manifestNoCache = false
+        // 是否自动为输出的jar添加 `gtnhVersion` 后缀
+        attachManifestVersionToJar = false
+    }
+    //implementation("com.github.GTNewHorizons:GT5-Unofficial:5.09.54.108:dev")
+    //implementation("com.github.GTNewHorizons:NewHorizonsCoreMod:2.9.49:dev")
+    implementation(gtnhDev("GT5-Unofficial"))
+    implementation(gtnhDev("NewHorizonsCoreMod"))
+    // NotEnoughEnergistics: the GTNH NEI -> AE pattern terminal transfer. MessTech hands its own terminal's pages to
+    // NEU's handler when the mod is present and falls back to its own import otherwise, see NEI_MessTechConfig.
+    implementation(gtnhDev("NotEnoughEnergistics"))
+    implementation(gtnhDev("ForestryMC"))
+    implementation(gtnhDev("Infernal-Mobs"))
+    implementation(gtnhDev("Galaxy-Space-GTNH"))
+    implementation(gtnhDev("SGCraft"))
+    implementation(gtnhDev("twilightforest"))
+    implementation(gtnhDev("SpiceOfLife"))
+    implementation(gtnhDev("AppleCore"))
+    implementation(gtnhDev("Avaritia"))
+    runtimeOnlyNonPublishable(gtnhDev("Avaritiaddons"))
+    runtimeOnlyNonPublishable(gtnhDev("neiaddons"))
+    implementation(gtnhDev("Binnie"))
+    implementation(gtnhDev("BloodMagic"))
+    implementation(gtnhDev("Botania"))
+    implementation(gtnhDev("Draconic-Evolution"))
+    implementation(gtnhDev("EnderIO"))
+    implementation(gtnhDev("Eternal-Singularity"))
+    implementation(gtnhDev("supersolarpanels"))
+    implementation(rfg.deobf('curse.maven:advsolar-362768:2885953'))
+    implementation ("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
+
+    implementation(deobfCurse('witchery-69673:2234410'))
+    implementation(gtnhDev("WitcheryExtras"))
+
+    //runtime
+    //runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.125-GTNH:dev")
+    runtimeOnlyNonPublishable(gtnhDev("NotEnoughItems"))
+    runtimeOnlyNonPublishable(gtnhDev("OpenComputers"))
+    ["spark.jar", "OmniOcularUnofficial.jar"].each { jarName ->
+        def localMod = file("libs/${jarName}")
+        if (localMod.isFile()) {
+            runtimeOnlyNonPublishable(rfg.deobf(files(localMod)))
+        }
+    }
+    runtimeOnlyNonPublishable(gtnhDev("ThaumicEnergistics"))
+    runtimeOnlyNonPublishable(gtnhDev("Universal-Singularities"))
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:BiomesOPlenty-220318:2499612"))
+    runtimeOnlyNonPublishable(gtnhDev("MagicBees"))
+    runtimeOnlyNonPublishable("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Chisel:2.17.33-GTNH:dev")
+    runtimeOnlyNonPublishable(gtnhDev("StructureLib"))
+    runtimeOnlyNonPublishable(gtnhDev("BlockRenderer6343")) { transitive = false }
+    //extra mods
+    annotationProcessor('com.google.auto.value:auto-value:1.10.1')
+    implementation('com.google.auto.value:auto-value-annotations:1.10.1')
+
+
+    // jvmDowngrader
+    compileOnly("javax.xml.bind:jaxb-api:2.3.1")
+    compileOnly("org.jetbrains:annotations:26.0.1")
+    compileOnly("org.projectlombok:lombok:1.18.46") { transitive = false }
+    annotationProcessor("org.projectlombok:lombok:1.18.46")
+
+    configurations.configureEach {
+        exclude group: 'com.github.GTNewHorizons', module: 'Baubles'
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force "com.github.GTNewHorizons:GTNHLib:0.11.51"
+        }
+    }
+}
+
+
+@SuppressWarnings('GrMethodMayBeStatic')
+String gtnhDev(String name, String classifier = "dev") {
+    return elytraModpackVersion.gtnh(name, classifier)
 }
