@@ -58,7 +58,7 @@ public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELarge
     }
 
     @Override
-    protected void beforeServerTick() {
+    protected void beforeProcessingCycle() {
         ItemStack rotor = getControllerSlot();
         if (!isCorrectMachinePart(rotor)) {
             startup.clear();
@@ -84,7 +84,7 @@ public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELarge
     }
 
     @Override
-    protected boolean tickPrototype(long tick) {
+    protected boolean processCycle() {
         ItemStack rotor = getControllerSlot();
         if (!isCorrectMachinePart(rotor)) return fail("rotor");
         if (WorkingFluids.steam == null || WorkingFluids.distilledWater == null) return fail("fluids_missing");
@@ -100,7 +100,9 @@ public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELarge
         flowLimit = (int) Math.min(1000000000, Math.floor(rotorFlow));
         fullLoadEUt = Math.min(rating, flowLimit * 0.5 * efficiency);
         flowLimit = (int) Math.min(flowLimit, Math.max(1, Math.floor(fullLoadEUt / (0.5 * efficiency))));
-        int steam = (int) Math.min(flowLimit, available(WorkingFluids.steam));
+        int steam = (int) Math.min(
+            Math.min((long) flowLimit * CYCLE_TICKS, Integer.MAX_VALUE - condensationRemainder),
+            available(WorkingFluids.steam));
         if (steam <= 0) return fail("steam");
         int water = (steam + condensationRemainder) / GTValues.STEAM_PER_WATER;
         // Reserve a water path even before the first integer litre accumulates.
@@ -108,18 +110,28 @@ public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELarge
         if (outputs == null) return fail("output_full");
         if (water == 0) outputs = null;
         consume(WorkingFluids.steam, steam);
-        if (outputs != null) outputs.commit();
-        condensationRemainder = (steam + condensationRemainder) % GTValues.STEAM_PER_WATER;
-        inputRate = steam;
-        outputRate = water;
-        generate(Math.min(fullLoadEUt, steam * 0.5 * efficiency) * startup.next(Config.turbineStartupTicks));
-        // Parent checks disabled maintenance independently of its component damage path.
-        // Keep its counter, random chance, damage factors and tool NBT untouched.
-        if (!doRandomMaintenanceDamage() || !isCorrectMachinePart(getControllerSlot())) {
-            startup.clear();
-            return fail("rotor");
-        }
+        if (outputs != null) commitOutput(outputs::commit);
+        final int remainder = (steam + condensationRemainder) % GTValues.STEAM_PER_WATER;
+        commitOutput(() -> condensationRemainder = remainder);
+        inputRate = steam / (double) CYCLE_TICKS;
+        outputRate = water / (double) CYCLE_TICKS;
+        cycleEUt = Math.min(fullLoadEUt, steam * 0.5 * efficiency / CYCLE_TICKS);
         return true;
+    }
+
+    @Override
+    public boolean onRunningTick(ItemStack stack) {
+        if (!isCorrectMachinePart(getControllerSlot())) {
+            startup.clear();
+            return false;
+        }
+        return super.onRunningTick(stack);
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity tile, long tick) {
+        super.onPostTick(tile, tick);
+        if (tile.isServerSide() && !isCorrectMachinePart(getControllerSlot())) startup.clear();
     }
 
     @Override

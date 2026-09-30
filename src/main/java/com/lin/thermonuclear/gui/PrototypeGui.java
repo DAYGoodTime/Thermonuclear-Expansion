@@ -1,22 +1,20 @@
-package com.lin.thermonuclear.machine;
+package com.lin.thermonuclear.gui;
 
 import net.minecraft.util.StatCollector;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.screen.ModularPanel;
-import com.cleanroommc.modularui.value.sync.InteractionSyncHandler;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.value.sync.StringSyncValue;
-import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
+import com.lin.thermonuclear.machine.PrototypeMultiblockBase;
 
-import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-final class PrototypeGui extends MTEMultiBlockBaseGui<PrototypeMultiblockBase<?>> {
+public class PrototypeGui<T extends PrototypeMultiblockBase<?>> extends MTEMultiBlockBaseGui<T> {
 
-    PrototypeGui(PrototypeMultiblockBase<?> machine) {
+    public PrototypeGui(T machine) {
         super(machine);
     }
 
@@ -48,18 +46,6 @@ final class PrototypeGui extends MTEMultiBlockBaseGui<PrototypeMultiblockBase<?>
                 .asWidget()
                 .fullWidth()
                 .marginBottom(2));
-        }
-        if (multiblock instanceof MTENuclearPowerPlant reactor) {
-            InteractionSyncHandler change = new InteractionSyncHandler().setOnMousePressed(mouse -> {
-                // This callback is also invoked optimistically on the client; the server guard is essential.
-                if (baseMetaTileEntity.isServerSide()) reactor.requestModeChange();
-            });
-            manager.syncValue("tnChangeMode", change);
-            list.child(
-                new ButtonWidget<>().size(18)
-                    .overlay(GTGuiTextures.OVERLAY_BUTTON_CYCLIC)
-                    .tooltipBuilder(t -> t.addLine(IKey.lang("thermonuclear.gui.switch_mode")))
-                    .syncHandler(change));
         }
         return list;
     }

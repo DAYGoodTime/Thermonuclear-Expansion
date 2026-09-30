@@ -15,7 +15,7 @@ import gregtech.api.util.FluidEjectionHelper;
 public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHeatExchangeStation> {
 
     private HeatExchangeRecipe selected;
-    private int cycleProgress;
+    private double throughputRemainder;
     private int lastHotAmount;
     private int lastWaterAmount;
 
@@ -33,7 +33,7 @@ public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHea
     }
 
     @Override
-    protected boolean tickPrototype(long tick) {
+    protected boolean processCycle() {
         if (WorkingFluids.steam == null || WorkingFluids.distilledWater == null) return fail("fluids_missing");
         HeatExchangeRecipe recipe = null;
         // Selection is per cycle. Never pool the heat or consume the second hot fluid.
@@ -50,62 +50,57 @@ public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHea
             }
         }
         if (recipe == null) {
-            cycleProgress = 0;
             selected = null;
             return fail("hot_fluid");
         }
-        if (selected != recipe) cycleProgress = 0;
+        if (selected != recipe) throughputRemainder = 0;
         selected = recipe;
-        long hotLimit = Math.min(available(recipe.hot()), Config.exchangeHotFluidPerCycle);
-        int water = (int) Math.min(hotLimit / recipe.hotPerWater(), available(WorkingFluids.distilledWater));
-        if (water <= 0) {
-            cycleProgress = 0;
-            return fail(available(WorkingFluids.distilledWater) == 0 ? "water" : "throughput");
-        }
+        if (available(WorkingFluids.distilledWater) <= 0) return fail("water");
+        double budget = Config.exchangeHotFluidPerCycle * (double) CYCLE_TICKS / Config.exchangeCycleTicks
+            + throughputRemainder;
+        long hotLimit = Math.min(available(recipe.hot()), (long) Math.floor(budget));
+        int water = (int) Math.min(
+            Math.min(hotLimit / recipe.hotPerWater(), available(WorkingFluids.distilledWater)),
+            Math.min(Integer.MAX_VALUE / GTValues.STEAM_PER_WATER, Integer.MAX_VALUE / recipe.hotPerWater()));
         int hot = water * recipe.hotPerWater();
         int steam = water * GTValues.STEAM_PER_WATER;
         FluidEjectionHelper outputs = prepareOutputs(
-            new FluidStack(WorkingFluids.steam, steam),
-            new FluidStack(recipe.cold(), hot));
-        if (outputs == null) {
-            cycleProgress = 0;
-            return fail("output_full");
-        }
-        if (++cycleProgress < Config.exchangeCycleTicks) return true;
+            new FluidStack(WorkingFluids.steam, Math.max(GTValues.STEAM_PER_WATER, steam)),
+            new FluidStack(recipe.cold(), Math.max(recipe.hotPerWater(), hot)));
+        if (outputs == null) return fail("output_full");
+        final double remainder = budget % recipe.hotPerWater();
+        commitOutput(() -> throughputRemainder = remainder);
+        if (water == 0) return true;
         // All capacity reservations and both input checks precede any real mutation.
         consume(recipe.hot(), hot);
         consume(WorkingFluids.distilledWater, water);
-        outputs.commit();
-        cycleProgress = 0;
+        commitOutput(outputs::commit);
         lastHotAmount = hot;
         lastWaterAmount = water;
-        inputRate = hot;
-        outputRate = steam;
+        inputRate = hot / (double) CYCLE_TICKS;
+        outputRate = steam / (double) CYCLE_TICKS;
         return true;
-    }
-
-    @Override
-    protected void beforeServerTick() {
-        if (!getBaseMetaTileEntity().isAllowedToWork()) cycleProgress = 0;
     }
 
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setInteger("tnExchangeProgress", cycleProgress);
+        nbt.setDouble("tnExchangeThroughputRemainder", throughputRemainder);
         nbt.setString("tnExchangeRecipe", selected == null ? "" : selected.id());
     }
 
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        cycleProgress = Math.max(0, Math.min(Config.exchangeCycleTicks - 1, nbt.getInteger("tnExchangeProgress")));
         selected = null;
         for (HeatExchangeRecipe recipe : HeatExchangeRecipe.values()) {
             if (recipe.id()
                 .equals(nbt.getString("tnExchangeRecipe"))) selected = recipe;
         }
-        if (selected == null) cycleProgress = 0;
+        throughputRemainder = nbt.getDouble("tnExchangeThroughputRemainder");
+        if (!Double.isFinite(throughputRemainder) || selected == null
+            || throughputRemainder < 0
+            || throughputRemainder >= selected.hotPerWater()) throughputRemainder = 0;
     }
 
     @Override
@@ -152,7 +147,7 @@ public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHea
     public String[] detailValues() {
         return new String[] { selected == null ? "thermonuclear.recipe.none" : selected.translationKey(),
             Config.exchangeHotFluidPerCycle + " L / " + Config.exchangeCycleTicks + " t",
-            cycleProgress + " / " + Config.exchangeCycleTicks,
+            mProgresstime + " / " + CYCLE_TICKS,
             lastHotAmount + " L hot; "
                 + lastWaterAmount
                 + " L water; "

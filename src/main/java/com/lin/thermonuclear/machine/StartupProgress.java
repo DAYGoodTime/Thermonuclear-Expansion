@@ -16,6 +16,14 @@ public final class StartupProgress {
         progress = next(startupTicks);
     }
 
+    public double averageNext(int startupTicks, int ticks) {
+        double total = 0;
+        for (int tick = 1; tick <= ticks; tick++) {
+            total += Math.min(1, progress + tick / (double) Math.max(1, startupTicks));
+        }
+        return total / ticks;
+    }
+
     public void decay(int decayTicks) {
         progress = Math.max(0, progress - 1.0 / Math.max(1, decayTicks));
     }

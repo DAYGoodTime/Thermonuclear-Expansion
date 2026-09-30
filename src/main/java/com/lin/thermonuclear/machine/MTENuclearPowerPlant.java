@@ -1,12 +1,12 @@
 package com.lin.thermonuclear.machine;
 
-import java.util.Collections;
-
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
+import com.lin.thermonuclear.nuclear.FuelBatch;
 import com.lin.thermonuclear.nuclear.FuelRodAdapter;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.nuclear.IC2FuelRodAdapter;
@@ -15,9 +15,9 @@ import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.ItemEjectionHelper;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
 public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENuclearPowerPlant> {
 
@@ -31,6 +31,8 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     private HeatExchangeRecipe selectedCoolant;
     private double consumedFuelCycles;
     private double fullLoadHeatRate;
+    private NBTTagCompound fuelSnapshot;
+    private FuelBatch.Plan fuelPlan;
 
     public MTENuclearPowerPlant(int id, String name, String regional) {
         super(id, name, regional);
@@ -55,81 +57,77 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     }
 
     private static FuelRodAdapter adapter(ItemStack stack) {
-        for (FuelRodAdapter candidate : ADAPTERS) {
-            if (candidate.accepts(stack)) return candidate;
-        }
-        return null;
+        return FuelBatch.findAdapter(stack, ADAPTERS);
     }
 
     private void takeFuel() {
         if (workingFuel != null || pendingDepleted != null) return;
-        for (MTEHatchInputBus bus : mInputBusses) {
-            if (!bus.isValid()) continue;
-            for (int slot = 0; slot < bus.getSizeInventory(); slot++) {
-                if (!bus.isValidSlot(slot) || slot == bus.getCircuitSlot()) continue;
-                ItemStack stack = bus.getStackInSlot(slot);
-                if (stack == null || stack.stackSize <= 0 || adapter(stack) == null) continue;
-                workingFuel = stack.copy();
-                workingFuel.stackSize = 1;
-                bus.decrStackSize(slot, 1);
-                bus.markDirty();
-                return;
-            }
-        }
+        fuelPlan = FuelBatch.prepare(cycleItems(), ADAPTERS);
+        workingFuel = fuelPlan == null ? null : fuelPlan.fuel;
     }
 
     private boolean flushDepleted() {
         if (pendingDepleted == null) return true;
         ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true);
-        if (outputs.ejectItems(Collections.singletonList(pendingDepleted), 1) != 1) return false;
-        outputs.commit();
-        pendingDepleted = null;
+        ItemStack remaining = pendingDepleted.copy();
+        if (outputs.ejectStack(remaining) <= 0) return false;
+        commitOutput(() -> {
+            outputs.commit();
+            pendingDepleted = remaining.stackSize > 0 ? remaining : null;
+        });
         return true;
     }
 
     @Override
-    protected boolean tickPrototype(long tick) {
+    protected boolean processCycle() {
         consumedFuelCycles = 0;
-        if (getOutputBusses().isEmpty() || mInputBusses.stream()
-            .noneMatch(MTEHatchInputBus::isValid)) {
+        if (getOutputBusses().isEmpty() || (mInputBusses.isEmpty() && mDualInputHatches.isEmpty())) {
             return fail("hatches");
         }
-        if (!flushDepleted()) return fail("spent_full");
+        if (pendingDepleted != null) {
+            cycleAdvancesStartup = false;
+            return flushDepleted() || fail("spent_full");
+        }
         takeFuel();
         FuelRodAdapter fuel = adapter(workingFuel);
         if (fuel == null) return fail("fuel");
         if (fuel.remainingCycles(workingFuel) == 0) {
-            pendingDepleted = fuel.depleted(workingFuel);
+            cycleAdvancesStartup = false;
+            pendingDepleted = depletedBatch(fuel);
             workingFuel = null;
             fuelFraction = 0;
-            return fail(flushDepleted() ? "fuel" : "spent_full");
+            return flushDepleted() || fail("spent_full");
         }
         double efficiency = efficiencyPolicy.efficiency(mode);
         if (!Double.isFinite(efficiency) || efficiency <= 0 || efficiency > 1) return fail("invalid_value");
-        double ramp = startup.next(Config.nuclearStartupTicks);
+        double ramp = startup.averageNext(Config.nuclearStartupTicks, CYCLE_TICKS);
         double remaining = fuel.remainingCycles(workingFuel) - fuelFraction;
         double cycles = Math
-            .min(remaining, Config.fuelCyclesPerSecond / 20.0 * (mode == NuclearOperatingMode.HEAT_SUPPLY ? ramp : 1));
+            .min(remaining, Config.fuelCyclesPerSecond * (mode == NuclearOperatingMode.HEAT_SUPPLY ? ramp : 1));
         if (!Double.isFinite(cycles) || cycles <= 0) return fail("invalid_value");
         switch (mode) {
             case DIRECT_GENERATION -> {
                 if (dynamoRating() <= 0) return fail("hatches");
                 double baseEUt = fuel.baseEUt(workingFuel);
                 if (!Double.isFinite(baseEUt) || baseEUt <= 0) return fail("invalid_value");
-                fullLoadEUt = baseEUt * Config.fuelCyclesPerSecond * efficiency;
+                fullLoadEUt = baseEUt * Config.fuelCyclesPerSecond * efficiency * workingFuel.stackSize;
                 // No coolant access in this path; ramp is applied to output, not fuel consumption.
-                generate(baseEUt * cycles * 20 * efficiency * ramp);
+                cycleEUt = baseEUt * cycles * efficiency * workingFuel.stackSize;
             }
             case HEAT_SUPPLY -> {
-                if (mInputHatches.isEmpty() || mOutputHatches.isEmpty()) return fail("hatches");
+                if (!hasFluidInputs() || mOutputHatches.isEmpty()) return fail("hatches");
                 HeatExchangeRecipe coolant = chooseCoolant();
                 if (coolant == null) return fail("coolant");
                 selectedCoolant = coolant;
                 fullLoadHeatRate = fuel.heatPerCycle(workingFuel) * Config.fuelCyclesPerSecond
                     / 20
                     * efficiency
-                    * coolant.coolantPerHeat();
-                double litres = fuel.heatPerCycle(workingFuel) * cycles * efficiency * coolant.coolantPerHeat();
+                    * coolant.coolantPerHeat()
+                    * workingFuel.stackSize;
+                double litres = fuel.heatPerCycle(workingFuel) * cycles
+                    * efficiency
+                    * coolant.coolantPerHeat()
+                    * workingFuel.stackSize;
                 double accumulated = litres + coolantFractions[coolant.ordinal()];
                 if (!Double.isFinite(accumulated) || accumulated < 0 || accumulated > Integer.MAX_VALUE - 1) {
                     return fail("invalid_value");
@@ -141,25 +139,51 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
                 if (outputs == null) return fail("output_full");
                 if (amount > 0) {
                     consume(coolant.cold(), amount);
-                    outputs.commit();
+                    commitOutput(outputs::commit);
                 }
                 coolantFractions[coolant.ordinal()] = StartupProgress.fraction(accumulated - amount);
-                inputRate = outputRate = amount;
+                inputRate = outputRate = amount / (double) CYCLE_TICKS;
             }
         }
-        consumedFuelCycles = cycles;
+        consumedFuelCycles = cycles * workingFuel.stackSize;
         double used = fuelFraction + cycles;
         int damage = (int) Math.floor(used);
         if (damage > 0) fuel.consumeCycles(workingFuel, damage);
         fuelFraction = StartupProgress.fraction(used - damage);
         if (fuel.remainingCycles(workingFuel) == 0) {
-            pendingDepleted = fuel.depleted(workingFuel);
+            pendingDepleted = depletedBatch(fuel);
             workingFuel = null;
             fuelFraction = 0;
-            // If the output bus is full, retain exactly this one spent rod, and refuse another fuel.
+            // Retain the entire spent batch when output is blocked; never load a second batch behind it.
             flushDepleted();
         }
+        if (fuelPlan != null) fuelPlan.consumeInputs();
         return true;
+    }
+
+    private ItemStack depletedBatch(FuelRodAdapter fuel) {
+        ItemStack depleted = fuel.depleted(workingFuel);
+        depleted.stackSize = workingFuel.stackSize;
+        return depleted;
+    }
+
+    @Override
+    public void startRecipeProcessing() {
+        super.startRecipeProcessing();
+        fuelSnapshot = new NBTTagCompound();
+        saveFuelState(fuelSnapshot);
+        fuelPlan = null;
+    }
+
+    @Override
+    public void endRecipeProcessing() {
+        super.endRecipeProcessing();
+        if (!checkRecipeResult.wasSuccessful() && fuelSnapshot != null) {
+            // ME extraction failures must not leave a copied internal batch that was never paid for.
+            loadFuelState(fuelSnapshot);
+        }
+        fuelSnapshot = null;
+        fuelPlan = null;
     }
 
     private HeatExchangeRecipe chooseCoolant() {
@@ -173,7 +197,7 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     }
 
     @Override
-    protected void beforeServerTick() {
+    protected void beforeProcessingCycle() {
         consumedFuelCycles = 0;
         fullLoadHeatRate = 0;
     }
@@ -181,10 +205,8 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     private void saveFuelState(NBTTagCompound nbt) {
         nbt.setString("tnNuclearMode", mode.id());
         nbt.setDouble("tnFuelFraction", fuelFraction);
-        if (workingFuel != null) nbt.setTag("tnWorkingFuel", workingFuel.writeToNBT(new NBTTagCompound()));
-        else nbt.removeTag("tnWorkingFuel");
-        if (pendingDepleted != null) nbt.setTag("tnPendingDepleted", pendingDepleted.writeToNBT(new NBTTagCompound()));
-        else nbt.removeTag("tnPendingDepleted");
+        FuelBatch.save(nbt, "tnWorkingFuel", "tnFuelCount", workingFuel);
+        FuelBatch.save(nbt, "tnPendingDepleted", "tnPendingDepletedCount", pendingDepleted);
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
             nbt.setDouble("tnCoolantFraction_" + coolant.id(), coolantFractions[coolant.ordinal()]);
         }
@@ -207,14 +229,13 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
+        loadFuelState(nbt);
+    }
+
+    private void loadFuelState(NBTTagCompound nbt) {
         mode = NuclearOperatingMode.fromId(nbt.getString("tnNuclearMode"));
-        workingFuel = nbt.hasKey("tnWorkingFuel") ? ItemStack.loadItemStackFromNBT(nbt.getCompoundTag("tnWorkingFuel"))
-            : null;
-        pendingDepleted = nbt.hasKey("tnPendingDepleted")
-            ? ItemStack.loadItemStackFromNBT(nbt.getCompoundTag("tnPendingDepleted"))
-            : null;
-        if (workingFuel != null) workingFuel.stackSize = 1;
-        if (pendingDepleted != null) pendingDepleted.stackSize = 1;
+        workingFuel = FuelBatch.load(nbt, "tnWorkingFuel", "tnFuelCount");
+        pendingDepleted = FuelBatch.load(nbt, "tnPendingDepleted", "tnPendingDepletedCount");
         fuelFraction = workingFuel == null ? 0 : StartupProgress.fraction(nbt.getDouble("tnFuelFraction"));
         selectedCoolant = null;
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
@@ -228,6 +249,11 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     @Override
     protected boolean usesItemBusses() {
         return true;
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new NuclearPowerPlantGui(this);
     }
 
     @Override
@@ -262,16 +288,19 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
 
     @Override
     public String[] detailKeys() {
-        return new String[] { "mode", "fuel", "fuel_remaining", "fuel_rate", "coolant", "heat_limit", "pending_spent" };
+        return new String[] { "mode", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "coolant", "heat_limit",
+            "pending_spent" };
     }
 
     @Override
     public String[] detailValues() {
         FuelRodAdapter fuel = adapter(workingFuel);
         return new String[] { mode.translationKey(), workingFuel == null ? "-" : workingFuel.getDisplayName(),
+            workingFuel == null ? "0" : Integer.toString(workingFuel.stackSize),
             fuel == null ? "0" : decimal(fuel.remainingCycles(workingFuel) - fuelFraction), decimal(consumedFuelCycles),
             selectedCoolant == null || mode == NuclearOperatingMode.DIRECT_GENERATION ? "thermonuclear.recipe.none"
                 : selectedCoolant.translationKey(),
-            decimal(fullLoadHeatRate), pendingDepleted == null ? "-" : pendingDepleted.getDisplayName() };
+            decimal(fullLoadHeatRate),
+            pendingDepleted == null ? "-" : pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName() };
     }
 }
