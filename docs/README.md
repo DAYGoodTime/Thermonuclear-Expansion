@@ -14,6 +14,7 @@
 5. [GT-Not-Leisure 本地参考索引](wiki/references/GT-Not-Leisure参考索引.md)：编写功能前必查的本地代码参考、主题导航与依赖差异。
 6. [第一阶段原型开发指南](wiki/development/第一阶段原型开发指南.md)：三个控制器、批准 ID、20 tick 处理、256 根燃料批次、GUI／Waila、通用仓室及回归／构建验证；未进行游戏验收。
 7. [Mixin 开发指南](wiki/development/Mixin开发指南.md)：空引导配置、early / late 加载入口、依赖核验、添加注入流程及实际验证边界。
+8. [IC2 2.2.828 反应堆燃料棒公式](wiki/references/IC2-2.2.828反应堆燃料棒公式.md)：基于 GTNH 实例 JAR 核对的燃料棒热量、能量、MOX 与相邻组件公式。
 
 ## 当前代码交付
 
@@ -64,3 +65,4 @@ Mixin early / late 基础配置已初始化，尚无实际注入；2026-09-30 15
 | 2026-09-30 15:31 | DAYGood_Time | 索引 Mixin 初始化指南，记录打包验证与既有完整构建阻断 |
 | 2026-09-30 16:26 | DAYGood_Time | 同步结构与物品标识修复、NEI 搜索方式及完整构建成功 |
 | 2026-09-30 18:36 | DAYGood_Time | 同步标准状态、20 tick 批处理、燃料批次、GUI／Waila、仓室接入、6 项测试和旧行为归档 |
+| 2026-10-01 | OpenCode | 添加 IC2 2.2.828 反应堆燃料棒公式文档并加入索引 |
