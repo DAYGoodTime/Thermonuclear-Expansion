@@ -39,4 +39,12 @@ public enum HeatExchangeRecipe {
     public double coolantPerHeat() {
         return this == IC2_COOLANT ? Config.ic2CoolantPerHeat : Config.superCoolantPerHeat;
     }
+
+    public double steamPerHotCoolant(HeatExchangeSteam steam) {
+        return switch (steam) {
+            case ORDINARY -> Config.ordinarySteamPerHotCoolant;
+            case SUPERHEATED -> Config.superheatedSteamPerHotCoolant;
+            case SUPERCRITICAL -> Config.supercriticalSteamPerHotCoolant;
+        };
+    }
 }

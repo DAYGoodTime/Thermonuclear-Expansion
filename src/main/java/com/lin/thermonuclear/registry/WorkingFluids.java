@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.registry;
 
 import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.Thermonuclear;
@@ -12,6 +13,8 @@ import gtnhlanth.common.register.WerkstoffMaterialPool;
 public final class WorkingFluids {
 
     public static Fluid steam;
+    public static Fluid superheatedSteam;
+    public static Fluid supercriticalSteam;
     public static Fluid distilledWater;
     public static Fluid ic2Coolant;
     public static Fluid ic2HotCoolant;
@@ -22,6 +25,8 @@ public final class WorkingFluids {
 
     public static void resolve() {
         steam = required("GT ordinary steam", Materials.Steam.getGas(1));
+        superheatedSteam = required("IC2 superheated steam", FluidRegistry.getFluidStack("ic2superheatedsteam", 1));
+        supercriticalSteam = required("GT supercritical steam", FluidRegistry.getFluidStack("supercriticalsteam", 1));
         distilledWater = required("IC2 distilled water", GTModHandler.getDistilledWater(1));
         ic2Coolant = required("IC2 coolant", GTModHandler.getIC2Coolant(1));
         ic2HotCoolant = required("IC2 hot coolant", GTModHandler.getHotCoolant(1));
