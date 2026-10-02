@@ -1,7 +1,7 @@
 # Gradle 开发指南
 
 > 创建日期: 2026-09-30 12:28
-> 最后更新: 2026-09-30 18:36
+> 最后更新: 2026-10-02 20:06
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
@@ -90,42 +90,16 @@ forRepository {
 - Mixin 已初始化空引导、early / late JSON 和两个加载入口，实际依赖 UniMixins `0.3.1`。当前没有 `@Mixin` 类，`reobfJar` 仍输出 `mixins.srg does not exist`；不手写 refmap 或空映射文件。配置和添加注入流程见 [Mixin 开发指南](Mixin开发指南.md)，初始化前描述见 [归档](../archive/development/Mixin初始化前状态.md)。
 - 配置缓存会因为文件修改、Git 状态输入变化或动态插件版本缓存到期而重算；出现重新配置消息不等于构建失败。
 
-## 验证结果（2026-09-30）
+## 验证边界与测试限制
 
-| 验证 | 结果 / 范围 |
-| --- | --- |
-| `help` | 通过，初始化错误已消除 |
-| `tasks --all` | 通过，RFG 与校验任务已注册 |
-| `compileJava processResources` | 通过 |
-| `build` | 修复后连续两次通过，含 Spotless、Checkstyle、打包及重混淆 |
-| `dependencyInsight` | GT5U 最终选中 `5.09.54.133`；NewHorizonsCoreMod 为 `2.9.61`，其传递 GT5U `5.09.54.129` 被替换 |
-| 单元测试 | 20 tick 改进后 `test` 执行 6 项 JUnit 4 辅助逻辑回归，全部通过；早期 `NO-SOURCE` 是历史结果 |
-| 游戏运行 / 整合包兼容 | 未执行 |
+构建生成普通模组 JAR、`-dev.jar` 和 `-sources.jar`。构建成功不代表迁入的全部运行时模组已经共同通过游戏启动测试，也不代表规划中的机器或配方已实现。当前工作区没有 `src/test/` 或 JUnit 测试依赖；历史六项辅助逻辑回归不是当前测试入口。
 
-生成普通模组 JAR、`-dev.jar` 和 `-sources.jar`。构建成功不代表迁入的全部运行时模组已经共同通过游戏启动测试，也不代表规划中的机器或配方已实现。
+无 LaunchWrapper 的普通 JVM 不能调用 Forge 的游戏物品注册入口，否则触发 `ModClassLoader` 类加载器转换错误。历史隔离测试绑定底层数字 ID，不替换游戏注册流程。恢复回归测试时使用正常 JUnit 测试任务，不关闭 Gradle 的无测试发现校验。
 
-### Mixin 初始化验证（2026-09-30 15:31）
-
-`compileJava processResources jar reobfJar checkstyleMain` 全部通过，退出码 0；检查本次 JAR 已包含两个加载器、三份 JSON，manifest 的 `FMLCorePlugin`、`MixinConfigs` 正确。完整 `build` 退出码 1，因现有原型代码的 Spotless 格式问题阻断；未运行全仓库 `spotlessApply`。两个新增 Java 文件通过 `spotlessIdeHook` 定向核验，输出 `IS CLEAN`，不表示全仓库格式检查通过。未执行游戏启动或实际注入验收。
-
-### 原型处理层回归（2026-09-30 18:36）
-
-在项目根目录用同一个 `JAVA_HOME`，依次执行 `gradlew.bat spotlessApply --console=plain` 与 `gradlew.bat test build --console=plain`，退出码均为 0。`testImplementation('junit:junit:4.13.2')` 仅用于测试，不改变运行依赖。测试结果 XML 位于 `build/test-results/test/TEST-com.lin.thermonuclear.PrototypeRegressionTests.xml`，记录 6 测试、0 失败、0 错误、0 跳过。测试只覆盖输入计划、数量 NBT 与启动计算，没有启动游戏或验证真实仓室。
-
-无 LaunchWrapper 的普通 JVM 不能调用 Forge 的游戏物品注册入口，否则触发 `ModClassLoader` 类加载器转换错误。测试仅绑定隔离进程中的底层数字 ID，以验证 NBT 编解码；不替换游戏注册流程。正常使用 JUnit 测试任务，不关闭 Gradle 的无测试发现校验。
+历次命令、退出码和测试结果见[开发验证记录](../../开发验证记录.md#gradle-指南中的验证记录)，仅按需追溯；不在本指南累积构建日志。
 
 ## 参考
 
 - [Gradle 9.4.0 仓库内容过滤文档](https://docs.gradle.org/9.4.0/userguide/filtering_repository_content.html)。
 - [项目知识库](项目知识库.md)。
 - [迁入资料使用说明](../references/迁入资料使用说明.md)。
-
----
-
-## 修订记录
-
-| 时间 | 作者 | 变更说明 |
-| --- | --- | --- |
-| 2026-09-30 12:28 | DAYGood_Time | 记录环境、初始化根因、格式及本地 JAR 修复，补充实际构建和依赖解析结果 |
-| 2026-09-30 15:31 | DAYGood_Time | 同步 Mixin 空配置、打包核验及既有 Spotless 阻断；归档初始化前提示 |
-| 2026-09-30 18:36 | DAYGood_Time | 记录 JUnit 4 测试入口、6 项回归及完整构建通过，说明无游戏 JVM 的注册限制 |

@@ -1,7 +1,7 @@
 # Mixin 开发指南
 
 > 创建日期: 2026-09-30 15:31
-> 最后更新: 2026-09-30 15:31
+> 最后更新: 2026-10-02 20:06
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
@@ -36,22 +36,9 @@ GTNH convention `2.0.33` 自动提供 UniMixins 及注解处理器；本次 `dep
 
 所有配置引用 `mixins.thermonuclear.refmap.json`，该文件由注解处理器生成，不手写维护。目前没有 `@Mixin` 输入，构建未生成 refmap / `mixins.srg`；`reobfJar` 的 `mixins.srg does not exist` 提示仍存在，不能通过伪造空映射文件隐藏。
 
-## 验证记录
+## 验证边界
 
-2026-09-30 执行：
-
-```powershell
-.\gradlew.bat dependencyInsight --dependency unimixins --configuration compileClasspath --console=plain
-.\gradlew.bat build --console=plain
-.\gradlew.bat compileJava processResources jar reobfJar checkstyleMain --console=plain
-```
-
-- 依赖核验通过，退出码 0。
-- 完整 `build` 退出码 1，被现有原型文件的 Spotless 格式问题阻断，包含 `Config.java`、`loader/MachineLoader.java` 等；未格式化或覆盖这些用户未提交的文件。
-- 单独编译、资源处理、开发 JAR、重混淆 JAR、Checkstyle 全部通过，退出码 0。
-- 使用 `spotlessIdeHook` 传入本次两个新增 Java 文件的绝对路径，输出两条 `IS CLEAN`，退出码 0；该模式的 `spotlessJavaCheck` 显示 `SKIPPED`，不计作全仓库格式检查通过。
-- 已检查本次重混淆 JAR，包含两个加载器、三份 JSON，manifest 的 `FMLCorePlugin` 和 `MixinConfigs` 指向正确文件。
-- 未执行游戏启动、实际注入、客户端 / 专用服务器或整合包兼容验收。
+已有加载器、JSON、manifest、编译与打包的静态验证记录，未执行游戏启动、实际注入、客户端／专用服务器或整合包兼容验收。空配置通过编译不证明未来的注入目标正确。历次命令、退出码和当时的格式阻断见[开发验证记录](../../开发验证记录.md#mixin-指南中的验证记录)，仅按需追溯。
 
 ## 已核对参考
 
@@ -60,9 +47,3 @@ GTNH convention `2.0.33` 自动提供 UniMixins 及注解处理器；本次 `dep
 API 对照本机解析的 UniMixins `0.3.1` sources JAR 中 `IEarlyMixinLoader`、`ILateMixinLoader`、`LateMixin`；manifest 和资源生成行为对照 GTNH convention `2.0.33` sources JAR 中 `MixinModule`、`ToolchainModule`、`GenerateMixinAssetsTask`。外部说明来自 [UniMixins GTNHMixins 文档](https://github.com/LegacyModdingMC/UniMixins/blob/master/module-gtnhmixins/README.original.md)。
 
 初始化前的构建提示记载保留于 [Mixin 初始化前状态](../archive/development/Mixin初始化前状态.md)。
-
-## 修订记录
-
-| 时间 | 作者 | 变更说明 |
-| --- | --- | --- |
-| 2026-09-30 15:31 | DAYGood_Time | 记录空 Mixin 初始化、参考和依赖核验、加载边界及构建阻断与实际验证范围 |
