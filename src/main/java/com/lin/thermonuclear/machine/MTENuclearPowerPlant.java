@@ -17,6 +17,8 @@ import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.nuclear.IC2FuelRodAdapter;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
+import com.lin.thermonuclear.recipe.HeatExchangeSteam;
+import com.lin.thermonuclear.registry.WorkingFluids;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
@@ -98,6 +100,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .toolTipFinisher();
     }
 
+    private enum CoolingFluid {
+        IC2,
+        SUPER,
+        DISTILLED
+    }
+
     private static final FuelRodAdapter[] ADAPTERS = { new IC2FuelRodAdapter(), new GTFuelRodAdapter() };
     private final NuclearEfficiencyPolicy efficiencyPolicy = NuclearEfficiencyPolicy.CONFIGURED;
     private NuclearOperatingMode mode = NuclearOperatingMode.DIRECT_GENERATION;
@@ -105,7 +113,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private ItemStack pendingDepleted;
     private double fuelFraction;
     private final double[] coolantFractions = new double[HeatExchangeRecipe.values().length];
-    private HeatExchangeRecipe selectedCoolant;
+    private double distilledWaterFraction;
+    private CoolingFluid selectedCoolingFluid;
     private double consumedFuelCycles;
     private double fullLoadHeatRate;
     private NBTTagCompound fuelSnapshot;
@@ -193,33 +202,63 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             }
             case HEAT_SUPPLY -> {
                 if (!hasFluidInputs() || mOutputHatches.isEmpty()) return fail("hatches");
-                HeatExchangeRecipe coolant = chooseCoolant();
-                if (coolant == null) return fail("coolant");
-                selectedCoolant = coolant;
-                fullLoadHeatRate = fuel.heatPerCycle(workingFuel) * Config.fuelCyclesPerSecond
-                    / 20
-                    * efficiency
-                    * coolant.coolantPerHeat()
-                    * workingFuel.stackSize;
-                double litres = fuel.heatPerCycle(workingFuel) * cycles
-                    * efficiency
-                    * coolant.coolantPerHeat()
-                    * workingFuel.stackSize;
-                double accumulated = litres + coolantFractions[coolant.ordinal()];
-                if (!Double.isFinite(accumulated) || accumulated < 0 || accumulated > Integer.MAX_VALUE - 1) {
-                    return fail("invalid_value");
+                if (!selectCoolingFluid()) return fail("coolant");
+                if (selectedCoolingFluid == CoolingFluid.DISTILLED) {
+                    fullLoadHeatRate = fuel.heatPerCycle(workingFuel) * Config.fuelCyclesPerSecond
+                        / 20
+                        * efficiency
+                        * Config.nuclearDistilledWaterPerHeat
+                        * workingFuel.stackSize;
+                    double water = fuel.heatPerCycle(workingFuel) * cycles
+                        * efficiency
+                        * Config.nuclearDistilledWaterPerHeat
+                        * workingFuel.stackSize;
+                    double accumulated = water + distilledWaterFraction;
+                    if (!Double.isFinite(accumulated) || accumulated < 0 || accumulated > Integer.MAX_VALUE - 1) {
+                        return fail("invalid_value");
+                    }
+                    int waterAmount = (int) Math.floor(accumulated);
+                    int steamAmount = (int) Math.floor(waterAmount * Config.nuclearSteamPerDistilledWater);
+                    if (available(WorkingFluids.distilledWater) < Math.max(1, waterAmount)) return fail("water");
+                    FluidEjectionHelper outputs = prepareOutputs(
+                        new FluidStack(HeatExchangeSteam.ORDINARY.fluid(), Math.max(1, steamAmount)));
+                    if (outputs == null) return fail("output_full");
+                    if (waterAmount > 0) {
+                        consume(WorkingFluids.distilledWater, waterAmount);
+                        commitOutput(outputs::commit);
+                    }
+                    distilledWaterFraction = StartupProgress.fraction(accumulated - waterAmount);
+                    inputRate = waterAmount / (double) CYCLE_TICKS;
+                    outputRate = steamAmount / (double) CYCLE_TICKS;
+                } else {
+                    HeatExchangeRecipe coolant = selectedCoolingFluid == CoolingFluid.IC2
+                        ? HeatExchangeRecipe.IC2_COOLANT
+                        : HeatExchangeRecipe.SUPER_COOLANT;
+                    fullLoadHeatRate = fuel.heatPerCycle(workingFuel) * Config.fuelCyclesPerSecond
+                        / 20
+                        * efficiency
+                        * coolant.coolantPerHeat()
+                        * workingFuel.stackSize;
+                    double litres = fuel.heatPerCycle(workingFuel) * cycles
+                        * efficiency
+                        * coolant.coolantPerHeat()
+                        * workingFuel.stackSize;
+                    double accumulated = litres + coolantFractions[coolant.ordinal()];
+                    if (!Double.isFinite(accumulated) || accumulated < 0 || accumulated > Integer.MAX_VALUE - 1) {
+                        return fail("invalid_value");
+                    }
+                    int amount = (int) Math.floor(accumulated);
+                    // Fractional progress must still have a real coolant and output path available.
+                    if (available(coolant.cold()) < Math.max(1, amount)) return fail("coolant");
+                    FluidEjectionHelper outputs = prepareOutputs(new FluidStack(coolant.hot(), Math.max(1, amount)));
+                    if (outputs == null) return fail("output_full");
+                    if (amount > 0) {
+                        consume(coolant.cold(), amount);
+                        commitOutput(outputs::commit);
+                    }
+                    coolantFractions[coolant.ordinal()] = StartupProgress.fraction(accumulated - amount);
+                    inputRate = outputRate = amount / (double) CYCLE_TICKS;
                 }
-                int amount = (int) Math.floor(accumulated);
-                // Fractional progress must still have a real coolant and output path available.
-                if (available(coolant.cold()) < Math.max(1, amount)) return fail("coolant");
-                FluidEjectionHelper outputs = prepareOutputs(new FluidStack(coolant.hot(), Math.max(1, amount)));
-                if (outputs == null) return fail("output_full");
-                if (amount > 0) {
-                    consume(coolant.cold(), amount);
-                    commitOutput(outputs::commit);
-                }
-                coolantFractions[coolant.ordinal()] = StartupProgress.fraction(accumulated - amount);
-                inputRate = outputRate = amount / (double) CYCLE_TICKS;
             }
         }
         consumedFuelCycles = cycles * workingFuel.stackSize;
@@ -263,14 +302,27 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         fuelPlan = null;
     }
 
-    private HeatExchangeRecipe chooseCoolant() {
-        if (selectedCoolant != null && selectedCoolant.hot() != null
-            && selectedCoolant.cold() != null
-            && available(selectedCoolant.cold()) > 0) return selectedCoolant;
+    private boolean selectCoolingFluid() {
+        if (selectedCoolingFluid != null) return availableCoolingFluid(selectedCoolingFluid);
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
-            if (coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) return coolant;
+            if (coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) {
+                selectedCoolingFluid = coolant == HeatExchangeRecipe.IC2_COOLANT ? CoolingFluid.IC2 : CoolingFluid.SUPER;
+                return true;
+            }
         }
-        return null;
+        if (WorkingFluids.distilledWater != null && available(WorkingFluids.distilledWater) > 0) {
+            selectedCoolingFluid = CoolingFluid.DISTILLED;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean availableCoolingFluid(CoolingFluid fluid) {
+        return switch (fluid) {
+            case IC2 -> WorkingFluids.ic2Coolant != null && available(WorkingFluids.ic2Coolant) > 0;
+            case SUPER -> WorkingFluids.superCoolant != null && available(WorkingFluids.superCoolant) > 0;
+            case DISTILLED -> WorkingFluids.distilledWater != null && available(WorkingFluids.distilledWater) > 0;
+        };
     }
 
     @Override
@@ -287,7 +339,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
             nbt.setDouble("tnCoolantFraction_" + coolant.id(), coolantFractions[coolant.ordinal()]);
         }
-        nbt.setString("tnSelectedCoolant", selectedCoolant == null ? "" : selectedCoolant.id());
+        nbt.setDouble("tnDistilledWaterFraction", distilledWaterFraction);
+        nbt.setString(
+            "tnSelectedCoolant",
+            selectedCoolingFluid == null ? "" : selectedCoolingFluid.name().toLowerCase(java.util.Locale.ROOT));
     }
 
     @Override
@@ -314,13 +369,22 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         workingFuel = FuelBatch.load(nbt, "tnWorkingFuel", "tnFuelCount");
         pendingDepleted = FuelBatch.load(nbt, "tnPendingDepleted", "tnPendingDepletedCount");
         fuelFraction = workingFuel == null ? 0 : StartupProgress.fraction(nbt.getDouble("tnFuelFraction"));
-        selectedCoolant = null;
+        selectedCoolingFluid = null;
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
             coolantFractions[coolant.ordinal()] = StartupProgress
                 .fraction(nbt.getDouble("tnCoolantFraction_" + coolant.id()));
-            if (coolant.id()
-                .equals(nbt.getString("tnSelectedCoolant"))) selectedCoolant = coolant;
         }
+        String selected = nbt.getString("tnSelectedCoolant");
+        if ("ic2".equals(selected)) selectedCoolingFluid = CoolingFluid.IC2;
+        if ("super".equals(selected)) selectedCoolingFluid = CoolingFluid.SUPER;
+        if ("distilled".equals(selected)) selectedCoolingFluid = CoolingFluid.DISTILLED;
+        distilledWaterFraction = StartupProgress.fraction(nbt.getDouble("tnDistilledWaterFraction"));
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity tile, long tick) {
+        super.onPostTick(tile, tick);
+        if (tile.isServerSide() && !tile.isAllowedToWork() && !running) selectedCoolingFluid = null;
     }
 
     @Override
@@ -370,8 +434,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return new String[] { mode.translationKey(), workingFuel == null ? "-" : workingFuel.getDisplayName(),
             workingFuel == null ? "0" : Integer.toString(workingFuel.stackSize),
             fuel == null ? "0" : decimal(fuel.remainingCycles(workingFuel) - fuelFraction), decimal(consumedFuelCycles),
-            selectedCoolant == null || mode == NuclearOperatingMode.DIRECT_GENERATION ? "thermonuclear.recipe.none"
-                : selectedCoolant.translationKey(),
+            selectedCoolingFluid == null || mode == NuclearOperatingMode.DIRECT_GENERATION ? "thermonuclear.recipe.none"
+                : selectedCoolingFluid == CoolingFluid.IC2 ? HeatExchangeRecipe.IC2_COOLANT.translationKey()
+                    : selectedCoolingFluid == CoolingFluid.SUPER ? HeatExchangeRecipe.SUPER_COOLANT.translationKey()
+                        : "thermonuclear.recipe.distilled",
             decimal(fullLoadHeatRate),
             pendingDepleted == null ? "-" : pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName() };
     }

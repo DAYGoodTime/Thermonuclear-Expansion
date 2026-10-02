@@ -22,7 +22,7 @@ public interface FuelRodAdapter {
     ItemStack depleted(ItemStack stack);
 
     // One durability unit is one reactor cycle (20 server ticks), not one game tick.
-    // IC2 getOfferedEnergy and GT's own nuclear recipe descriptions both use 5, not GTNL's 25.
+    // IC2 and GT use 5 times the configured nuclear factor; GTNH's factor is 5, or 25 EU per pulse.
     static double nuclearEnergyMultiplier() {
         double value = ConfigUtil.getFloat(MainConfig.get(), "balance/energy/generator/nuclear");
         return Double.isFinite(value) && value > 0 ? 5 * value : 0;
