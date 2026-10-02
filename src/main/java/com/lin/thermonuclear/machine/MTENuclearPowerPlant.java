@@ -10,6 +10,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.nuclear.FuelBatch;
@@ -21,8 +22,10 @@ import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
+import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
+import gregtech.api.enums.Materials;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.structure.error.StructureError;
@@ -32,30 +35,77 @@ import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.ItemEjectionHelper;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
+import gregtech.common.tileentities.machines.IDualInputHatch;
 
 public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant> {
 
     private static final String PIECE = "nuclear_power_plant";
-    private static final int SIZE = 3;
-    private static final int OFFSET_X = 1;
-    private static final int OFFSET_Y = 1;
-    private static final int OFFSET_Z = 0;
+    private static final int OFFSET_X = NuclearPowerPlantStructure.OFFSET_X;
+    private static final int OFFSET_Y = NuclearPowerPlantStructure.OFFSET_Y;
+    private static final int OFFSET_Z = NuclearPowerPlantStructure.OFFSET_Z;
     private static final Casings CASING = Casings.HeatProofMachineCasing;
-    // StructureLib order: [depth][top-to-bottom row], with the controller at (1, 1, 0).
-    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
-        { "CCC", "CCC", "CCC" } };
+    private static final int CONCRETE_META = 13;
+    private static final int CONCRETE_TEXTURE = 221;
+    private static final String[][] SHAPE = NuclearPowerPlantStructure.createShape();
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
         .addElement(
-            'C',
+            'A',
+            GTStructureUtility
+                .chainItemPipeCasings(-1, (machine, tier) -> machine.pipeTier = tier, machine -> machine.pipeTier))
+        .addElement('B', Casings.ReinforcedGlass.asElement())
+        .addElement('C', StructureUtility.ofBlock(GregTechAPI.sBlockReinforced, CONCRETE_META))
+        .addElement('D', GTStructureUtility.ofFrame(Materials.Steel))
+        .addElement('F', GTStructureUtility.ofAnyWater())
+        .addElement('H', GTStructureUtility.ofAnyWater())
+        .addElement(
+            'G',
             GTStructureUtility.<MTENuclearPowerPlant>ofHatchAdderOptional(
-                (machine, tile, texture) -> machine.addMachineHatch(tile, texture),
-                CASING.textureId,
+                (machine, tile, texture) -> machine.addServiceHatch(tile, texture),
+                CONCRETE_TEXTURE,
                 1,
-                CASING.getBlock(),
-                CASING.meta))
+                GregTechAPI.sBlockReinforced,
+                CONCRETE_META))
+        .addElement(
+            'I',
+            GTStructureUtility.<MTENuclearPowerPlant>ofHatchAdder(
+                (machine, tile, texture) -> machine.addCoolantHatch(tile, texture),
+                CONCRETE_TEXTURE,
+                2))
         .build();
+
+    private int pipeTier = -1;
+
+    public int getPipeTier() {
+        return pipeTier;
+    }
+
+    public int getFuelRodLimit() {
+        return pipeTier < 1 || pipeTier > 8 ? 0 : Config.nuclearFuelRodsPerPipeTier * pipeTier;
+    }
+
+    @Override
+    public void clearHatches() {
+        super.clearHatches();
+        pipeTier = -1;
+    }
+
+    private boolean addServiceHatch(IGregTechTileEntity tile, int texture) {
+        if (tile == null || tile.getMetaTileEntity() == null || tile.getMetaTileEntity() instanceof IDualInputHatch)
+            return false;
+        return addInputBusToMachineList(tile, texture) || addOutputBusToMachineList(tile, texture)
+            || addMaintenanceToMachineList(tile, texture)
+            || addDynamoToMachineList(tile, texture)
+            || addExoticDynamoToMachineList(tile, texture)
+            || addLaserSourceToMachineList(tile, texture);
+    }
+
+    private boolean addCoolantHatch(IGregTechTileEntity tile, int texture) {
+        if (tile == null || tile.getMetaTileEntity() == null || tile.getMetaTileEntity() instanceof IDualInputHatch)
+            return false;
+        return addInputHatchToMachineList(tile, texture) || addOutputHatchToMachineList(tile, texture);
+    }
 
     @Override
     public IStructureDefinition<MTENuclearPowerPlant> getStructureDefinition() {
@@ -65,11 +115,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
-        if (mInputBusses.isEmpty() && mDualInputHatches.isEmpty()) {
+        if (mInputBusses.isEmpty()) {
             errors.add(StructureErrors.missingHatch(HatchElement.InputBus));
         }
         if (mOutputBusses.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputBus));
-        // Dynamo and coolant hatches are checked at processing time for the selected operating mode.
+        if (mInputHatches.size() != 1 || mOutputHatches.size() != 1) {
+            errors.add(StructureErrors.of("thermonuclear.structure.nuclear.coolant_io"));
+        }
+        // Dynamos remain mode-dependent; maintenance hatches are optional and do not enable failures.
     }
 
     @Override
@@ -84,20 +137,27 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected int structureChunkRadius() {
-        return SIZE - 1;
+        return NuclearPowerPlantStructure.CHUNK_RADIUS;
     }
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().beginStructureBlock(SIZE, SIZE, SIZE, true)
-            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
-            .addInputBus("1+", "Shell", 1)
-            .addOutputBus("1+", "Shell", 1)
-            .addInputHatch("0+", "Shell", 1)
-            .addOutputHatch("0+", "Shell", 1)
-            .addDynamoHatch("0+", "Shell", 1)
+        return machineTooltip()
+            .beginStructureBlock(
+                NuclearPowerPlantStructure.WIDTH,
+                NuclearPowerPlantStructure.HEIGHT,
+                NuclearPowerPlantStructure.LENGTH,
+                true)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services"))
+            .addInputBus("1+", "G", 1)
+            .addOutputBus("1+", "G", 1)
+            .addInputHatch("1", "I", 2)
+            .addOutputHatch("1", "I", 2)
+            .addDynamoHatch("0+", "G", 1)
+            .addMaintenanceHatch("0+", "G", 1)
             .toolTipFinisher();
     }
 
@@ -149,7 +209,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     private void takeFuel() {
         if (workingFuel != null || pendingDepleted != null) return;
-        fuelPlan = FuelBatch.prepare(cycleItems(), ADAPTERS);
+        fuelPlan = FuelBatch.prepare(cycleItems(), ADAPTERS, getFuelRodLimit());
         workingFuel = fuelPlan == null ? null : fuelPlan.fuel;
     }
 
@@ -174,6 +234,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if (pendingDepleted != null) {
             cycleAdvancesStartup = false;
             return flushDepleted() || fail("spent_full");
+        }
+        // Keep paid-for batches intact after a downgrade; pause instead of discarding or over-processing them.
+        if (getFuelRodLimit() <= 0 || (workingFuel != null && workingFuel.stackSize > getFuelRodLimit())) {
+            return fail("fuel_limit");
         }
         takeFuel();
         FuelRodAdapter fuel = adapter(workingFuel);
@@ -429,15 +493,19 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "startup", "full_load", "produced", "fuel", "fuel_count",
-            "fuel_remaining", "fuel_rate", "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output",
-            "water_input", "steam_output", "pending_spent" };
+        return new String[] { "status", "mode", "startup", "full_load", "produced", "pipe_tier", "fuel_limit", "fuel",
+            "fuel_count", "fuel_remaining", "fuel_rate", "coolant", "heat_limit", "water_limit", "coolant_input",
+            "hot_output", "water_input", "steam_output", "pending_spent" };
     }
 
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
         info.put("mode", mode.translationKey());
+        if (mMachine && pipeTier > 0) {
+            info.put("pipe_tier", Integer.toString(pipeTier));
+            info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
+        }
         addStartupInfo(info);
         if (mode == NuclearOperatingMode.DIRECT_GENERATION) addGenerationInfo(info);
         FuelRodAdapter fuel = adapter(workingFuel);

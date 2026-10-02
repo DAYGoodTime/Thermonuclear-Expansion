@@ -11,11 +11,12 @@ import net.minecraft.nbt.NBTTagCompound;
 
 public final class FuelBatch {
 
-    public static final int MAX_RODS = 256;
+    public static final int MAX_RODS = 2048;
 
     private FuelBatch() {}
 
-    public static Plan prepare(List<ItemStack> inputs, FuelRodAdapter[] adapters) {
+    public static Plan prepare(List<ItemStack> inputs, FuelRodAdapter[] adapters, int maxRods) {
+        if (maxRods <= 0 || maxRods > MAX_RODS) throw new IllegalArgumentException("Invalid fuel batch limit");
         ItemStack selected = null;
         int lowestLifetime = Integer.MAX_VALUE;
         for (ItemStack stack : inputs) {
@@ -37,11 +38,11 @@ public final class FuelBatch {
         Set<ItemStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : inputs) {
             if (stack == null || stack.stackSize <= 0 || !sameType(batch, stack) || !seen.add(stack)) continue;
-            int amount = Math.min(MAX_RODS - batch.stackSize, stack.stackSize);
+            int amount = Math.min(maxRods - batch.stackSize, stack.stackSize);
             sources.add(stack);
             amounts.add(amount);
             batch.stackSize += amount;
-            if (batch.stackSize == MAX_RODS) break;
+            if (batch.stackSize == maxRods) break;
         }
         return new Plan(batch, sources, amounts);
     }

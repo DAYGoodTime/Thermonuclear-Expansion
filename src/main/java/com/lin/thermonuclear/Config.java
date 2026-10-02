@@ -12,6 +12,7 @@ public class Config {
     public static double nuclearDirectEfficiency = 1.0;
     public static double nuclearHeatEfficiency = 1.0;
     public static double fuelCyclesPerSecond = 1.0;
+    public static int nuclearFuelRodsPerPipeTier = 256;
     public static double ic2CoolantPerHeat = 1.0;
     public static double superCoolantPerHeat = 0.25;
     public static int nuclearMaxReflectorCount = 4;
@@ -42,6 +43,7 @@ public class Config {
         nuclearDirectEfficiency = number(configuration, "nuclearDirectEfficiency", 1, 0.001, 1);
         nuclearHeatEfficiency = number(configuration, "nuclearHeatEfficiency", 1, 0.001, 1);
         fuelCyclesPerSecond = number(configuration, "fuelCyclesPerSecond", 1, 0.001, 100);
+        nuclearFuelRodsPerPipeTier = integer(configuration, "nuclearFuelRodsPerPipeTier", 256, 1, 256);
         ic2CoolantPerHeat = number(configuration, "ic2CoolantLitresPerFuelHeatUnit", 1, 0.001, 1000);
         superCoolantPerHeat = number(configuration, "superCoolantLitresPerFuelHeatUnit", 0.25, 0.001, 1000);
         nuclearMaxReflectorCount = integer(configuration, "nuclearMaxReflectorCount", 4, 0, 6);
