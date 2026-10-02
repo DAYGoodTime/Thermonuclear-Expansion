@@ -5,14 +5,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -84,9 +87,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     public abstract String nameKey();
 
-    public abstract String[] detailKeys();
+    public abstract String[] displayKeys();
 
-    public abstract String[] detailValues();
+    public abstract Map<String, String> displayInfo();
 
     protected void beforeProcessingCycle() {}
 
@@ -505,39 +508,70 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     protected abstract MTEMultiBlockBaseGui<?> getGui();
 
-    public String[] displayKeys() {
-        String[] common = { "status", "startup", "full_load", "dynamo_limit", "produced", "sent", "discarded",
-            "input_rate", "output_rate" };
-        String[] details = detailKeys();
-        String[] keys = Arrays.copyOf(common, common.length + details.length);
-        System.arraycopy(details, 0, keys, common.length, details.length);
-        return keys;
+    protected final Map<String, String> commonInfo() {
+        Map<String, String> info = new LinkedHashMap<>();
+        boolean processingFailed = !running && (status.equals("running") || status.equals("power_discarded"))
+            && !checkRecipeResult.wasSuccessful();
+        info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
+        return info;
     }
 
-    public String[] displayValues() {
-        String[] common = { "thermonuclear.status." + status, decimal(startup.get() * 100), decimal(fullLoadEUt),
-            Long.toString(dynamoRating()), Long.toString(producedEUt), Long.toString(sentEUt),
-            Long.toString(discardedEUt), decimal(inputRate), decimal(outputRate) };
-        String[] details = detailValues();
-        String[] values = Arrays.copyOf(common, common.length + details.length);
-        System.arraycopy(details, 0, values, common.length, details.length);
-        return values;
+    protected final void addStartupInfo(Map<String, String> info) {
+        info.put("startup", decimal(startup.get() * 100));
+    }
+
+    protected final void addGenerationInfo(Map<String, String> info) {
+        info.put("full_load", decimal(fullLoadEUt));
+        info.put("produced", String.format(Locale.ROOT, "%,d", running ? producedEUt : 0));
+    }
+
+    public static String formatInfo(String key, String value) {
+        if (value == null || value.isEmpty()) return "";
+        String label = StatCollector.translateToLocal("thermonuclear.gui." + key);
+        String text = value.startsWith("thermonuclear.") ? StatCollector.translateToLocal(value) : value;
+        if (key.equals("status")) {
+            String state = value.substring("thermonuclear.status.".length());
+            String severity = switch (state) {
+                case "running" -> "normal";
+                case "stopped" -> "idle";
+                case "checking", "chunk_unloaded" -> "waiting";
+                case "power_discarded" -> "warning";
+                default -> "error";
+            };
+            EnumChatFormatting color = switch (severity) {
+                case "normal" -> EnumChatFormatting.GREEN;
+                case "idle" -> EnumChatFormatting.GRAY;
+                case "waiting" -> EnumChatFormatting.YELLOW;
+                case "warning" -> EnumChatFormatting.GOLD;
+                default -> EnumChatFormatting.RED;
+            };
+            return color.toString() + EnumChatFormatting.BOLD
+                + StatCollector.translateToLocal("thermonuclear.gui.severity." + severity)
+                + EnumChatFormatting.RESET
+                + " "
+                + color
+                + text
+                + EnumChatFormatting.RESET;
+        }
+        return EnumChatFormatting.GRAY + label
+            + ": "
+            + (key.equals("mode") || key.equals("steam_type") ? EnumChatFormatting.GOLD : EnumChatFormatting.AQUA)
+            + text
+            + EnumChatFormatting.RESET;
     }
 
     public static String decimal(double value) {
-        return String.format(Locale.ROOT, "%.3f", value);
+        return String.format(Locale.ROOT, "%,.3f", value)
+            .replaceAll("0+$", "")
+            .replaceAll("\\.$", "");
     }
 
     @Override
     public String[] getInfoData() {
-        String[] keys = displayKeys();
-        String[] values = displayValues();
-        for (int i = 0; i < keys.length; i++) {
-            String value = values[i];
-            values[i] = StatCollector.translateToLocal("thermonuclear.gui." + keys[i]) + ": "
-                + (value.startsWith("thermonuclear.") ? StatCollector.translateToLocal(value) : value);
-        }
-        return values;
+        return displayInfo().entrySet()
+            .stream()
+            .map(entry -> formatInfo(entry.getKey(), entry.getValue()))
+            .toArray(String[]::new);
     }
 
     @Override
@@ -567,6 +601,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     @Override
     public boolean showRecipeTextInGUI() {
-        return true;
+        return false;
     }
 }

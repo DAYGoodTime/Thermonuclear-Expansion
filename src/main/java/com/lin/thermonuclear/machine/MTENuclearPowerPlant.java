@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -306,7 +307,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if (selectedCoolingFluid != null) return availableCoolingFluid(selectedCoolingFluid);
         for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
             if (coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) {
-                selectedCoolingFluid = coolant == HeatExchangeRecipe.IC2_COOLANT ? CoolingFluid.IC2 : CoolingFluid.SUPER;
+                selectedCoolingFluid = coolant == HeatExchangeRecipe.IC2_COOLANT ? CoolingFluid.IC2
+                    : CoolingFluid.SUPER;
                 return true;
             }
         }
@@ -342,7 +344,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         nbt.setDouble("tnDistilledWaterFraction", distilledWaterFraction);
         nbt.setString(
             "tnSelectedCoolant",
-            selectedCoolingFluid == null ? "" : selectedCoolingFluid.name().toLowerCase(java.util.Locale.ROOT));
+            selectedCoolingFluid == null ? ""
+                : selectedCoolingFluid.name()
+                    .toLowerCase(java.util.Locale.ROOT));
     }
 
     @Override
@@ -423,22 +427,43 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
-    public String[] detailKeys() {
-        return new String[] { "mode", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "coolant", "heat_limit",
-            "pending_spent" };
+    public String[] displayKeys() {
+        // Keep sync identities stable while the same open GUI switches operating mode.
+        return new String[] { "status", "mode", "startup", "full_load", "produced", "fuel", "fuel_count",
+            "fuel_remaining", "fuel_rate", "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output",
+            "water_input", "steam_output", "pending_spent" };
     }
 
     @Override
-    public String[] detailValues() {
+    public Map<String, String> displayInfo() {
+        Map<String, String> info = commonInfo();
+        info.put("mode", mode.translationKey());
+        addStartupInfo(info);
+        if (mode == NuclearOperatingMode.DIRECT_GENERATION) addGenerationInfo(info);
         FuelRodAdapter fuel = adapter(workingFuel);
-        return new String[] { mode.translationKey(), workingFuel == null ? "-" : workingFuel.getDisplayName(),
-            workingFuel == null ? "0" : Integer.toString(workingFuel.stackSize),
-            fuel == null ? "0" : decimal(fuel.remainingCycles(workingFuel) - fuelFraction), decimal(consumedFuelCycles),
-            selectedCoolingFluid == null || mode == NuclearOperatingMode.DIRECT_GENERATION ? "thermonuclear.recipe.none"
-                : selectedCoolingFluid == CoolingFluid.IC2 ? HeatExchangeRecipe.IC2_COOLANT.translationKey()
-                    : selectedCoolingFluid == CoolingFluid.SUPER ? HeatExchangeRecipe.SUPER_COOLANT.translationKey()
-                        : "thermonuclear.recipe.distilled",
-            decimal(fullLoadHeatRate),
-            pendingDepleted == null ? "-" : pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName() };
+        info.put("fuel", workingFuel == null ? "thermonuclear.recipe.none" : workingFuel.getDisplayName());
+        if (workingFuel != null) {
+            info.put("fuel_count", Integer.toString(workingFuel.stackSize));
+            info.put("fuel_remaining", fuel == null ? "0" : decimal(fuel.remainingCycles(workingFuel) - fuelFraction));
+            info.put("fuel_rate", decimal(running ? consumedFuelCycles : 0));
+        }
+        if (mode == NuclearOperatingMode.HEAT_SUPPLY) {
+            info.put(
+                "coolant",
+                selectedCoolingFluid == null ? "thermonuclear.recipe.none"
+                    : selectedCoolingFluid == CoolingFluid.IC2 ? HeatExchangeRecipe.IC2_COOLANT.translationKey()
+                        : selectedCoolingFluid == CoolingFluid.SUPER ? HeatExchangeRecipe.SUPER_COOLANT.translationKey()
+                            : "thermonuclear.recipe.distilled");
+            boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
+            if (selectedCoolingFluid != null) {
+                info.put(water ? "water_limit" : "heat_limit", decimal(fullLoadHeatRate));
+                info.put(water ? "water_input" : "coolant_input", decimal(inputRate));
+                info.put(water ? "steam_output" : "hot_output", decimal(outputRate));
+            }
+        }
+        if (pendingDepleted != null) {
+            info.put("pending_spent", pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName());
+        }
+        return info;
     }
 }

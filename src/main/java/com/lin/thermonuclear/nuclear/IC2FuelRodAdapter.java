@@ -2,8 +2,6 @@ package com.lin.thermonuclear.nuclear;
 
 import net.minecraft.item.ItemStack;
 
-import com.lin.thermonuclear.Config;
-
 import ic2.core.Ic2Items;
 import ic2.core.item.reactor.ItemReactorMOX;
 import ic2.core.item.reactor.ItemReactorUranium;

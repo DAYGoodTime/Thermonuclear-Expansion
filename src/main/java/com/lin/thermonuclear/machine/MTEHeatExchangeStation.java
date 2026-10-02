@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -97,10 +98,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     private HeatExchangeSteam selectedSteam = HeatExchangeSteam.ORDINARY;
     private final double[] steamRemainders = new double[HeatExchangeSteam.values().length];
     private double throughputRemainder;
-    private int lastHotAmount;
-    private int lastWaterAmount;
-    private int lastSteamAmount;
-    private HeatExchangeSteam lastSteam = HeatExchangeSteam.ORDINARY;
 
     public MTEHeatExchangeStation(int id, String name, String regional) {
         super(id, name, regional);
@@ -170,10 +167,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         consume(recipe.hot(), hot);
         consume(WorkingFluids.distilledWater, water);
         commitOutput(outputs::commit);
-        lastHotAmount = hot;
-        lastWaterAmount = water;
-        lastSteamAmount = steam;
-        lastSteam = selectedSteam;
         inputRate = hot / (double) CYCLE_TICKS;
         outputRate = steam / (double) CYCLE_TICKS;
         return true;
@@ -243,24 +236,26 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     }
 
     @Override
-    public String[] detailKeys() {
-        return new String[] { "recipe", "steam_type", "steam_multiplier", "throughput", "cycle", "last_batch" };
+    public String[] displayKeys() {
+        return new String[] { "status", "steam_type", "recipe", "steam_multiplier", "throughput", "hot_input",
+            "water_input", "steam_output", "coolant_return", "cycle" };
     }
 
     @Override
-    public String[] detailValues() {
-        return new String[] { selected == null ? "thermonuclear.recipe.none" : selected.translationKey(),
-            selectedSteam.translationKey(),
-            selected == null ? "0" : decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L",
-            Config.exchangeHotFluidPerCycle + " L / " + Config.exchangeCycleTicks + " t",
-            mProgresstime + " / " + CYCLE_TICKS,
-            lastHotAmount + " L hot; "
-                + lastWaterAmount
-                + " L water; "
-                + lastSteamAmount
-                + " L "
-                + lastSteam.id()
-                + " steam" };
+    public Map<String, String> displayInfo() {
+        Map<String, String> info = commonInfo();
+        info.put("steam_type", selectedSteam.translationKey());
+        info.put("recipe", selected == null ? "thermonuclear.recipe.none" : selected.translationKey());
+        if (selected != null) {
+            info.put("steam_multiplier", decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L");
+        }
+        info.put("throughput", decimal(Config.exchangeHotFluidPerCycle / (double) Config.exchangeCycleTicks) + " L/t");
+        info.put("hot_input", decimal(inputRate));
+        info.put("water_input", decimal(selected == null ? 0 : inputRate / selected.hotPerWater()));
+        info.put("steam_output", decimal(outputRate));
+        info.put("coolant_return", decimal(inputRate));
+        if (mMaxProgresstime > 0) info.put("cycle", mProgresstime + " / " + CYCLE_TICKS);
+        return info;
     }
 
     public boolean requestSteamChange() {

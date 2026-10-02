@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -275,13 +276,20 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    public String[] detailKeys() {
-        return new String[] { "rotor", "steam_limit", "condensation" };
+    public String[] displayKeys() {
+        return new String[] { "status", "startup", "full_load", "produced", "rotor", "steam_limit", "steam_input",
+            "water_output" };
     }
 
     @Override
-    public String[] detailValues() {
-        return new String[] { rotorDurability + " / " + rotorMaxDurability, flowLimit + " L/t",
-            condensationRemainder + " / " + GTValues.STEAM_PER_WATER + " L steam" };
+    public Map<String, String> displayInfo() {
+        Map<String, String> info = commonInfo();
+        addStartupInfo(info);
+        addGenerationInfo(info);
+        info.put("rotor", rotorDurability + " / " + rotorMaxDurability);
+        info.put("steam_limit", flowLimit + " L/t");
+        info.put("steam_input", decimal(inputRate));
+        info.put("water_output", decimal(outputRate));
+        return info;
     }
 }
