@@ -1,21 +1,103 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.List;
+
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
+import gregtech.api.casing.Casings;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.HatchElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.items.MetaGeneratedTool;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
+import gregtech.api.util.GTStructureUtility;
+import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.TurbineStatCalculator;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.items.MetaGeneratedTool01;
 
-public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELargeSteamTurbine> {
+public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTELargeSteamTurbine> {
+
+    private static final String PIECE = "large_steam_turbine";
+    private static final int SIZE = 3;
+    private static final int OFFSET_X = 1;
+    private static final int OFFSET_Y = 1;
+    private static final int OFFSET_Z = 0;
+    private static final Casings CASING = Casings.HeatProofMachineCasing;
+    // StructureLib order: [depth][top-to-bottom row], with the controller at (1, 1, 0).
+    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
+        { "CCC", "CCC", "CCC" } };
+    private static final IStructureDefinition<MTELargeSteamTurbine> STRUCTURE = StructureDefinition
+        .<MTELargeSteamTurbine>builder()
+        .addShape(PIECE, SHAPE)
+        .addElement(
+            'C',
+            GTStructureUtility.<MTELargeSteamTurbine>ofHatchAdderOptional(
+                (machine, tile, texture) -> machine.addMachineHatch(tile, texture),
+                CASING.textureId,
+                1,
+                CASING.getBlock(),
+                CASING.meta))
+        .build();
+
+    @Override
+    public IStructureDefinition<MTELargeSteamTurbine> getStructureDefinition() {
+        return STRUCTURE;
+    }
+
+    @Override
+    public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
+        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
+        if (!hasFluidInputs()) errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
+        if (mOutputHatches.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
+        if (mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty()) {
+            errors.add(StructureErrors.missingHatch(HatchElement.Dynamo));
+        }
+    }
+
+    @Override
+    public void construct(ItemStack stack, boolean hintsOnly) {
+        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+    }
+
+    @Override
+    protected Casings casing() {
+        return CASING;
+    }
+
+    @Override
+    protected int structureChunkRadius() {
+        return SIZE - 1;
+    }
+
+    @Override
+    protected MultiblockTooltipBuilder createTooltip() {
+        return machineTooltip().beginStructureBlock(SIZE, SIZE, SIZE, true)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
+            .addInputHatch("1+", "Shell", 1)
+            .addOutputHatch("1+", "Shell", 1)
+            .addDynamoHatch("1+", "Shell", 1)
+            .toolTipFinisher();
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new LargeSteamTurbineGui(this);
+    }
 
     private int condensationRemainder;
     private ItemStack rotorReference;
@@ -169,11 +251,6 @@ public final class MTELargeSteamTurbine extends PrototypeMultiblockBase<MTELarge
 
     @Override
     protected boolean usesDynamo() {
-        return true;
-    }
-
-    @Override
-    protected boolean requiresFluidHatches() {
         return true;
     }
 

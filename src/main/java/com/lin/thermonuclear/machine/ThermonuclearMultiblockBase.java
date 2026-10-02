@@ -19,12 +19,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
-import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import com.lin.thermonuclear.gui.PrototypeGui;
-
 import gregtech.api.casing.Casings;
-import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -37,10 +32,7 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
-import gregtech.api.structure.error.StructureError;
-import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
-import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
@@ -49,19 +41,10 @@ import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
-public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<T>>
+public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultiblockBase<T>>
     extends MTEEnhancedMultiBlockBase<T> {
 
-    public static final int BOX_SIZE = 3;
-    public static final int OFFSET_X = 1;
-    public static final int OFFSET_Y = 1;
-    public static final int OFFSET_Z = 0;
     public static final int CYCLE_TICKS = 20;
-    public static final Casings CASING = Casings.HeatProofMachineCasing;
-    private static final String PIECE = "box";
-    // StructureLib order is [depth][top-to-bottom row]; ~ must match offset (1, 1, 0).
-    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
-        { "CCC", "CCC", "CCC" } };
 
     protected final StartupProgress startup = new StartupProgress();
     protected boolean running;
@@ -75,26 +58,23 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
     protected double outputRate;
     private double energyFraction;
     private boolean hadStructure;
-    private IStructureDefinition<T> definition;
     protected double cycleEUt;
     protected boolean cycleAdvancesStartup = true;
     private List<FluidStack> cycleFluids;
     private final List<Runnable> outputCommits = new ArrayList<>();
     private final List<MTEHatch> cycleDynamos = new ArrayList<>();
 
-    protected PrototypeMultiblockBase(int id, String name, String regional) {
+    protected ThermonuclearMultiblockBase(int id, String name, String regional) {
         super(id, name, regional);
     }
 
-    protected PrototypeMultiblockBase(String name) {
+    protected ThermonuclearMultiblockBase(String name) {
         super(name);
     }
 
     protected abstract boolean usesItemBusses();
 
     protected abstract boolean usesDynamo();
-
-    protected abstract boolean requiresFluidHatches();
 
     protected abstract boolean processCycle();
 
@@ -115,25 +95,11 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
         return StatCollector.translateToLocal(nameKey());
     }
 
-    @Override
-    public IStructureDefinition<T> getStructureDefinition() {
-        if (definition == null) {
-            definition = StructureDefinition.<T>builder()
-                .addShape(PIECE, SHAPE)
-                .addElement(
-                    'C',
-                    GTStructureUtility.<T>ofHatchAdderOptional(
-                        (machine, tile, texture) -> machine.addPrototypeHatch(tile, texture),
-                        CASING.textureId,
-                        1,
-                        CASING.getBlock(),
-                        CASING.meta))
-                .build();
-        }
-        return definition;
-    }
+    protected abstract Casings casing();
 
-    protected boolean addPrototypeHatch(IGregTechTileEntity tile, int texture) {
+    protected abstract int structureChunkRadius();
+
+    protected boolean addMachineHatch(IGregTechTileEntity tile, int texture) {
         if (tile == null || tile.getMetaTileEntity() == null) return false;
         if (usesItemBusses() || tile.getMetaTileEntity() instanceof IDualInputHatch) {
             if (addInputBusToMachineList(tile, texture)) return true;
@@ -161,32 +127,9 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
     }
 
     @Override
-    public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
-        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
-        if (usesItemBusses()) {
-            if (mInputBusses.isEmpty() && mDualInputHatches.isEmpty()) {
-                errors.add(StructureErrors.missingHatch(HatchElement.InputBus));
-            }
-            if (mOutputBusses.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputBus));
-        }
-        if (requiresFluidHatches()) {
-            if (!hasFluidInputs()) errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
-            if (mOutputHatches.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
-        }
-        if (!usesItemBusses() && usesDynamo() && mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty()) {
-            errors.add(StructureErrors.missingHatch(HatchElement.Dynamo));
-        }
-    }
-
-    @Override
-    public void construct(ItemStack stack, boolean hintsOnly) {
-        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
-    }
-
-    @Override
     public ITexture[] getTexture(IGregTechTileEntity tile, ForgeDirection side, ForgeDirection facing, int color,
         boolean active, boolean redstone) {
-        ITexture casing = CASING.getCasingTexture();
+        ITexture casing = casing().getCasingTexture();
         if (side != facing) return new ITexture[] { casing };
         return new ITexture[] { casing, TextureFactory.builder()
             .addIcon(
@@ -196,25 +139,13 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
             .build() };
     }
 
-    @Override
-    protected MultiblockTooltipBuilder createTooltip() {
+    protected MultiblockTooltipBuilder machineTooltip() {
         MultiblockTooltipBuilder tooltip = new MultiblockTooltipBuilder()
             .addMachineType(StatCollector.translateToLocal(nameKey()))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.no_maintenance"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip." + machineKind()))
-            .beginStructureBlock(BOX_SIZE, BOX_SIZE, BOX_SIZE, true)
-            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"));
-        if (usesItemBusses()) {
-            tooltip.addInputBus("1+", "Shell", 1)
-                .addOutputBus("1+", "Shell", 1);
-        }
-        tooltip.addInputHatch(requiresFluidHatches() ? "1+" : "0+", "Shell", 1)
-            .addOutputHatch(requiresFluidHatches() ? "1+" : "0+", "Shell", 1);
-        if (usesDynamo()) tooltip.addDynamoHatch(usesItemBusses() ? "0+" : "1+", "Shell", 1);
-        return tooltip.toolTipFinisher();
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip." + machineKind()));
+        return tooltip;
     }
 
     protected abstract String machineKind();
@@ -251,15 +182,15 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
         producedEUt = sentEUt = discardedEUt = 0;
         powerLimited = false;
         // A reload or an unloaded neighbour chunk is not a dismantled shell. Defer checks and processing.
-        // Radius two contains every orientation of this 3x3x3 front-controller box.
+        int radius = structureChunkRadius();
         if (!tile.getWorld()
             .checkChunksExist(
-                tile.getXCoord() - 2,
-                tile.getYCoord() - 2,
-                tile.getZCoord() - 2,
-                tile.getXCoord() + 2,
-                tile.getYCoord() + 2,
-                tile.getZCoord() + 2)) {
+                tile.getXCoord() - radius,
+                tile.getYCoord() - radius,
+                tile.getZCoord() - radius,
+                tile.getXCoord() + radius,
+                tile.getYCoord() + radius,
+                tile.getZCoord() + radius)) {
             status = "chunk_unloaded";
             tile.setActive(false);
             return;
@@ -453,25 +384,42 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
         double total = amount + energyFraction;
         producedEUt = (long) Math.min(total, Long.MAX_VALUE);
         energyFraction = total < Long.MAX_VALUE ? StartupProgress.fraction(total - producedEUt) : 0;
-        long remaining = producedEUt;
-        long spaceAvailable = 0;
-        for (MTEHatch hatch : dynamos()) {
-            if (!hatch.isValid()) continue;
-            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
-            if (base == null) continue;
-            long allowance = Math.min(rating(hatch), Math.max(0, base.getEUCapacity() - base.getStoredEU()));
-            spaceAvailable = saturatingAdd(spaceAvailable, allowance);
-            long send = Math.min(remaining, allowance);
-            if (send <= 0) continue;
-            if (base.increaseStoredEnergyUnits(send, false)) {
-                sentEUt += send;
-                remaining -= send;
-            }
+        long[] before = storedDynamoEnergy();
+        boolean hadSpace = hasDynamoSpace();
+        // GT5U .133 uses int injection counters and explodes above the aggregate dynamo rating.
+        // The inherited entry point dispatches to addEnergyOutputMultipleDynamos(..., true).
+        long requested = Math.min(producedEUt, Math.min(dynamoRating(), Integer.MAX_VALUE));
+        if (requested > 0) addEnergyOutput(requested);
+        long[] after = storedDynamoEnergy();
+        sentEUt = 0;
+        for (int i = 0; i < before.length; i++) {
+            sentEUt = saturatingAdd(sentEUt, Math.max(0, after[i] - before[i]));
         }
-        discardedEUt = remaining;
-        powerLimited = discardedEUt > 0 || spaceAvailable == 0;
+        sentEUt = Math.min(producedEUt, sentEUt);
+        discardedEUt = producedEUt - sentEUt;
+        powerLimited = discardedEUt > 0 || !hadSpace;
         // Even sub-EU output is forfeited when all dynamos are blocked; it is never banked for later.
         if (powerLimited) energyFraction = 0;
+    }
+
+    private long[] storedDynamoEnergy() {
+        long[] stored = new long[cycleDynamos.size()];
+        for (int i = 0; i < cycleDynamos.size(); i++) {
+            MTEHatch hatch = cycleDynamos.get(i);
+            if (!hatch.isValid()) continue;
+            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
+            if (base != null) stored[i] = Math.max(0, base.getStoredEU());
+        }
+        return stored;
+    }
+
+    private boolean hasDynamoSpace() {
+        for (MTEHatch hatch : dynamos()) {
+            if (!hatch.isValid() || rating(hatch) <= 0) continue;
+            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
+            if (base != null && base.getStoredEU() < base.getEUCapacity()) return true;
+        }
+        return false;
     }
 
     private static long saturatingAdd(long a, long b) {
@@ -555,9 +503,7 @@ public abstract class PrototypeMultiblockBase<T extends PrototypeMultiblockBase<
     }
 
     @Override
-    protected MTEMultiBlockBaseGui<?> getGui() {
-        return new PrototypeGui<>(this);
-    }
+    protected abstract MTEMultiBlockBaseGui<?> getGui();
 
     public String[] displayKeys() {
         String[] common = { "status", "startup", "full_load", "dynamo_limit", "produced", "sent", "discarded",

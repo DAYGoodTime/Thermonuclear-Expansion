@@ -8,13 +8,14 @@ import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widgets.ListWidget;
-import com.lin.thermonuclear.machine.PrototypeMultiblockBase;
+import com.lin.thermonuclear.machine.ThermonuclearMultiblockBase;
 
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public class PrototypeGui<T extends PrototypeMultiblockBase<?>> extends MTEMultiBlockBaseGui<T> {
+public abstract class ThermonuclearMultiblockGui<T extends ThermonuclearMultiblockBase<?>>
+    extends MTEMultiBlockBaseGui<T> {
 
-    public PrototypeGui(T machine) {
+    protected ThermonuclearMultiblockGui(T machine) {
         super(machine);
     }
 

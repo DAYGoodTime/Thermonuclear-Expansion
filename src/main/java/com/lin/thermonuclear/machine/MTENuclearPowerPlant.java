@@ -1,9 +1,14 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.List;
+
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.nuclear.FuelBatch;
@@ -13,13 +18,85 @@ import com.lin.thermonuclear.nuclear.IC2FuelRodAdapter;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 
+import gregtech.api.casing.Casings;
+import gregtech.api.enums.HatchElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
+import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.ItemEjectionHelper;
+import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENuclearPowerPlant> {
+public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant> {
+
+    private static final String PIECE = "nuclear_power_plant";
+    private static final int SIZE = 3;
+    private static final int OFFSET_X = 1;
+    private static final int OFFSET_Y = 1;
+    private static final int OFFSET_Z = 0;
+    private static final Casings CASING = Casings.HeatProofMachineCasing;
+    // StructureLib order: [depth][top-to-bottom row], with the controller at (1, 1, 0).
+    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
+        { "CCC", "CCC", "CCC" } };
+    private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
+        .<MTENuclearPowerPlant>builder()
+        .addShape(PIECE, SHAPE)
+        .addElement(
+            'C',
+            GTStructureUtility.<MTENuclearPowerPlant>ofHatchAdderOptional(
+                (machine, tile, texture) -> machine.addMachineHatch(tile, texture),
+                CASING.textureId,
+                1,
+                CASING.getBlock(),
+                CASING.meta))
+        .build();
+
+    @Override
+    public IStructureDefinition<MTENuclearPowerPlant> getStructureDefinition() {
+        return STRUCTURE;
+    }
+
+    @Override
+    public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
+        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
+        if (mInputBusses.isEmpty() && mDualInputHatches.isEmpty()) {
+            errors.add(StructureErrors.missingHatch(HatchElement.InputBus));
+        }
+        if (mOutputBusses.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputBus));
+        // Dynamo and coolant hatches are checked at processing time for the selected operating mode.
+    }
+
+    @Override
+    public void construct(ItemStack stack, boolean hintsOnly) {
+        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+    }
+
+    @Override
+    protected Casings casing() {
+        return CASING;
+    }
+
+    @Override
+    protected int structureChunkRadius() {
+        return SIZE - 1;
+    }
+
+    @Override
+    protected MultiblockTooltipBuilder createTooltip() {
+        return machineTooltip().beginStructureBlock(SIZE, SIZE, SIZE, true)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
+            .addInputBus("1+", "Shell", 1)
+            .addOutputBus("1+", "Shell", 1)
+            .addInputHatch("0+", "Shell", 1)
+            .addOutputHatch("0+", "Shell", 1)
+            .addDynamoHatch("0+", "Shell", 1)
+            .toolTipFinisher();
+    }
 
     private static final FuelRodAdapter[] ADAPTERS = { new IC2FuelRodAdapter(), new GTFuelRodAdapter() };
     private final NuclearEfficiencyPolicy efficiencyPolicy = NuclearEfficiencyPolicy.CONFIGURED;
@@ -259,11 +336,6 @@ public final class MTENuclearPowerPlant extends PrototypeMultiblockBase<MTENucle
     @Override
     protected boolean usesDynamo() {
         return true;
-    }
-
-    @Override
-    protected boolean requiresFluidHatches() {
-        return false;
     }
 
     @Override

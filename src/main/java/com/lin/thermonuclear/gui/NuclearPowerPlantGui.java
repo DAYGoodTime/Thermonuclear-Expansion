@@ -10,7 +10,7 @@ import com.lin.thermonuclear.machine.MTENuclearPowerPlant;
 
 import gregtech.api.modularui2.GTGuiTextures;
 
-public final class NuclearPowerPlantGui extends PrototypeGui<MTENuclearPowerPlant> {
+public final class NuclearPowerPlantGui extends ThermonuclearMultiblockGui<MTENuclearPowerPlant> {
 
     public NuclearPowerPlantGui(MTENuclearPowerPlant machine) {
         super(machine);

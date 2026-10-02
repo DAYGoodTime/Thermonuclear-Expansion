@@ -1,18 +1,97 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.List;
+
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.gui.HeatExchangeStationGui;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
+import gregtech.api.casing.Casings;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.HatchElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
+import gregtech.api.util.GTStructureUtility;
+import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHeatExchangeStation> {
+public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MTEHeatExchangeStation> {
+
+    private static final String PIECE = "heat_exchange_station";
+    private static final int SIZE = 3;
+    private static final int OFFSET_X = 1;
+    private static final int OFFSET_Y = 1;
+    private static final int OFFSET_Z = 0;
+    private static final Casings CASING = Casings.HeatProofMachineCasing;
+    // StructureLib order: [depth][top-to-bottom row], with the controller at (1, 1, 0).
+    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
+        { "CCC", "CCC", "CCC" } };
+    private static final IStructureDefinition<MTEHeatExchangeStation> STRUCTURE = StructureDefinition
+        .<MTEHeatExchangeStation>builder()
+        .addShape(PIECE, SHAPE)
+        .addElement(
+            'C',
+            GTStructureUtility.<MTEHeatExchangeStation>ofHatchAdderOptional(
+                (machine, tile, texture) -> machine.addMachineHatch(tile, texture),
+                CASING.textureId,
+                1,
+                CASING.getBlock(),
+                CASING.meta))
+        .build();
+
+    @Override
+    public IStructureDefinition<MTEHeatExchangeStation> getStructureDefinition() {
+        return STRUCTURE;
+    }
+
+    @Override
+    public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
+        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
+        if (!hasFluidInputs()) errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
+        if (mOutputHatches.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
+    }
+
+    @Override
+    public void construct(ItemStack stack, boolean hintsOnly) {
+        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+    }
+
+    @Override
+    protected Casings casing() {
+        return CASING;
+    }
+
+    @Override
+    protected int structureChunkRadius() {
+        return SIZE - 1;
+    }
+
+    @Override
+    protected MultiblockTooltipBuilder createTooltip() {
+        return machineTooltip().beginStructureBlock(SIZE, SIZE, SIZE, true)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
+            .addInputHatch("1+", "Shell", 1)
+            .addOutputHatch("1+", "Shell", 1)
+            .toolTipFinisher();
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new HeatExchangeStationGui(this);
+    }
 
     private HeatExchangeRecipe selected;
     private double throughputRemainder;
@@ -111,11 +190,6 @@ public final class MTEHeatExchangeStation extends PrototypeMultiblockBase<MTEHea
     @Override
     protected boolean usesDynamo() {
         return false;
-    }
-
-    @Override
-    protected boolean requiresFluidHatches() {
-        return true;
     }
 
     @Override

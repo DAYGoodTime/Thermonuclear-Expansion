@@ -1,6 +1,6 @@
-thermonuclear.machine.nuclear.name=核电站主机（原型）
-thermonuclear.machine.heat_exchange.name=热交换站（原型）
-thermonuclear.machine.steam_turbine.name=大型蒸汽涡轮机（原型）
+thermonuclear.machine.nuclear.name=核电站主机
+thermonuclear.machine.heat_exchange.name=热交换站
+thermonuclear.machine.steam_turbine.name=大型蒸汽涡轮机
 thermonuclear.mode.direct=直接发电
 thermonuclear.mode.heat=供热
 thermonuclear.recipe.ic2=IC2 冷却液

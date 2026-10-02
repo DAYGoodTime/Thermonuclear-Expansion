@@ -1,6 +1,6 @@
-thermonuclear.machine.nuclear.name=Nuclear Power Plant (Prototype)
-thermonuclear.machine.heat_exchange.name=Heat Exchange Station (Prototype)
-thermonuclear.machine.steam_turbine.name=Large Steam Turbine (Prototype)
+thermonuclear.machine.nuclear.name=Nuclear Power Plant
+thermonuclear.machine.heat_exchange.name=Heat Exchange Station
+thermonuclear.machine.steam_turbine.name=Large Steam Turbine
 thermonuclear.mode.direct=Direct generation
 thermonuclear.mode.heat=Heat supply
 thermonuclear.recipe.ic2=IC2 coolant
