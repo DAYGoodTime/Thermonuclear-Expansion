@@ -1,14 +1,21 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
@@ -22,22 +29,30 @@ import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
+import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
+import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.ItemEjectionHelper;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.tileentities.machines.IDualInputHatch;
+import tectech.thing.metaTileEntity.hatch.MTEHatchDynamoMulti;
 
-public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant> {
+public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant>
+    implements INEIPreviewModifier {
 
     private static final String PIECE = "nuclear_power_plant";
     private static final int OFFSET_X = NuclearPowerPlantStructure.OFFSET_X;
@@ -47,6 +62,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final int CONCRETE_META = 13;
     private static final int CONCRETE_TEXTURE = 221;
     private static final String[][] SHAPE = NuclearPowerPlantStructure.createShape();
+    private static final List<int[]> COOLANT_OFFSETS = coolantOffsets();
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
@@ -61,21 +77,142 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .addElement('H', GTStructureUtility.ofAnyWater())
         .addElement(
             'G',
-            GTStructureUtility.<MTENuclearPowerPlant>ofHatchAdderOptional(
-                (machine, tile, texture) -> machine.addServiceHatch(tile, texture),
-                CONCRETE_TEXTURE,
-                1,
-                GregTechAPI.sBlockReinforced,
-                CONCRETE_META))
+            GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
+                .anyOf(
+                    HatchElement.InputBus,
+                    HatchElement.OutputBus,
+                    HatchElement.Dynamo,
+                    HatchElement.ExoticDynamo,
+                    HatchElement.LaserSource,
+                    HatchElement.Maintenance)
+                .adder(MTENuclearPowerPlant::addServiceHatch)
+                .hatchItemFilter(machine -> stack -> isServiceHatchCandidate(ItemMachines.getMetaTileEntity(stack)))
+                .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
+                .casingIndex(CONCRETE_TEXTURE)
+                .hint(1)
+                .buildAndChain(GregTechAPI.sBlockReinforced, CONCRETE_META))
         .addElement(
             'I',
-            GTStructureUtility.<MTENuclearPowerPlant>ofHatchAdder(
-                (machine, tile, texture) -> machine.addCoolantHatch(tile, texture),
-                CONCRETE_TEXTURE,
-                2))
+            StructureUtility.ofChain(
+                GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
+                    .anyOf(HatchElement.InputHatch, HatchElement.OutputHatch)
+                    .adder(MTENuclearPowerPlant::addCoolantHatch)
+                    .hatchItemFilterAnd(
+                        machine -> stack -> !(ItemMachines.getMetaTileEntity(stack) instanceof IDualInputHatch)
+                            && machine.isCoolantConstructionCandidate(stack))
+                    .casingIndex(CONCRETE_TEXTURE)
+                    .hint(2)
+                    .exclusive()
+                    .build(),
+                coolantPreviewPlacement()))
         .build();
 
     private int pipeTier = -1;
+    private boolean constructing;
+    private boolean previewConstruction;
+    private EntityPlayer previewPlayer;
+
+    private static IStructureElement<MTENuclearPowerPlant> coolantPreviewPlacement() {
+        return new IStructureElement<>() {
+
+            @Override
+            public boolean check(MTENuclearPowerPlant machine, World world, int x, int y, int z) {
+                // A rendering fallback must never introduce an alternative valid structure block.
+                return false;
+            }
+
+            @Override
+            public boolean spawnHint(MTENuclearPowerPlant machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                return false;
+            }
+
+            @Override
+            public boolean placeBlock(MTENuclearPowerPlant machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                if (!machine.previewConstruction || !machine.constructing
+                    || machine.previewPlayer == null
+                    || machine.previewPlayer.getUniqueID() == null
+                    || world instanceof WorldServer
+                    || !world.isAirBlock(x, y, z)) return false;
+                // GT's normal hatch placer needs a WorldServer fake player; NEI's DummyWorld cannot supply one.
+                ItemStack representative = machine.coolantConstructionStack();
+                if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
+                    representative,
+                    machine.previewPlayer,
+                    world,
+                    x,
+                    y,
+                    z,
+                    ForgeDirection.UP.ordinal(),
+                    0.5f,
+                    0.5f,
+                    0.5f,
+                    0)) return false;
+                if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
+                    tile.setFrontFacing(
+                        machine.getExtendedFacing()
+                            .getRelativeForwardInWorld());
+                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONCRETE_TEXTURE);
+                }
+                return true;
+            }
+        };
+    }
+
+    private static List<int[]> coolantOffsets() {
+        List<int[]> offsets = new ArrayList<>();
+        for (int z = 0; z < SHAPE.length; z++) {
+            for (int y = 0; y < SHAPE[z].length; y++) {
+                String row = SHAPE[z][y];
+                for (int x = 0; x < row.length(); x++) {
+                    if (row.charAt(x) == 'I') offsets.add(new int[] { x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z });
+                }
+            }
+        }
+        return offsets;
+    }
+
+    private boolean hasConstructedCoolantInput() {
+        IGregTechTileEntity controller = getBaseMetaTileEntity();
+        if (controller == null) return false;
+        int[] worldOffset = new int[3];
+        for (int[] offset : COOLANT_OFFSETS) {
+            getExtendedFacing().getWorldOffset(offset, worldOffset);
+            if (controller.getWorld()
+                .getTileEntity(
+                    controller.getXCoord() + worldOffset[0],
+                    controller.getYCoord() + worldOffset[1],
+                    controller.getZCoord() + worldOffset[2]) instanceof IGregTechTileEntity tile) {
+                IMetaTileEntity hatch = tile.getMetaTileEntity();
+                if (!(hatch instanceof IDualInputHatch) && HatchElement.InputHatch.matchesHatch(hatch)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isServiceHatchCandidate(IMetaTileEntity hatch) {
+        if (hatch == null || hatch instanceof IDualInputHatch) return false;
+        // .133 ExoticDynamo has no candidate classes; withMteClass still delegates matchesHatch to that empty list.
+        return HatchElement.InputBus.matchesHatch(hatch) || HatchElement.OutputBus.matchesHatch(hatch)
+            || HatchElement.Dynamo.matchesHatch(hatch)
+            || hatch instanceof MTEHatchDynamoMulti
+            || HatchElement.LaserSource.matchesHatch(hatch)
+            || HatchElement.Maintenance.matchesHatch(hatch);
+    }
+
+    private boolean isCoolantConstructionCandidate(ItemStack stack) {
+        if (!constructing) return true;
+        // Creative/NEI construction uses one ULV hatch of each kind; candidate queries remain tier-independent.
+        // Preview placement cannot rely on a complete structure recheck; inspect the two real I positions.
+        ItemStack representative = coolantConstructionStack();
+        return stack != null && stack.getItem() == representative.getItem()
+            && stack.getItemDamage() == representative.getItemDamage();
+    }
+
+    private ItemStack coolantConstructionStack() {
+        return (hasConstructedCoolantInput() ? ItemList.Hatch_Output_ULV : ItemList.Hatch_Input_ULV).get(1);
+    }
 
     public int getPipeTier() {
         return pipeTier;
@@ -126,8 +263,24 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
+    @SideOnly(Side.CLIENT)
+    public void onPreviewConstruct(ItemStack trigger) {
+        // ItemMachines assigns this owner before input hatches look up UUID-keyed default-mode preferences.
+        previewPlayer = Minecraft.getMinecraft().thePlayer;
+        previewConstruction = previewPlayer != null && previewPlayer.getUniqueID() != null;
+        if (!previewConstruction) previewPlayer = null;
+    }
+
+    @Override
     public void construct(ItemStack stack, boolean hintsOnly) {
-        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+        constructing = true;
+        try {
+            buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+        } finally {
+            constructing = false;
+            previewConstruction = false;
+            previewPlayer = null;
+        }
     }
 
     @Override

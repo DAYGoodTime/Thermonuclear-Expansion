@@ -2,15 +2,19 @@ package com.lin.thermonuclear.machine;
 
 import java.util.Arrays;
 
-/** Geometry of dev/nulcearStructure.txt, in StructureLib's native [depth][row] order. */
+/** Geometry of dev/nulcearStructure.txt, rotated so the controller faces out of its side wall. */
 final class NuclearPowerPlantStructure {
 
-    static final int WIDTH = 27;
+    private static final int EXPORT_WIDTH = 27;
+    private static final int EXPORT_LENGTH = 32;
+    private static final int EXPORT_CONTROLLER_X = 15;
+    private static final int EXPORT_CONTROLLER_Z = 4;
+    static final int WIDTH = EXPORT_LENGTH;
     static final int HEIGHT = 25;
-    static final int LENGTH = 32;
-    static final int OFFSET_X = 15;
+    static final int LENGTH = EXPORT_WIDTH;
+    static final int OFFSET_X = EXPORT_CONTROLLER_Z;
     static final int OFFSET_Y = 21;
-    static final int OFFSET_Z = 4;
+    static final int OFFSET_Z = EXPORT_WIDTH - 1 - EXPORT_CONTROLLER_X;
     // Covers the horizontal bounding rectangle even when the controller is rotated or flipped.
     static final int CHUNK_RADIUS = 31;
     private static final int CENTRE = 12;
@@ -32,7 +36,7 @@ final class NuclearPowerPlantStructure {
     private NuclearPowerPlantStructure() {}
 
     static String[][] createShape() {
-        String[][] shape = new String[LENGTH][];
+        String[][] shape = new String[EXPORT_LENGTH][];
         shape[0] = layer();
         shape[1] = layer(NECK_FLOOR);
         shape[2] = layer(NECK_CAP, NECK_CAP, NECK_CAP, NECK_CAP, NECK_CAP, NECK_FLOOR);
@@ -46,7 +50,7 @@ final class NuclearPowerPlantStructure {
                 depth < 7 ? NECK_FLOOR : FLOOR);
         }
         // The export's E is the controller, not the scanner used to produce its offset header.
-        shape[OFFSET_Z][OFFSET_Y] = "         C     ~           ";
+        shape[EXPORT_CONTROLLER_Z][OFFSET_Y] = "         C     ~           ";
         shape[9] = layer(NECK_CAP, NECK_WALL, NECK_WALL, NECK_WALL, NECK_WALL, FLOOR);
         shape[10] = solidCapLayer();
         shape[11] = dome(8, 4, 5, FLOOR);
@@ -103,13 +107,28 @@ final class NuclearPowerPlantStructure {
         shape[26] = shape[12].clone();
         shape[27] = shape[11].clone();
         shape[28] = shape[10].clone();
-        for (int depth = 29; depth < LENGTH; depth++) shape[depth] = layer(FLOOR);
+        for (int depth = 29; depth < EXPORT_LENGTH; depth++) shape[depth] = layer(FLOOR);
         for (String[] slice : shape) {
             for (String row : slice) {
-                if (row.length() != WIDTH) throw new IllegalStateException("Invalid nuclear structure row width");
+                if (row.length() != EXPORT_WIDTH)
+                    throw new IllegalStateException("Invalid nuclear structure row width");
             }
         }
-        return shape;
+        return faceControllerOutward(shape);
+    }
+
+    private static String[][] faceControllerOutward(String[][] exported) {
+        String[][] rotated = new String[LENGTH][HEIGHT];
+        // Export +X is the wall's outside. Map it to -depth, the controller's front, without mirroring.
+        for (int depth = 0; depth < LENGTH; depth++) {
+            int exportX = EXPORT_WIDTH - 1 - depth;
+            for (int row = 0; row < HEIGHT; row++) {
+                char[] blocks = new char[WIDTH];
+                for (int x = 0; x < WIDTH; x++) blocks[x] = exported[x][row].charAt(exportX);
+                rotated[depth][row] = new String(blocks);
+            }
+        }
+        return rotated;
     }
 
     private static String[] layer(String... bottomRows) {
