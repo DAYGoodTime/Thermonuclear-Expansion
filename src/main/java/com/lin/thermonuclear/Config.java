@@ -11,6 +11,7 @@ public class Config {
     // Prototype defaults, not an approved GTNH balance or survival progression.
     public static double nuclearDirectEfficiency = 1.0;
     public static double nuclearHeatEfficiency = 1.0;
+    public static int nuclearHeatCapacity = 50000;
     public static double fuelCyclesPerSecond = 1.0;
     public static int nuclearFuelRodsPerPipeTier = 256;
     public static double ic2CoolantPerHeat = 1.0;
@@ -42,6 +43,7 @@ public class Config {
         configuration.setCategoryComment("prototype", "TEST DEFAULTS ONLY; not final GTNH balance.");
         nuclearDirectEfficiency = number(configuration, "nuclearDirectEfficiency", 1, 0.001, 1);
         nuclearHeatEfficiency = number(configuration, "nuclearHeatEfficiency", 1, 0.001, 1);
+        nuclearHeatCapacity = integer(configuration, "nuclearHeatCapacity", 50000, 1, Integer.MAX_VALUE);
         fuelCyclesPerSecond = number(configuration, "fuelCyclesPerSecond", 1, 0.001, 100);
         nuclearFuelRodsPerPipeTier = integer(configuration, "nuclearFuelRodsPerPipeTier", 256, 1, 256);
         ic2CoolantPerHeat = number(configuration, "ic2CoolantLitresPerFuelHeatUnit", 1, 0.001, 1000);
