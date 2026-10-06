@@ -9,16 +9,16 @@ public class Config {
     public static String greeting = "Hello World";
 
     // Prototype defaults, not an approved GTNH balance or survival progression.
-    public static double nuclearDirectEfficiency = 1.0;
-    public static double nuclearHeatEfficiency = 1.0;
+    public static double nuclearDirectEfficiency = 1;
+    public static double nuclearHeatEfficiency = 2;
     public static int nuclearHeatCapacity = 50000;
     public static double fuelCyclesPerSecond = 1.0;
     public static int nuclearFuelRodsPerPipeTier = 256;
     public static double ic2CoolantPerHeat = 1.0;
     public static double superCoolantPerHeat = 0.25;
     public static int nuclearMaxReflectorCount = 4;
-    public static double nuclearDirectOutputMultiplier = 2.0;
-    public static double nuclearHeatOutputMultiplier = 10.0;
+    public static double nuclearDirectOutputMultiplier = 20;
+    public static double nuclearHeatOutputMultiplier = 50;
     public static double nuclearDistilledWaterPerHeat = 1.0;
     public static double nuclearSteamPerDistilledWater = 10.0;
     public static int exchangeHotFluidPerCycle = 100;
@@ -50,7 +50,7 @@ public class Config {
         superCoolantPerHeat = number(configuration, "superCoolantLitresPerFuelHeatUnit", 0.25, 0.001, 1000);
         nuclearMaxReflectorCount = integer(configuration, "nuclearMaxReflectorCount", 4, 0, 6);
         nuclearDirectOutputMultiplier = number(configuration, "nuclearDirectOutputMultiplier", 2, 0.001, 100);
-        nuclearHeatOutputMultiplier = number(configuration, "nuclearHeatOutputMultiplier", 10, 0.001, 100);
+        nuclearHeatOutputMultiplier = number(configuration, "nuclearHeatOutputMultiplier", 50, 0.001, 100);
         nuclearDistilledWaterPerHeat = number(configuration, "nuclearDistilledWaterPerHeat", 1, 0.001, 1000);
         nuclearSteamPerDistilledWater = number(configuration, "nuclearSteamPerDistilledWater", 10, 0.001, 1000000);
         exchangeHotFluidPerCycle = integer(configuration, "exchangeHotFluidPerCycle", 100, 1, 1000000);

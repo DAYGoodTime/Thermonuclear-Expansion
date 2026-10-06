@@ -11,7 +11,7 @@
 5. [GT-Not-Leisure 本地参考索引](wiki/references/GT-Not-Leisure参考索引.md)：编写功能前必查的本地代码参考、主题导航与依赖差异。
 6. [第一阶段原型开发指南](wiki/development/第一阶段原型开发指南.md)：三个控制器、独立结构、公共与专属 GUI、GT 送电链、批准 ID、20 tick 处理、燃料批次与实际验证记录；未进行游戏验收。
 7. [Mixin 开发指南](wiki/development/Mixin开发指南.md)：空引导配置、early / late 加载入口、依赖核验、添加注入流程及实际验证边界。
-8. [IC2 2.2.828 反应堆燃料棒公式](wiki/references/IC2-2.2.828反应堆燃料棒公式.md)：基于 GTNH 实例 JAR 核对的燃料棒热量、能量、MOX 与相邻组件公式。
+8. [IC2 2.2.828 反应堆燃料棒公式](wiki/references/IC2-2.2.828反应堆燃料棒公式.md)：基于 IC2 2.2.828 JAR 反编译源码核对发电、发热、流体散热链与 GUI 显示公式，并记录玩家实测边界。
 9. [Mekanism 裂变反应堆发热与冷却剂公式](wiki/references/Mekanism裂变反应堆发热与冷却剂公式.md)：核对裂变燃料发热量，以及水／钠冷却剂转换为蒸汽／过热钠的公式；不代表本项目已实现。
 
 ## 当前代码交付

@@ -430,7 +430,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 if (selectedCoolingFluid == null || !availableCoolingFluid(selectedCoolingFluid)) {
                     selectCoolingFluid();
                 }
-                double heatPerFuelCycle = fuel.heatPerCycle(workingFuel) * efficiency * workingFuel.stackSize;
+                double heatPerFuelCycle = fuel.heatPerCycle(workingFuel) * Config.nuclearHeatOutputMultiplier
+                    * efficiency
+                    * workingFuel.stackSize;
                 if (!Double.isFinite(heatPerFuelCycle) || heatPerFuelCycle <= 0) return fail("invalid_value");
                 double cooledHeat = reactorHeat;
                 int coolingAmount = 0;
@@ -496,8 +498,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private static double nuclearEnergyMultiplier() {
-        double value = ConfigUtil.getFloat(MainConfig.get(), "balance/energy/generator/nuclear");
-        return Double.isFinite(value) && value > 0 ? 5 * value : 0;
+        double ic2Value = 1.0;
+        ic2.core.util.Config config = MainConfig.get();
+        if (config != null) {
+            ic2Value = ConfigUtil.getFloat(config, "balance/energy/generator/nuclear");;
+        }
+        double outputMultiplier = ic2Value * Config.nuclearDirectOutputMultiplier;
+        return Double.isFinite(outputMultiplier) && outputMultiplier > 0 ? outputMultiplier : 0;
     }
 
     private ItemStack depletedBatch(FuelRodAdapter fuel) {
