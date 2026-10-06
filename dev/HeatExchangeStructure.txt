@@ -3,17 +3,19 @@
 Structure:
 
 Blocks:
-A-> addElement('A', Casings.SolidSteelMachineCasing.asElement()
-B-> addElement('B', Casings.SteelPipeCasing.asElement()
-
-Special Tiles:
-C -> ofSpecialTileAdder(gregtech.api.metatileentity.BaseMetaTileEntity);
+A-> addElement('A', Casings.EVMachineCasing.asElement() //冷流体输入
+B-> addElement('B', Casings.CoolantDuct.asElement() //冷流体输出
+C-> addElement('C', Casings.HeatingDuct.asElement() //热流体输入
+D-> addElement('D', Casings.SolidSteelMachineCasing.asElement()
+E-> addElement('E', Casings.BronzePipeCasing.asElement()
+F -> ofBlock(gt.blockreinforced, 13); //热流体输出
+G-> addElement('G', ofBlocks(Blocks.field_150344_f, 0) //主机
 
 Offsets:
--1, 12, 0
+-1, 13, 0
 
 Dimensions (Width, Height, Length)
-9, 13, 7
+9, 14, 7
 
 Normal Scan:
 
@@ -31,79 +33,84 @@ new String[][]{
     "         ",
     "         ",
     "         ",
-    "AAAAAAAAA"
-},{
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  A C A  ",
-    "AAAAAAAAA"
-},{
-    "  AAAAA  ",
-    "  A   A  ",
-    "  ABB A  ",
-    "  A  BA  ",
-    "  A   A  ",
-    "  A   A  ",
-    "  ABB A  ",
-    "  A  BA  ",
-    "  A   A  ",
-    "  AB  A  ",
-    "  ABABA  ",
-    "  BB B   ",
-    "CAAAAAAAC"
-},{
-    "  AAAAA  ",
-    "  AB  A  ",
-    "  A   A  ",
-    "  A  BA  ",
-    "  A   A  ",
-    "  AB  A  ",
-    "  A   A  ",
-    "  A  BA  ",
-    "  A   A  ",
-    "  AB  A  ",
-    "  AAAAA  ",
     "         ",
-    "AAAAAAAAA"
-},{
-    "  AAAAA  ",
-    "  AB  A  ",
-    "  A   A  ",
-    "  A   A  ",
-    "  A BBA  ",
-    "  AB  A  ",
-    "  A   A  ",
-    "  A   A  ",
-    "  A BBA  ",
-    "  AB  A  ",
-    "  ABABA  ",
-    "  B  B   ",
-    "CAAAAAAAC"
-},{
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  AAAAA  ",
-    "  A   A  ",
-    "AAAAAAAAA"
+    "DDDDDDDDD"
 },{
     "         ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  D G D  ",
+    "DDDDDDDDD"
+},{
+    "     EEE ",
+    "  DDDEDE ",
+    "  D   DE ",
+    "  DEE DE ",
+    "  D  EDE ",
+    "  D   DE ",
+    "  D   DE ",
+    "  DEE DE ",
+    "  D  EDE ",
+    "  D   DE ",
+    "  DE  DE ",
+    "  DEDDDE ",
+    "   E   E ",
+    "CDDDDDDDA"
+},{
+    "         ",
+    "  DDDDD  ",
+    "  DE  D  ",
+    "  D   D  ",
+    "  D  ED  ",
+    "  D   D  ",
+    "  DE  D  ",
+    "  D   D  ",
+    "  D  ED  ",
+    "  D   D  ",
+    "  DE  D  ",
+    "  DDDDD  ",
+    "         ",
+    "DDDDDDDDD"
+},{
+    " EEE     ",
+    " EDEDDD  ",
+    " EDE  D  ",
+    " ED   D  ",
+    " ED   D  ",
+    " ED EED  ",
+    " EDE  D  ",
+    " ED   D  ",
+    " ED   D  ",
+    " ED EED  ",
+    " EDE  D  ",
+    " EDDDED  ",
+    " E   E   ",
+    "FDDDDDDDB"
+},{
+    "         ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  DDDDD  ",
+    "  D   D  ",
+    "DDDDDDDDD"
+},{
     "         ",
     "         ",
     "         ",
@@ -115,6 +122,8 @@ new String[][]{
     "         ",
     "         ",
     "         ",
-    "AAAAAAAAA"
+    "         ",
+    "         ",
+    "DDDDDDDDD"
 }}
 //spotless:on
