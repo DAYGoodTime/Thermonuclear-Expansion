@@ -1,0 +1,120 @@
+
+
+Structure:
+
+Blocks:
+A-> addElement('A', Casings.SolidSteelMachineCasing.asElement()
+B-> addElement('B', Casings.SteelPipeCasing.asElement()
+
+Special Tiles:
+C -> ofSpecialTileAdder(gregtech.api.metatileentity.BaseMetaTileEntity);
+
+Offsets:
+-1, 12, 0
+
+Dimensions (Width, Height, Length)
+9, 13, 7
+
+Normal Scan:
+
+//spotless:off
+new String[][]{
+    {"         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "AAAAAAAAA"
+},{
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  A C A  ",
+    "AAAAAAAAA"
+},{
+    "  AAAAA  ",
+    "  A   A  ",
+    "  ABB A  ",
+    "  A  BA  ",
+    "  A   A  ",
+    "  A   A  ",
+    "  ABB A  ",
+    "  A  BA  ",
+    "  A   A  ",
+    "  AB  A  ",
+    "  ABABA  ",
+    "  BB B   ",
+    "CAAAAAAAC"
+},{
+    "  AAAAA  ",
+    "  AB  A  ",
+    "  A   A  ",
+    "  A  BA  ",
+    "  A   A  ",
+    "  AB  A  ",
+    "  A   A  ",
+    "  A  BA  ",
+    "  A   A  ",
+    "  AB  A  ",
+    "  AAAAA  ",
+    "         ",
+    "AAAAAAAAA"
+},{
+    "  AAAAA  ",
+    "  AB  A  ",
+    "  A   A  ",
+    "  A   A  ",
+    "  A BBA  ",
+    "  AB  A  ",
+    "  A   A  ",
+    "  A   A  ",
+    "  A BBA  ",
+    "  AB  A  ",
+    "  ABABA  ",
+    "  B  B   ",
+    "CAAAAAAAC"
+},{
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  AAAAA  ",
+    "  A   A  ",
+    "AAAAAAAAA"
+},{
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "         ",
+    "AAAAAAAAA"
+}}
+//spotless:on
