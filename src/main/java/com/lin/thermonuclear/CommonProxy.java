@@ -1,6 +1,8 @@
 package com.lin.thermonuclear;
 
+import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.loader.MachineLoader;
+import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -22,6 +24,7 @@ public class CommonProxy {
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
+        FuelRodAdapters.register(new GTFuelRodAdapter());
         MachineLoader.register();
     }
 

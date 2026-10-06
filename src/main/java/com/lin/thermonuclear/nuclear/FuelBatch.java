@@ -9,13 +9,15 @@ import java.util.Set;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
+import com.lin.thermonuclear.api.FuelRodAdapter;
+
 public final class FuelBatch {
 
     public static final int MAX_RODS = 2048;
 
     private FuelBatch() {}
 
-    public static Plan prepare(List<ItemStack> inputs, FuelRodAdapter[] adapters, int maxRods) {
+    public static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods) {
         if (maxRods <= 0 || maxRods > MAX_RODS) throw new IllegalArgumentException("Invalid fuel batch limit");
         ItemStack selected = null;
         int lowestLifetime = Integer.MAX_VALUE;
@@ -45,6 +47,13 @@ public final class FuelBatch {
             if (batch.stackSize == maxRods) break;
         }
         return new Plan(batch, sources, amounts);
+    }
+
+    private static FuelRodAdapter findAdapter(ItemStack stack, List<FuelRodAdapter> adapters) {
+        for (FuelRodAdapter adapter : adapters) {
+            if (adapter.accepts(stack)) return adapter;
+        }
+        return null;
     }
 
     public static final class Plan {
@@ -78,13 +87,6 @@ public final class FuelBatch {
     public static boolean sameType(ItemStack first, ItemStack second) {
         return first.getItem() == second.getItem() && first.getItemDamage() == second.getItemDamage()
             && ItemStack.areItemStackTagsEqual(first, second);
-    }
-
-    public static FuelRodAdapter findAdapter(ItemStack stack, FuelRodAdapter[] adapters) {
-        for (FuelRodAdapter adapter : adapters) {
-            if (adapter.accepts(stack)) return adapter;
-        }
-        return null;
     }
 
     public static void save(NBTTagCompound nbt, String key, String countKey, ItemStack stack) {

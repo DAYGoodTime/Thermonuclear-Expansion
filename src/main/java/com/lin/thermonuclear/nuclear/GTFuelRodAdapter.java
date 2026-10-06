@@ -2,6 +2,8 @@ package com.lin.thermonuclear.nuclear;
 
 import net.minecraft.item.ItemStack;
 
+import com.lin.thermonuclear.api.FuelRodAdapter;
+
 import gregtech.api.items.ItemRadioactiveCellIC;
 
 public final class GTFuelRodAdapter implements FuelRodAdapter {
@@ -9,8 +11,7 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
     @Override
     public boolean accepts(ItemStack stack) {
         if (stack == null || !(stack.getItem() instanceof ItemRadioactiveCellIC rod)) return false;
-        return FuelRodAdapter.inheritsSemantics(rod.getClass(), ItemRadioactiveCellIC.class)
-            && (rod.numberOfCells == 1 || rod.numberOfCells == 2 || rod.numberOfCells == 4)
+        return (rod.numberOfCells == 1 || rod.numberOfCells == 2 || rod.numberOfCells == 4)
             && Float.isFinite(rod.sEnergy)
             && rod.sEnergy > 0
             && Float.isFinite(rod.sHeat)
@@ -34,9 +35,7 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
     @Override
     public double baseEUt(ItemStack stack) {
         ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
-        return rod.sEnergy * (double) rod.numberOfCells
-            * (1 + rod.numberOfCells / 2)
-            * FuelRodAdapter.nuclearEnergyMultiplier();
+        return rod.sEnergy * (double) rod.numberOfCells * (1 + rod.numberOfCells / 2);
     }
 
     @Override

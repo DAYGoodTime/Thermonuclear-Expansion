@@ -20,11 +20,10 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.api.FuelRodAdapter;
+import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.nuclear.FuelBatch;
-import com.lin.thermonuclear.nuclear.FuelRodAdapter;
-import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
-import com.lin.thermonuclear.nuclear.IC2FuelRodAdapter;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
@@ -50,6 +49,8 @@ import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.tileentities.machines.IDualInputHatch;
+import ic2.core.init.MainConfig;
+import ic2.core.util.ConfigUtil;
 import tectech.thing.metaTileEntity.hatch.MTEHatchDynamoMulti;
 
 public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant>
@@ -321,7 +322,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         DISTILLED
     }
 
-    private static final FuelRodAdapter[] ADAPTERS = { new IC2FuelRodAdapter(), new GTFuelRodAdapter() };
     private final NuclearEfficiencyPolicy efficiencyPolicy = NuclearEfficiencyPolicy.CONFIGURED;
     private NuclearOperatingMode mode = NuclearOperatingMode.DIRECT_GENERATION;
     private ItemStack workingFuel;
@@ -359,12 +359,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private static FuelRodAdapter adapter(ItemStack stack) {
-        return FuelBatch.findAdapter(stack, ADAPTERS);
+        return FuelRodAdapters.find(stack);
     }
 
     private void takeFuel() {
         if (workingFuel != null || pendingDepleted != null) return;
-        fuelPlan = FuelBatch.prepare(cycleItems(), ADAPTERS, getFuelRodLimit());
+        fuelPlan = FuelBatch.prepare(cycleItems(), FuelRodAdapters.all(), getFuelRodLimit());
         workingFuel = fuelPlan == null ? null : fuelPlan.fuel;
     }
 
@@ -416,9 +416,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 if (dynamoRating() <= 0) return fail("hatches");
                 double baseEUt = fuel.baseEUt(workingFuel);
                 if (!Double.isFinite(baseEUt) || baseEUt <= 0) return fail("invalid_value");
-                fullLoadEUt = baseEUt * Config.fuelCyclesPerSecond * efficiency * workingFuel.stackSize;
+                double outputMultiplier = nuclearEnergyMultiplier();
+                fullLoadEUt = baseEUt * outputMultiplier
+                    * Config.fuelCyclesPerSecond
+                    * efficiency
+                    * workingFuel.stackSize;
                 // No coolant access in this path; ramp is applied to output, not fuel consumption.
-                cycleEUt = baseEUt * cycles * efficiency * workingFuel.stackSize;
+                cycleEUt = baseEUt * outputMultiplier * cycles * efficiency * workingFuel.stackSize;
             }
             case HEAT_SUPPLY -> {
                 if (!hasFluidInputs() || mOutputHatches.isEmpty()) return fail("hatches");
@@ -489,6 +493,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         if (fuelPlan != null) fuelPlan.consumeInputs();
         return true;
+    }
+
+    private static double nuclearEnergyMultiplier() {
+        double value = ConfigUtil.getFloat(MainConfig.get(), "balance/energy/generator/nuclear");
+        return Double.isFinite(value) && value > 0 ? 5 * value : 0;
     }
 
     private ItemStack depletedBatch(FuelRodAdapter fuel) {
