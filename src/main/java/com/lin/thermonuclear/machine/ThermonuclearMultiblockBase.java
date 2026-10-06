@@ -342,6 +342,16 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return amount;
     }
 
+    protected long available(Fluid fluid, List<MTEHatch> hatches) {
+        if (fluid == null) return 0;
+        long amount = 0;
+        for (MTEHatch hatch : hatches) {
+            FluidStack stack = hatch.getDrainableStack();
+            if (stack != null && stack.getFluid() == fluid) amount = saturatingAdd(amount, Math.max(0, stack.amount));
+        }
+        return amount;
+    }
+
     protected void consume(Fluid fluid, int amount) {
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (FluidStack stack : cycleFluids) {
@@ -354,12 +364,34 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         if (amount > 0) throw new IllegalStateException("Cycle input changed during recipe processing");
     }
 
+    protected void consume(Fluid fluid, int amount, List<MTEHatch> hatches) {
+        for (MTEHatch hatch : hatches) {
+            FluidStack stack = hatch.getDrainableStack();
+            if (stack != null && stack.getFluid() == fluid) {
+                int used = Math.min(amount, Math.max(0, stack.amount));
+                stack.amount -= used;
+                amount -= used;
+                if (amount == 0) return;
+            }
+        }
+        if (amount > 0) throw new IllegalStateException("Cycle input changed during recipe processing");
+    }
+
     protected FluidEjectionHelper prepareOutputs(FluidStack... outputs) {
         for (FluidStack output : outputs) {
             if (output == null || output.amount <= 0) return null;
         }
         FluidEjectionHelper helper = new FluidEjectionHelper(getOutputHatches(), true);
         // One shared transaction set reserves each output slot only once for the entire batch.
+        return helper.ejectFluids(Arrays.asList(outputs), 1) == 1 ? helper : null;
+    }
+
+    protected FluidEjectionHelper prepareOutputs(List<? extends gregtech.api.interfaces.IOutputHatch> hatches,
+        FluidStack... outputs) {
+        for (FluidStack output : outputs) {
+            if (output == null || output.amount <= 0) return null;
+        }
+        FluidEjectionHelper helper = new FluidEjectionHelper(hatches, true);
         return helper.ejectFluids(Arrays.asList(outputs), 1) == 1 ? helper : null;
     }
 
