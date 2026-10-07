@@ -317,7 +317,7 @@ new String[][]{
     "         F                 F ",
     "         F                 F ",
     "         F   FEEEEEEEEEF   F ",
-    " FF FFFFFF   FGGGDGDGGGF   F ",
+    " FFFFFFFFF   FGGGDGDGGGF   F ",
     " B       F   FGGGDGDGGGF   F ",
     " B       F   FGGGDGDGGGF   F ",
     " B       F   FGGGDGDGGGF   F ",
@@ -550,3 +550,4 @@ new String[][]{
     "        FFFFFFFFFFFFFFFFFFFFF"
 }}
 //spotless:on
+
