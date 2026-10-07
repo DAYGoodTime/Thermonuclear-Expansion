@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -260,6 +261,27 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         cycleFluids = new ArrayList<>(getStoredFluids());
         for (IDualInputHatch hatch : mDualInputHatches) {
             cycleFluids.addAll(Arrays.asList(hatch.getAllFluids()));
+        }
+    }
+
+    protected final boolean processIdleCycle(BooleanSupplier processor) {
+        cycleEUt = inputRate = outputRate = fullLoadEUt = 0;
+        cycleAdvancesStartup = false;
+        outputCommits.clear();
+        beforeProcessingCycle();
+        CheckRecipeResult previousResult = checkRecipeResult;
+        try {
+            startRecipeProcessing();
+            try {
+                checkRecipeResult = SimpleCheckRecipeResult.ofFailure("thermonuclear.status.processing_failed");
+                checkRecipeResult = processor.getAsBoolean() ? CheckRecipeResultRegistry.SUCCESSFUL : failureResult();
+            } finally {
+                endRecipeProcessing();
+            }
+            return checkRecipeResult.wasSuccessful();
+        } finally {
+            // Cooling a stopped machine must not replace its production/shutdown diagnostic.
+            checkRecipeResult = previousResult;
         }
     }
 
@@ -565,7 +587,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             String state = value.substring("thermonuclear.status.".length());
             String severity = switch (state) {
                 case "running" -> "normal";
-                case "stopped" -> "idle";
+                case "stopped", "stopped_cooling", "stopped_passive" -> "idle";
                 case "checking", "chunk_unloaded" -> "waiting";
                 case "power_discarded" -> "warning";
                 default -> "error";

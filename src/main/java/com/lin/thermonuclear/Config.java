@@ -6,23 +6,25 @@ import net.minecraftforge.common.config.Configuration;
 
 public class Config {
 
+    private static final double DEFAULT_NUCLEAR_HEAT_EFFICIENCY = 1;
+    private static final double DEFAULT_NUCLEAR_DIRECT_OUTPUT_MULTIPLIER = 2;
+
     public static String greeting = "Hello World";
 
     // Prototype defaults, not an approved GTNH balance or survival progression.
     public static double nuclearDirectEfficiency = 1;
-    public static double nuclearHeatEfficiency = 2;
+    public static double nuclearHeatEfficiency = DEFAULT_NUCLEAR_HEAT_EFFICIENCY;
     public static int nuclearHeatCapacity = 50000;
+    public static double nuclearPassiveCoolingPerSecond = 100;
     public static double fuelCyclesPerSecond = 1.0;
     public static int nuclearFuelRodsPerPipeTier = 256;
     public static double ic2CoolantPerHeat = 1.0;
     public static double superCoolantPerHeat = 0.25;
     public static int nuclearMaxReflectorCount = 4;
-    public static double nuclearDirectOutputMultiplier = 20;
+    public static double nuclearDirectOutputMultiplier = DEFAULT_NUCLEAR_DIRECT_OUTPUT_MULTIPLIER;
     public static double nuclearHeatOutputMultiplier = 50;
     public static double nuclearDistilledWaterPerHeat = 1.0;
     public static double nuclearSteamPerDistilledWater = 10.0;
-    public static int exchangeHotFluidPerCycle = 100;
-    public static int exchangeCycleTicks = 20;
     public static int ic2HotCoolantPerWater = 1;
     public static int hotSuperCoolantPerWater = 1;
     public static double ordinarySteamPerHotCoolant = 160.0;
@@ -42,19 +44,33 @@ public class Config {
 
         configuration.setCategoryComment("prototype", "TEST DEFAULTS ONLY; not final GTNH balance.");
         nuclearDirectEfficiency = number(configuration, "nuclearDirectEfficiency", 1, 0.001, 1);
-        nuclearHeatEfficiency = number(configuration, "nuclearHeatEfficiency", 1, 0.001, 1);
+        nuclearHeatEfficiency = number(
+            configuration,
+            "nuclearHeatEfficiency",
+            DEFAULT_NUCLEAR_HEAT_EFFICIENCY,
+            0.001,
+            1);
         nuclearHeatCapacity = integer(configuration, "nuclearHeatCapacity", 50000, 1, Integer.MAX_VALUE);
+        nuclearPassiveCoolingPerSecond = number(
+            configuration,
+            "nuclearPassiveCoolingPerSecond",
+            100,
+            0,
+            Integer.MAX_VALUE);
         fuelCyclesPerSecond = number(configuration, "fuelCyclesPerSecond", 1, 0.001, 100);
         nuclearFuelRodsPerPipeTier = integer(configuration, "nuclearFuelRodsPerPipeTier", 256, 1, 256);
         ic2CoolantPerHeat = number(configuration, "ic2CoolantLitresPerFuelHeatUnit", 1, 0.001, 1000);
         superCoolantPerHeat = number(configuration, "superCoolantLitresPerFuelHeatUnit", 0.25, 0.001, 1000);
         nuclearMaxReflectorCount = integer(configuration, "nuclearMaxReflectorCount", 4, 0, 6);
-        nuclearDirectOutputMultiplier = number(configuration, "nuclearDirectOutputMultiplier", 2, 0.001, 100);
+        nuclearDirectOutputMultiplier = number(
+            configuration,
+            "nuclearDirectOutputMultiplier",
+            DEFAULT_NUCLEAR_DIRECT_OUTPUT_MULTIPLIER,
+            0.001,
+            100);
         nuclearHeatOutputMultiplier = number(configuration, "nuclearHeatOutputMultiplier", 50, 0.001, 100);
         nuclearDistilledWaterPerHeat = number(configuration, "nuclearDistilledWaterPerHeat", 1, 0.001, 1000);
         nuclearSteamPerDistilledWater = number(configuration, "nuclearSteamPerDistilledWater", 10, 0.001, 1000000);
-        exchangeHotFluidPerCycle = integer(configuration, "exchangeHotFluidPerCycle", 100, 1, 1000000);
-        exchangeCycleTicks = integer(configuration, "exchangeCycleTicks", 20, 1, 72000);
         ic2HotCoolantPerWater = integer(configuration, "ic2HotCoolantLitresPerWater", 1, 1, 1000000);
         hotSuperCoolantPerWater = integer(configuration, "hotSuperCoolantLitresPerWater", 1, 1, 1000000);
         ordinarySteamPerHotCoolant = number(configuration, "ordinarySteamLitresPerHotCoolant", 160, 0.001, 1000000);

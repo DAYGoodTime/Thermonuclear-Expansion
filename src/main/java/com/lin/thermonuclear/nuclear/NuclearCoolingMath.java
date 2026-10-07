@@ -23,6 +23,10 @@ public final class NuclearCoolingMath {
         return Math.max(0, heat - amount / litresPerHeat);
     }
 
+    public static double passiveCooling(double heat, double heatPerSecond, int ticks) {
+        return Math.max(0, heat - heatPerSecond * ticks / 20.0);
+    }
+
     public static int acceptedAmount(int limit, IntPredicate accepts) {
         int low = 0;
         int high = limit;

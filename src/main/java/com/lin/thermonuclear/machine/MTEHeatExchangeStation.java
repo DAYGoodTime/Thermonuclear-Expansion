@@ -18,7 +18,6 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.gui.HeatExchangeStationGui;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
@@ -271,7 +270,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     private HeatExchangeRecipe selected;
     private HeatExchangeSteam selectedSteam = HeatExchangeSteam.ORDINARY;
     private final double[] steamRemainders = new double[HeatExchangeSteam.values().length];
-    private double throughputRemainder;
 
     public MTEHeatExchangeStation(int id, String name, String regional) {
         super(id, name, regional);
@@ -307,37 +305,27 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             selected = null;
             return fail("hot_fluid");
         }
-        if (selected != recipe) throughputRemainder = 0;
         selected = recipe;
         if (selectedSteam.fluid() == null) return fail("fluids_missing");
         if (available(WorkingFluids.distilledWater, coldInputs) <= 0) return fail("water");
-        double budget = Config.exchangeHotFluidPerCycle * (double) CYCLE_TICKS / Config.exchangeCycleTicks
-            + throughputRemainder;
-        long hotLimit = Math.min(available(recipe.hot(), hotInputs), (long) Math.floor(budget));
+        long hotLimit = available(recipe.hot(), hotInputs);
         double steamMultiplier = recipe.steamPerHotCoolant(selectedSteam);
-        long maximumHotForSteam = (long) Math
-            .floor((Integer.MAX_VALUE - steamRemainders[selectedSteam.ordinal()]) / steamMultiplier);
-        int water = (int) Math.min(
+        int waterLimit = (int) Math.min(
             Math.min(hotLimit / recipe.hotPerWater(), available(WorkingFluids.distilledWater, coldInputs)),
-            Math.min(maximumHotForSteam / recipe.hotPerWater(), Integer.MAX_VALUE / recipe.hotPerWater()));
+            Integer.MAX_VALUE / recipe.hotPerWater());
+        int water = acceptedWater(recipe, waterLimit, steamMultiplier);
+        if (water == 0) return fail("output_full");
         int hot = water * recipe.hotPerWater();
         double steamTotal = hot * steamMultiplier + steamRemainders[selectedSteam.ordinal()];
         int steam = (int) Math.floor(steamTotal);
-        FluidEjectionHelper coldOutput = prepareOutputs(
-            coldOutputs,
-            new FluidStack(recipe.cold(), Math.max(recipe.hotPerWater(), hot)));
+        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(recipe.cold(), hot));
         FluidEjectionHelper steamOutput = steam > 0
             ? prepareOutputs(hotOutputs, new FluidStack(selectedSteam.fluid(), steam))
             : null;
         if (coldOutput == null || (steam > 0 && steamOutput == null)) return fail("output_full");
-        final double remainder = budget % recipe.hotPerWater();
         final double steamRemainder = steamTotal - steam;
         final int steamIndex = selectedSteam.ordinal();
-        commitOutput(() -> {
-            throughputRemainder = remainder;
-            steamRemainders[steamIndex] = steamRemainder;
-        });
-        if (water == 0) return true;
+        commitOutput(() -> steamRemainders[steamIndex] = steamRemainder);
         // All capacity reservations and both input checks precede any real mutation.
         consume(recipe.hot(), hot, hotInputs);
         consume(WorkingFluids.distilledWater, water, coldInputs);
@@ -348,10 +336,27 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         return true;
     }
 
+    private int acceptedWater(HeatExchangeRecipe recipe, int limit, double steamMultiplier) {
+        int lower = 0;
+        int upper = limit;
+        while (lower < upper) {
+            int water = lower + (int) (((long) upper - lower + 1) / 2);
+            int hot = water * recipe.hotPerWater();
+            double steamAmount = Math.floor(hot * steamMultiplier + steamRemainders[selectedSteam.ordinal()]);
+            // Each probe has independent reservations. Only the final batch is committed.
+            boolean fits = steamAmount <= Integer.MAX_VALUE
+                && prepareOutputs(coldOutputs, new FluidStack(recipe.cold(), hot)) != null
+                && (steamAmount == 0
+                    || prepareOutputs(hotOutputs, new FluidStack(selectedSteam.fluid(), (int) steamAmount)) != null);
+            if (fits) lower = water;
+            else upper = water - 1;
+        }
+        return lower;
+    }
+
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setDouble("tnExchangeThroughputRemainder", throughputRemainder);
         nbt.setString("tnExchangeRecipe", selected == null ? "" : selected.id());
         nbt.setString("tnExchangeSteam", selectedSteam.id());
         for (HeatExchangeSteam steam : HeatExchangeSteam.values()) {
@@ -375,10 +380,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             steamRemainders[steam.ordinal()] = Double.isFinite(remainder) && remainder >= 0 && remainder < 1 ? remainder
                 : 0;
         }
-        throughputRemainder = nbt.getDouble("tnExchangeThroughputRemainder");
-        if (!Double.isFinite(throughputRemainder) || selected == null
-            || throughputRemainder < 0
-            || throughputRemainder >= selected.hotPerWater()) throughputRemainder = 0;
     }
 
     @Override
@@ -413,8 +414,8 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     @Override
     public String[] displayKeys() {
-        return new String[] { "status", "steam_type", "recipe", "steam_multiplier", "throughput", "hot_input",
-            "water_input", "steam_output", "coolant_return", "cycle" };
+        return new String[] { "status", "steam_type", "recipe", "steam_multiplier", "hot_input", "water_input",
+            "steam_output", "coolant_return", "cycle" };
     }
 
     @Override
@@ -425,7 +426,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         if (selected != null) {
             info.put("steam_multiplier", decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L");
         }
-        info.put("throughput", decimal(Config.exchangeHotFluidPerCycle / (double) Config.exchangeCycleTicks) + " L/t");
         info.put("hot_input", decimal(inputRate));
         info.put("water_input", decimal(selected == null ? 0 : inputRate / selected.hotPerWater()));
         info.put("steam_output", decimal(outputRate));
