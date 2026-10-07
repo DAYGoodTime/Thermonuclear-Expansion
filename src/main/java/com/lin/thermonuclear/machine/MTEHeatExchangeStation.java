@@ -6,7 +6,6 @@ import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
@@ -27,7 +26,6 @@ import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.ItemList;
@@ -76,39 +74,26 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     private static final IStructureDefinition<MTEHeatExchangeStation> STRUCTURE = StructureDefinition
         .<MTEHeatExchangeStation>builder()
         .addShape(PIECE, SHAPE)
-        .addElement('A', inputHatch(Casings.EVMachineCasing, 1, MTEHeatExchangeStation::addColdInput))
-        .addElement('B', outputHatch(Casings.CoolantDuct, 2, MTEHeatExchangeStation::addColdOutput))
-        .addElement('C', inputHatch(Casings.HeatingDuct, 3, MTEHeatExchangeStation::addHotInput))
+        .addElement('A', inputHatch(1, MTEHeatExchangeStation::addColdInput))
+        .addElement('B', outputHatch(2, MTEHeatExchangeStation::addColdOutput))
+        .addElement('C', inputHatch(3, MTEHeatExchangeStation::addHotInput))
         .addElement('D', Casings.SolidSteelMachineCasing.asElement())
         .addElement('E', Casings.BronzePipeCasing.asElement())
-        .addElement('F', outputHatch(GregTechAPI.sBlockReinforced, 13, 4, MTEHeatExchangeStation::addHotOutput))
-        .addElement('G', StructureUtility.ofBlock(Blocks.planks, 0))
+        .addElement('F', outputHatch(4, MTEHeatExchangeStation::addHotOutput))
         .build();
 
-    private static IStructureElement<MTEHeatExchangeStation> inputHatch(Casings casing, int hint, HatchAdder adder) {
+    private static IStructureElement<MTEHeatExchangeStation> inputHatch(int hint, HatchAdder adder) {
         return StructureUtility.ofChain(
             GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
                 .anyOf(HatchElement.InputHatch)
                 .adder(adder::add)
-                .casingIndex(casing.textureId)
+                .casingIndex(CASING.textureId)
                 .hint(hint)
                 .build(),
             hatchPreviewPlacement(true));
     }
 
-    private static IStructureElement<MTEHeatExchangeStation> outputHatch(Casings casing, int hint, HatchAdder adder) {
-        return StructureUtility.ofChain(
-            GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
-                .anyOf(HatchElement.OutputHatch)
-                .adder(adder::add)
-                .casingIndex(casing.textureId)
-                .hint(hint)
-                .build(),
-            hatchPreviewPlacement(false));
-    }
-
-    private static IStructureElement<MTEHeatExchangeStation> outputHatch(net.minecraft.block.Block block, int meta,
-        int hint, HatchAdder adder) {
+    private static IStructureElement<MTEHeatExchangeStation> outputHatch(int hint, HatchAdder adder) {
         return StructureUtility.ofChain(
             GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
                 .anyOf(HatchElement.OutputHatch)
