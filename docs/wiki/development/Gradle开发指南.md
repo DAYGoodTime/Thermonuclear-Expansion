@@ -1,23 +1,17 @@
 # Gradle 开发指南
 
 > 创建日期: 2026-09-30 12:28
-> 最后更新: 2026-10-02 20:06
+> 最后更新: 2026-10-07 11:29
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
 ## 环境与构建入口
 
-使用仓库的 `gradlew.bat`（Windows）或 `./gradlew`，不使用系统 Gradle 替代 Wrapper。当前 Wrapper 为 `9.4.0`，`.java-version` 指定 JDK `25`。本次验证环境为 Windows、Zulu OpenJDK `25.0.2`。
+在仓库根目录使用 `gradlew.bat`（Windows）或 `./gradlew`，不替换为系统 Gradle。IDE 导入根目录 Gradle 项目，使用 Wrapper 与 `.java-version` 指定的 JDK `25`。当前 `gradle/wrapper/gradle-wrapper.properties` 指向 **Gradle 9.8.0**；旧版构建记录不证明该版本已通过验证。
 
-构建配置由以下文件共同组成：
+构建配置入口：`settings.gradle.kts` 管理插件仓库与 settings convention，`build.gradle.kts` 应用 Elytra / GTNH convention，`gradle.properties` 管理模组、Jabel 与生成版本类，`dependencies.gradle` 声明整合包清单及依赖，`repositories.gradle` 配置仅服务 `net.glease` 的 glease 仓库。配置缓存与并行构建已启用；其余技术基线见[项目知识库](项目知识库.md#当前技术基线)。
 
-- `settings.gradle.kts`：插件仓库与 GTNH settings convention `2.0.33`。
-- `build.gradle.kts`：Elytra convention `v1.1.1` 和 GTNH project convention。
-- `gradle.properties`：Minecraft `1.7.10`、Forge `10.13.4.1614`、Jabel、模组包名及生成版本类；配置缓存与并行构建已启用。
-- `dependencies.gradle`：GTNH `2.9.0-beta-3` 清单和依赖声明。
-- `repositories.gradle`：额外的 glease Maven 仓库，只负责 `net.glease` 组。
-
-Gradle 运行 JDK 与模组字节码目标不是同一概念：当前使用 Jabel 模式，GT5U 依赖报告中的目标 JVM 为 Java 8。不要因 JDK 25 而直接改用仅现代 JVM 可加载的模组字节码。
+JDK 25 是构建运行环境，Jabel 保持 Java 8 字节码目标，不等于模组要求现代 JVM。`Tags.VERSION` 由 Gradle 生成，不手写维护；产物版本结合 Git 状态生成，不写死带 Git 信息或 `dirty` 的文件名。
 
 ## 常用命令
 
@@ -26,80 +20,47 @@ Gradle 运行 JDK 与模组字节码目标不是同一概念：当前使用 Jabe
 ```powershell
 .\gradlew.bat help --console=plain
 .\gradlew.bat tasks --all --console=plain
+.\gradlew.bat spotlessApply --console=plain
 .\gradlew.bat compileJava processResources --console=plain
 .\gradlew.bat build --console=plain
 .\gradlew.bat dependencyInsight --dependency GT5-Unofficial --configuration compileClasspath --console=plain
 ```
 
-- `help` 与 `tasks`：核验插件应用、脚本配置和任务注册。
-- `compileJava processResources`：核验 Java 编译、生成版本类和资源替换。
-- `build`：运行编译、Spotless、Checkstyle、JAR 打包和重混淆；产物位于 `build/libs/`。
-- `dependencyInsight`：确认最终选中的依赖版本及冲突处理来源。
+| 命令 / 任务 | 用途与边界 |
+| --- | --- |
+| `help` / `tasks --all` | 检查配置初始化与任务注册，不代表编译或游戏通过 |
+| `spotlessApply` | 修改代码后使用 Wrapper 格式化，不手动维护格式结果或关闭检查 |
+| `compileJava processResources` | 检查 Java 编译、生成版本类与资源替换 |
+| `build` | 编译、Spotless、Checkstyle、打包与重混淆；普通、`-dev`、`-sources` JAR 位于 `build/libs/` |
+| `dependencyInsight` | 核对最终选中版本及冲突来源；API 以选中的 JAR 为准 |
 
-已注册的开发任务包括 `setupDecompWorkspace`、`runClient`、`runServer`、`runClient25` 和 `runServer25`；本次没有执行游戏启动或服务器验收。IDE 导入时选择根目录 Gradle 项目，并使用 Wrapper 与 JDK 25。
-
-版本由构建插件结合 Git 状态生成。当前未打标签且存在工作区修改，产物文件名带 Git 信息与 `dirty`；不要将本次生成名写死为发布版本。
+开发任务包括 `setupDecompWorkspace`、`runClient`、`runServer`、`runClient25`、`runServer25`，以当前 `tasks --all` 输出为准。启动任务存在不代表客户端或专用服务器已验收。
 
 ## 本地调试模组
 
-`dependencies.gradle` 在文件存在时才添加以下本地运行时依赖：
+`dependencies.gradle` 仅在 `localMod.isFile()` 成立时，将 `libs/spark.jar`、`libs/OmniOcularUnofficial.jar` 经 `rfg.deobf(...)` 加入 `runtimeOnlyNonPublishable`。仓库不携带这两个 JAR；缺失时跳过，无效或不兼容时仍会转换失败。
 
-```text
-libs/spark.jar
-libs/OmniOcularUnofficial.jar
-```
+## 排障要点
 
-本仓库未携带这两个 JAR。缺少它们不会阻止构建；提供真实 JAR 后通过 `rfg.deobf(...)` 加入 `runtimeOnlyNonPublishable`。该机制保留本地调试支持，不把这些文件变成强制构建前置条件。无效或不兼容的 JAR 仍会导致转换失败。
+| 现象 | 检查与处理 |
+| --- | --- |
+| `Could not get unknown property 'handler'`，外层指向插件应用 | 检查 `repositories.gradle`：`exclusiveContent.forRepository` 内使用 `project.repositories.maven`，保留 `includeGroup('net.glease')`；不靠升级插件、删除缓存或取消过滤解决 |
+| `spotlessJavaCheck` 拒绝格式（包括 `@Mod` 注解） | 执行 `spotlessApply` 后重新检查，不关闭 Spotless |
+| 编译成功，`reobfJar` 报 `DependencyDeobfuscationTransform` | 检查运行时 classpath 的本地 JAR 是否存在、有效且兼容；保持存在性判断 |
+| `mixins.srg does not exist` | 当前没有 `@Mixin` 输入，不伪造 refmap 或空映射；加载配置与注入步骤见 [Mixin 指南](Mixin开发指南.md) |
+| 配置缓存重新计算 | 文件、Git 状态或动态插件版本缓存变化会触发重算，本身不等于构建失败 |
 
-## 初始化与打包故障记录
-
-### 仓库 DSL 引用不存在的 handler
-
-原始错误：
-
-```text
-Could not get unknown property 'handler' for object of type
-DefaultRepositoryHandler$ExclusiveContentRepositorySpec
-```
-
-异常外层指向 `build.gradle.kts` 的 GTNH 插件应用，实际根因在 `repositories.gradle` 的 `exclusiveContent.forRepository` 内。`handler` 不是该闭包的属性。修复为通过显式的项目仓库处理器创建仓库：
-
-```groovy
-forRepository {
-    project.repositories.maven {
-        name = 'glease'
-        url = 'https://maven.glease.net/repos/releases/'
-    }
-}
-```
-
-保留 `includeGroup('net.glease')` 独占过滤规则。该问题不需要升级插件、降级 Gradle、删除缓存或取消过滤。
-
-### Spotless 拦截入口注解格式
-
-`Thermonuclear.java` 的单行 `@Mod(...)` 被 `spotlessJavaCheck` 拒绝。按检查输出改为多行注解，属性值及运行行为不变，没有关闭格式检查。
-
-### 缺失本地 JAR 导致 reobfJar 失败
-
-原依赖脚本无条件引用两个 `libs/` 文件。编译可以通过，但 `reobfJar` 解析运行时 classpath 时发生 `DependencyDeobfuscationTransform` 错误。修复为 `localMod.isFile()` 成立时才声明对应依赖。
-
-## 当前非阻塞提示
-
-- 构建提示 GTNH convention `2.0.34` 可用；当前仍使用 `2.0.33`，本次未执行 `updateBuildScript`。
-- Spotless 上游配置输出 `indentWithSpaces` 弃用和 Eclipse JDT 版本写法提示；不阻止构建。
-- Mixin 已初始化空引导、early / late JSON 和两个加载入口，实际依赖 UniMixins `0.3.1`。当前没有 `@Mixin` 类，`reobfJar` 仍输出 `mixins.srg does not exist`；不手写 refmap 或空映射文件。配置和添加注入流程见 [Mixin 开发指南](Mixin开发指南.md)，初始化前描述见 [归档](../archive/development/Mixin初始化前状态.md)。
-- 配置缓存会因为文件修改、Git 状态输入变化或动态插件版本缓存到期而重算；出现重新配置消息不等于构建失败。
+插件更新提示、Spotless 的 `indentWithSpaces` 弃用与 Eclipse JDT 版本提示不等于构建失败；以任务结果和退出码判断，不因提示自动升级构建配置。历次故障与验证经过不在正文重复累积。
 
 ## 验证边界与测试限制
 
-构建生成普通模组 JAR、`-dev.jar` 和 `-sources.jar`。构建成功不代表迁入的全部运行时模组已经共同通过游戏启动测试，也不代表规划中的机器或配方已实现。当前工作区没有 `src/test/` 或 JUnit 测试依赖；历史六项辅助逻辑回归不是当前测试入口。
+构建成功仅覆盖执行的任务，不证明游戏启动、物料守恒、性能或整合包兼容，也不证明规划功能已实现。当前没有 `src/test/` 或 JUnit 测试依赖；历史六项辅助测试不是当前测试入口。
 
-无 LaunchWrapper 的普通 JVM 不能调用 Forge 的游戏物品注册入口，否则触发 `ModClassLoader` 类加载器转换错误。历史隔离测试绑定底层数字 ID，不替换游戏注册流程。恢复回归测试时使用正常 JUnit 测试任务，不关闭 Gradle 的无测试发现校验。
+无 LaunchWrapper 的普通 JVM 调用 Forge 物品注册会触发 `ModClassLoader` 转换错误；隔离测试的底层数字 ID 绑定不能替代游戏注册验收。恢复测试时使用正常 JUnit 任务，不关闭无测试发现校验。
 
-历次命令、退出码和测试结果见[开发验证记录](../../开发验证记录.md#gradle-指南中的验证记录)，仅按需追溯；不在本指南累积构建日志。
+历次命令、退出码和测试结果见[开发验证记录](../../开发验证记录.md#2026-09-30)，仅按需追溯；不在本指南累积构建日志。
 
 ## 参考
 
-- [Gradle 9.4.0 仓库内容过滤文档](https://docs.gradle.org/9.4.0/userguide/filtering_repository_content.html)。
-- [项目知识库](项目知识库.md)。
-- [迁入资料使用说明](../references/迁入资料使用说明.md)。
+- Gradle 官方文档：[依赖诊断](https://docs.gradle.org/current/userguide/viewing_debugging_dependencies.html)、[仓库内容过滤](https://docs.gradle.org/current/userguide/filtering_repository_content.html)；构建版本以本仓库 Wrapper 为准。
+- [迁入资料使用说明](../references/迁入资料使用说明.md)：来源项目依赖与 API 的核验边界。
