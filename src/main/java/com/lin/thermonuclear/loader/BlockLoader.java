@@ -40,7 +40,11 @@ public final class BlockLoader {
 
     private static Block registerFuelRod(int tier) {
         String prefix = "fuel_rod/fuel_rod_";
-        return registerBlock("fuel_rod_tier_" + tier, prefix + "side_" + tier, prefix + "top_" + tier, prefix + "bottom_" + tier);
+        return registerBlock(
+            "fuel_rod_tier_" + tier,
+            prefix + "side_" + tier,
+            prefix + "top_" + tier,
+            prefix + "bottom_" + tier);
     }
 
     private static Block registerBlock(String name, String side, String top, String bottom) {

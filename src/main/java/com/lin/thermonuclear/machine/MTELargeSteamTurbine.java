@@ -1,57 +1,168 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
+import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.HatchElement;
+import gregtech.api.enums.ItemList;
+import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.items.MetaGeneratedTool;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.TurbineStatCalculator;
+import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.items.MetaGeneratedTool01;
 
-public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTELargeSteamTurbine> {
+public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTELargeSteamTurbine>
+    implements INEIPreviewModifier {
 
     private static final String PIECE = "large_steam_turbine";
-    private static final int SIZE = 3;
-    private static final int OFFSET_X = 1;
-    private static final int OFFSET_Y = 1;
-    private static final int OFFSET_Z = 0;
-    private static final Casings CASING = Casings.HeatProofMachineCasing;
-    // StructureLib order: [depth][top-to-bottom row], with the controller at (1, 1, 0).
-    private static final String[][] SHAPE = { { "CCC", "C~C", "CCC" }, { "CCC", "C-C", "CCC" },
-        { "CCC", "CCC", "CCC" } };
+    private static final int OFFSET_X = SteamTurbineStructure.OFFSET_X;
+    private static final int OFFSET_Y = SteamTurbineStructure.OFFSET_Y;
+    private static final int OFFSET_Z = SteamTurbineStructure.OFFSET_Z;
+    private static final Casings CASING = Casings.SolidSteelMachineCasing;
     private static final IStructureDefinition<MTELargeSteamTurbine> STRUCTURE = StructureDefinition
         .<MTELargeSteamTurbine>builder()
-        .addShape(PIECE, SHAPE)
+        .addShape(PIECE, SteamTurbineStructure.createShape())
+        .addElement('A', fluidHatch(false, 1))
+        .addElement('B', fluidHatch(true, 2))
         .addElement(
             'C',
-            GTStructureUtility.<MTELargeSteamTurbine>ofHatchAdderOptional(
-                (machine, tile, texture) -> machine.addMachineHatch(tile, texture),
-                CASING.textureId,
-                1,
-                CASING.getBlock(),
-                CASING.meta))
+            GTStructureUtility.buildHatchAdder(MTELargeSteamTurbine.class)
+                .anyOf(HatchElement.Dynamo, HatchElement.ExoticDynamo, HatchElement.LaserSource)
+                .casingIndex(CASING.textureId)
+                .hint(3)
+                .buildAndChain(CASING.asElement()))
+        .addElement('D', Casings.SteelGearBoxCasing.asElement())
+        .addElement('E', Casings.SteelPipeCasing.asElement())
+        .addElement('F', StructureUtility.ofBlock(GregTechAPI.sBlockMetal6, 13))
+        .addElement(
+            'G',
+            StructureUtility.withChannel(
+                "turbine_shaft",
+                StructureUtility.<MTELargeSteamTurbine, Integer>ofBlocksTiered((block, meta) -> {
+                    if (meta != 0) return null;
+                    if (block == BlockLoader.lowPressureTurbineShaft) return 1;
+                    if (block == BlockLoader.highPressureTurbineShaft) return 2;
+                    return null;
+                },
+                    Arrays.asList(
+                        Pair.of(BlockLoader.lowPressureTurbineShaft, 0),
+                        Pair.of(BlockLoader.highPressureTurbineShaft, 0)),
+                    0,
+                    (machine, tier) -> machine.shaftTier = tier,
+                    machine -> machine.shaftTier)))
         .build();
+
+    private int shaftTier;
+    private boolean constructing;
+    private boolean previewConstruction;
+    private EntityPlayer previewPlayer;
+
+    private static IStructureElement<MTELargeSteamTurbine> fluidHatch(boolean input, int hint) {
+        return StructureUtility.ofChain(
+            GTStructureUtility.buildHatchAdder(MTELargeSteamTurbine.class)
+                .anyOf(input ? HatchElement.InputHatch : HatchElement.OutputHatch)
+                .casingIndex(CASING.textureId)
+                .hint(hint)
+                .build(),
+            hatchPreviewPlacement(input));
+    }
+
+    private static IStructureElement<MTELargeSteamTurbine> hatchPreviewPlacement(boolean input) {
+        return new IStructureElement<>() {
+
+            @Override
+            public boolean check(MTELargeSteamTurbine machine, World world, int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean spawnHint(MTELargeSteamTurbine machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                return false;
+            }
+
+            @Override
+            public boolean placeBlock(MTELargeSteamTurbine machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                EntityPlayer player = machine.previewPlayer;
+                // NEI's DummyWorld cannot use GT's WorldServer fake-player hatch placer.
+                if (!machine.previewConstruction || !machine.constructing
+                    || player == null
+                    || player.getUniqueID() == null
+                    || world instanceof WorldServer
+                    || !world.isAirBlock(x, y, z)) return false;
+                ItemStack representative = (input ? ItemList.Hatch_Input_ULV : ItemList.Hatch_Output_ULV).get(1);
+                if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
+                    representative,
+                    player,
+                    world,
+                    x,
+                    y,
+                    z,
+                    ForgeDirection.UP.ordinal(),
+                    0.5f,
+                    0.5f,
+                    0.5f,
+                    0)) return false;
+                if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
+                    // The inlet is at local -X, the outlet at +X after the structure rotation.
+                    tile.setFrontFacing(
+                        input ? machine.getExtendedFacing()
+                            .getRelativeLeftInWorld()
+                            : machine.getExtendedFacing()
+                                .getRelativeRightInWorld());
+                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CASING.textureId);
+                }
+                return true;
+            }
+        };
+    }
+
+    public int getShaftTier() {
+        return shaftTier;
+    }
+
+    @Override
+    public void clearHatches() {
+        super.clearHatches();
+        shaftTier = 0;
+    }
 
     @Override
     public IStructureDefinition<MTELargeSteamTurbine> getStructureDefinition() {
@@ -60,17 +171,37 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
-        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
+        shaftTier = 0;
+        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
+            shaftTier = 0;
+            return;
+        }
         if (!hasFluidInputs()) errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
         if (mOutputHatches.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
         if (mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty()) {
             errors.add(StructureErrors.missingHatch(HatchElement.Dynamo));
         }
+        if (!errors.isEmpty()) shaftTier = 0;
     }
 
     @Override
     public void construct(ItemStack stack, boolean hintsOnly) {
-        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+        constructing = true;
+        try {
+            buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+        } finally {
+            constructing = false;
+            previewConstruction = false;
+            previewPlayer = null;
+        }
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void onPreviewConstruct(ItemStack trigger) {
+        previewPlayer = Minecraft.getMinecraft().thePlayer;
+        previewConstruction = previewPlayer != null && previewPlayer.getUniqueID() != null;
+        if (!previewConstruction) previewPlayer = null;
     }
 
     @Override
@@ -80,18 +211,27 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     protected int structureChunkRadius() {
-        return SIZE - 1;
+        return SteamTurbineStructure.CHUNK_RADIUS;
     }
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().beginStructureBlock(SIZE, SIZE, SIZE, true)
-            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.box"))
+        return machineTooltip()
+            .beginStructureBlock(
+                SteamTurbineStructure.WIDTH,
+                SteamTurbineStructure.HEIGHT,
+                SteamTurbineStructure.LENGTH,
+                true)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.turbine.controller"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts"))
+            .addStructureHint("thermonuclear.structure.turbine.output", 1)
+            .addStructureHint("thermonuclear.structure.turbine.input", 2)
+            .addStructureHint("thermonuclear.structure.turbine.dynamo", 3)
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
-            .addInputHatch("1+", "Shell", 1)
-            .addOutputHatch("1+", "Shell", 1)
-            .addDynamoHatch("1+", "Shell", 1)
+            .addInputHatch("1", "B", 2)
+            .addOutputHatch("1", "A", 1)
+            .addDynamoHatch("1+", "C", 3)
             .toolTipFinisher();
     }
 
@@ -277,13 +417,14 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public String[] displayKeys() {
-        return new String[] { "status", "startup", "full_load", "produced", "rotor", "steam_limit", "steam_input",
-            "water_output" };
+        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "rotor", "steam_limit",
+            "steam_input", "water_output" };
     }
 
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
+        info.put("shaft_tier", Integer.toString(getShaftTier()));
         addStartupInfo(info);
         addGenerationInfo(info);
         info.put("rotor", rotorDurability + " / " + rotorMaxDurability);

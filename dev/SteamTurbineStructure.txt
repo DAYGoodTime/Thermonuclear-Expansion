@@ -9,10 +9,10 @@ C-> addElement('C', Casings.SolidSteelMachineCasing.asElement()
 D-> addElement('D', Casings.SteelGearBoxCasing.asElement()
 E-> addElement('E', Casings.SteelPipeCasing.asElement()
 F -> ofBlock(gt.blockmetal6, 13);
-G-> addElement('G', Casings.TurbineShaft.asElement()
+G-> addElement('G', Casings.TurbineShaft.asElement() //本项目 低压涡轮轴 或 高压涡轮轴 （相当于两个不同等级的）
 
 Special Tiles:
-H -> ofSpecialTileAdder(gregtech.api.metatileentity.BaseMetaTileEntity);
+H -> ofSpecialTileAdder(gregtech.api.metatileentity.BaseMetaTileEntity);// 主机
 
 Offsets:
 -1, 14, 0

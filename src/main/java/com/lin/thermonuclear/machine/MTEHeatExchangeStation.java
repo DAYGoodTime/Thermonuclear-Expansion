@@ -65,7 +65,7 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         { "         ", "  DDDDD  ", "  DE  D  ", "  D   D  ", "  D  ED  ", "  D   D  ", "  DE  D  ", "  D   D  ",
             "  D  ED  ", "  D   D  ", "  DE  D  ", "  DDDDD  ", "         ", "DDDDDDDDD" },
         { " EEE     ", " EDEDDD  ", " EDE  D  ", " ED   D  ", " ED   D  ", " ED EED  ", " EDE  D  ", " ED   D  ",
-            " ED   D  ", " ED EED  ", " EDE  D  ", " EDDDED  ", " E   E   ", "FDDDDDDDB" },
+            " ED   D  ", " ED EED  ", " EDE  D  ", " EDDDED  ", " E   E   ", "BDDDDDDDF" },
         { "         ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ",
             "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D   D  ", "DDDDDDDDD" },
         { "         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
