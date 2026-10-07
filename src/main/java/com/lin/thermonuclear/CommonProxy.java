@@ -18,11 +18,11 @@ public class CommonProxy {
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
-        Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
+        Config.synchronizeConfiguration();
         ModFluids.register();
         BlockLoader.register();
 
-        Thermonuclear.LOG.info(Config.greeting);
+        Thermonuclear.LOG.info(Config.General.greeting);
         Thermonuclear.LOG.info("Thermonuclear prototype at version " + Tags.VERSION);
     }
 

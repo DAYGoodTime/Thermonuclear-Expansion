@@ -16,7 +16,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
     version = Tags.VERSION,
     name = "Thermonuclear",
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "required-after:gregtech;required-after:IC2;required-after:structurelib")
+    dependencies = "required-after:gtnhlib;required-after:gregtech;required-after:IC2;required-after:structurelib")
 public class Thermonuclear {
 
     public static final String MODID = "thermonuclear";
