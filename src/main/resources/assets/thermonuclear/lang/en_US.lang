@@ -1,6 +1,13 @@
 thermonuclear.machine.nuclear.name=Nuclear Power Plant
 thermonuclear.machine.heat_exchange.name=Heat Exchange Station
 thermonuclear.machine.steam_turbine.name=Large Steam Turbine
+tile.thermonuclear.low_pressure_turbine_shaft.name=Low-Pressure Turbine Shaft
+tile.thermonuclear.high_pressure_turbine_shaft.name=High-Pressure Turbine Shaft
+tile.thermonuclear.fuel_rod_tier_1.name=Tier 1 Fuel Rod Block
+tile.thermonuclear.fuel_rod_tier_2.name=Tier 2 Fuel Rod Block
+tile.thermonuclear.fuel_rod_tier_3.name=Tier 3 Fuel Rod Block
+tile.thermonuclear.fuel_rod_tier_4.name=Tier 4 Fuel Rod Block
+thermonuclear.tooltip.component=Creative-test block; no crafting recipe or machine structure/performance integration yet.
 thermonuclear.mode.direct=Direct generation
 thermonuclear.mode.heat=Heat supply
 thermonuclear.recipe.ic2=IC2 coolant

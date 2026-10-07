@@ -1,6 +1,13 @@
 thermonuclear.machine.nuclear.name=核电站主机
 thermonuclear.machine.heat_exchange.name=热交换站
 thermonuclear.machine.steam_turbine.name=大型蒸汽涡轮机
+tile.thermonuclear.low_pressure_turbine_shaft.name=低压涡轮轴
+tile.thermonuclear.high_pressure_turbine_shaft.name=高压涡轮轴
+tile.thermonuclear.fuel_rod_tier_1.name=一级燃料棒方块
+tile.thermonuclear.fuel_rod_tier_2.name=二级燃料棒方块
+tile.thermonuclear.fuel_rod_tier_3.name=三级燃料棒方块
+tile.thermonuclear.fuel_rod_tier_4.name=四级燃料棒方块
+thermonuclear.tooltip.component=创造模式测试方块，无制造配方；尚未接入机器结构或性能计算。
 thermonuclear.mode.direct=直接发电
 thermonuclear.mode.heat=供热
 thermonuclear.recipe.ic2=IC2 冷却液
