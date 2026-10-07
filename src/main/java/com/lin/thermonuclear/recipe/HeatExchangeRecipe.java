@@ -32,20 +32,20 @@ public enum HeatExchangeRecipe {
         return this == IC2_COOLANT ? WorkingFluids.ic2Coolant : WorkingFluids.superCoolant;
     }
 
-    public int hotPerWater() {
-        return this == IC2_COOLANT ? Config.ic2HotCoolantPerWater : Config.hotSuperCoolantPerWater;
-    }
-
     public double coolantPerHeat() {
         return this == IC2_COOLANT ? Config.ic2CoolantPerHeat : Config.superCoolantPerHeat;
     }
 
-    public double steamPerHotCoolant(HeatExchangeSteam steam) {
-        return switch (steam) {
-            case ORDINARY -> Config.ordinarySteamPerHotCoolant;
-            case SUPERHEATED -> Config.superheatedSteamPerHotCoolant;
-            case SUPERCRITICAL -> Config.supercriticalSteamPerHotCoolant;
-            case ULTRA_SUPERCRITICAL -> Config.ultraSupercriticalSteamPerHotCoolant;
-        };
+    public double steamEfficiency() {
+        return this == SUPER_COOLANT ? 2 : 1;
     }
+
+    public boolean supportsSteam(HeatExchangeSteam steam) {
+        return steam != HeatExchangeSteam.ULTRA_SUPERCRITICAL;
+    }
+
+    public double steamPerHotCoolant(HeatExchangeSteam steam) {
+        return supportsSteam(steam) ? steam.steamPerHotCoolant() * steamEfficiency() : 0;
+    }
+
 }

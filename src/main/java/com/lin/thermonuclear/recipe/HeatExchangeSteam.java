@@ -25,6 +25,15 @@ public enum HeatExchangeSteam {
         return "thermonuclear.steam." + id;
     }
 
+    public double steamPerHotCoolant() {
+        return switch (this) {
+            case ORDINARY -> 40;
+            case SUPERHEATED -> 20;
+            case SUPERCRITICAL -> 10;
+            case ULTRA_SUPERCRITICAL -> 0;
+        };
+    }
+
     public Fluid fluid() {
         return switch (this) {
             case ORDINARY -> WorkingFluids.steam;
