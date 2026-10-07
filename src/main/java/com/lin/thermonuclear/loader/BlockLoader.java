@@ -3,7 +3,7 @@ package com.lin.thermonuclear.loader;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 
-import com.lin.thermonuclear.block.BlockMachineComponent;
+import com.lin.thermonuclear.block.BlockAxialMachineComponent;
 import com.lin.thermonuclear.block.ItemBlockMachineComponent;
 import com.lin.thermonuclear.registry.ModItems;
 
@@ -48,7 +48,7 @@ public final class BlockLoader {
     }
 
     private static Block registerBlock(String name, String side, String top, String bottom) {
-        Block block = new BlockMachineComponent(name, side, top, bottom);
+        Block block = new BlockAxialMachineComponent(name, side, top, bottom);
         GameRegistry.registerBlock(block, ItemBlockMachineComponent.class, name);
         ModItems.register(new ItemStack(block));
         return block;

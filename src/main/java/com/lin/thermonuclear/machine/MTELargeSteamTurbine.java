@@ -21,6 +21,7 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.block.BlockAxialMachineComponent;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.registry.WorkingFluids;
@@ -74,24 +75,33 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             'G',
             StructureUtility.withChannel(
                 "turbine_shaft",
-                StructureUtility.<MTELargeSteamTurbine, Integer>ofBlocksTiered((block, meta) -> {
-                    if (meta != 0) return null;
-                    if (block == BlockLoader.lowPressureTurbineShaft) return 1;
-                    if (block == BlockLoader.highPressureTurbineShaft) return 2;
-                    return null;
-                },
-                    Arrays.asList(
-                        Pair.of(BlockLoader.lowPressureTurbineShaft, 0),
-                        Pair.of(BlockLoader.highPressureTurbineShaft, 0)),
-                    0,
-                    (machine, tier) -> machine.shaftTier = tier,
-                    machine -> machine.shaftTier)))
+                StructureUtility.defer(
+                    (MTELargeSteamTurbine machine) -> shaftElement(
+                        BlockAxialMachineComponent.axisMetadata(
+                            machine.getExtendedFacing()
+                                .getRelativeLeftInWorld())))))
         .build();
 
     private int shaftTier;
     private boolean constructing;
     private boolean previewConstruction;
     private EntityPlayer previewPlayer;
+
+    private static IStructureElement<MTELargeSteamTurbine> shaftElement(int axisMetadata) {
+        // The 26 G positions run along local X after rotating the exported structure.
+        return StructureUtility.<MTELargeSteamTurbine, Integer>ofBlocksTiered((block, meta) -> {
+            if (meta != axisMetadata) return null;
+            if (block == BlockLoader.lowPressureTurbineShaft) return 1;
+            if (block == BlockLoader.highPressureTurbineShaft) return 2;
+            return null;
+        },
+            Arrays.asList(
+                Pair.of(BlockLoader.lowPressureTurbineShaft, axisMetadata),
+                Pair.of(BlockLoader.highPressureTurbineShaft, axisMetadata)),
+            0,
+            (machine, tier) -> machine.shaftTier = tier,
+            machine -> machine.shaftTier);
+    }
 
     private static IStructureElement<MTELargeSteamTurbine> fluidHatch(boolean input, int hint) {
         return StructureUtility.ofChain(

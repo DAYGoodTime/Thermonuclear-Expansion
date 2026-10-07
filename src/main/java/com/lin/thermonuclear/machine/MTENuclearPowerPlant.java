@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
@@ -22,7 +25,9 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.api.FuelRodAdapter;
 import com.lin.thermonuclear.api.FuelRodAdapters;
+import com.lin.thermonuclear.block.BlockAxialMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
+import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.nuclear.FuelBatch;
 import com.lin.thermonuclear.nuclear.NuclearCoolingMath;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
@@ -36,7 +41,6 @@ import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.ItemList;
-import gregtech.api.enums.Materials;
 import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -71,16 +75,49 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
         .addElement(
-            'A',
-            GTStructureUtility
-                .chainItemPipeCasings(-1, (machine, tier) -> machine.pipeTier = tier, machine -> machine.pipeTier))
-        .addElement('B', Casings.ReinforcedGlass.asElement())
-        .addElement('C', StructureUtility.ofBlock(GregTechAPI.sBlockReinforced, CONCRETE_META))
-        .addElement('D', GTStructureUtility.ofFrame(Materials.Steel))
-        .addElement('F', GTStructureUtility.ofAnyWater())
-        .addElement('H', GTStructureUtility.ofAnyWater())
+            'C',
+            StructureUtility.withChannel(
+                "fluid_pipe_casing",
+                StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered((block, meta) -> {
+                    if (block == GregTechAPI.sBlockCasings2 && meta >= 12 && meta <= 15) return meta - 11;
+                    if (block == GregTechAPI.sBlockCasings8 && meta == 1) return 5;
+                    if (block == GregTechAPI.sBlockCasings9 && meta == 0) return 6;
+                    return null;
+                },
+                    Arrays.asList(
+                        Pair.of(GregTechAPI.sBlockCasings2, 12),
+                        Pair.of(GregTechAPI.sBlockCasings2, 13),
+                        Pair.of(GregTechAPI.sBlockCasings2, 14),
+                        Pair.of(GregTechAPI.sBlockCasings2, 15),
+                        Pair.of(GregTechAPI.sBlockCasings8, 1),
+                        Pair.of(GregTechAPI.sBlockCasings9, 0)),
+                    -1,
+                    (machine, tier) -> machine.pipeTier = tier,
+                    machine -> machine.pipeTier)))
         .addElement(
-            'G',
+            'D',
+            StructureUtility.withChannel(
+                "fuel_rod",
+                StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered((block, meta) -> {
+                    if (!BlockAxialMachineComponent.isAxisMetadata(meta)) return null;
+                    if (block == BlockLoader.fuelRodTier1) return 1;
+                    if (block == BlockLoader.fuelRodTier2) return 2;
+                    if (block == BlockLoader.fuelRodTier3) return 3;
+                    if (block == BlockLoader.fuelRodTier4) return 4;
+                    return null;
+                },
+                    Arrays.asList(
+                        Pair.of(BlockLoader.fuelRodTier1, 0),
+                        Pair.of(BlockLoader.fuelRodTier2, 0),
+                        Pair.of(BlockLoader.fuelRodTier3, 0),
+                        Pair.of(BlockLoader.fuelRodTier4, 0)),
+                    -1,
+                    (machine, tier) -> machine.fuelRodTier = tier,
+                    machine -> machine.fuelRodTier)))
+        .addElement('F', StructureUtility.ofBlock(GregTechAPI.sBlockReinforced, CONCRETE_META))
+        .addElement('G', GTStructureUtility.ofAnyWater())
+        .addElement(
+            'B',
             GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
                 .anyOf(
                     HatchElement.InputBus,
@@ -96,7 +133,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 .hint(1)
                 .buildAndChain(GregTechAPI.sBlockReinforced, CONCRETE_META))
         .addElement(
-            'I',
+            'A',
             StructureUtility.ofChain(
                 GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
                     .anyOf(HatchElement.InputHatch, HatchElement.OutputHatch)
@@ -112,6 +149,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .build();
 
     private int pipeTier = -1;
+    private int fuelRodTier = -1;
     private boolean constructing;
     private boolean previewConstruction;
     private EntityPlayer previewPlayer;
@@ -170,7 +208,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             for (int y = 0; y < SHAPE[z].length; y++) {
                 String row = SHAPE[z][y];
                 for (int x = 0; x < row.length(); x++) {
-                    if (row.charAt(x) == 'I') offsets.add(new int[] { x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z });
+                    if (row.charAt(x) == 'A') offsets.add(new int[] { x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z });
                 }
             }
         }
@@ -208,7 +246,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private boolean isCoolantConstructionCandidate(ItemStack stack) {
         if (!constructing) return true;
         // Creative/NEI construction uses one ULV hatch of each kind; candidate queries remain tier-independent.
-        // Preview placement cannot rely on a complete structure recheck; inspect the two real I positions.
+        // Preview placement cannot rely on a complete structure recheck; inspect the two real A positions.
         ItemStack representative = coolantConstructionStack();
         return stack != null && stack.getItem() == representative.getItem()
             && stack.getItemDamage() == representative.getItemDamage();
@@ -223,13 +261,18 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     public int getFuelRodLimit() {
-        return pipeTier < 1 || pipeTier > 8 ? 0 : Config.nuclearFuelRodsPerPipeTier * pipeTier;
+        return pipeTier < 1 || pipeTier > 6 ? 0 : Config.nuclearFuelRodsPerPipeTier * pipeTier;
+    }
+
+    public int getFuelRodTier() {
+        return fuelRodTier;
     }
 
     @Override
     public void clearHatches() {
         super.clearHatches();
         pipeTier = -1;
+        fuelRodTier = -1;
     }
 
     private boolean addServiceHatch(IGregTechTileEntity tile, int texture) {
@@ -255,7 +298,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
-        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
+        pipeTier = -1;
+        fuelRodTier = -1;
+        if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
+            pipeTier = -1;
+            fuelRodTier = -1;
+            return;
+        }
         if (mInputBusses.isEmpty()) {
             errors.add(StructureErrors.missingHatch(HatchElement.InputBus));
         }
@@ -264,6 +313,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.coolant_io"));
         }
         // Dynamos remain mode-dependent; maintenance hatches are optional and do not enable failures.
+        if (!errors.isEmpty()) {
+            pipeTier = -1;
+            fuelRodTier = -1;
+        }
     }
 
     @Override
@@ -308,13 +361,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services"))
-            .addInputBus("1+", "G", 1)
-            .addOutputBus("1+", "G", 1)
-            .addInputHatch("1", "I", 2)
-            .addOutputHatch("1", "I", 2)
-            .addDynamoHatch("0+", "G", 1)
-            .addMaintenanceHatch("0+", "G", 1)
+            .addStructureHint("thermonuclear.structure.nuclear.services", 1)
+            .addStructureHint("thermonuclear.structure.nuclear.coolant_io", 2)
+            .addInputBus("1+", "B", 1)
+            .addOutputBus("1+", "B", 1)
+            .addInputHatch("1", "A", 2)
+            .addOutputHatch("1", "A", 2)
+            .addDynamoHatch("0+", "B", 1)
+            .addMaintenanceHatch("0+", "B", 1)
             .toolTipFinisher();
     }
 

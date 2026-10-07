@@ -5,8 +5,8 @@ Structure:
 Blocks:
 A-> addElement('A', Casings.SolidSteelMachineCasing.asElement()//输入输出仓
 B-> addElement('B', Casings.BronzePipeCasing.asElement() //其他舱室
-C-> addElement('C', Casings.SteelPipeCasing.asElement() //目前用这个，升级在考虑
-D-> addElement('D', ofFrame(Materials.Steel)
+C-> addElement('C', Casings.SteelPipeCasing.asElement() //钢流体管道 可升级
+D-> addElement('D', ofFrame(Materials.Steel) //改成项目注册的4个等级的燃料棒作为可升级的方块
 E-> addElement('E', Casings.ReinforcedGlass.asElement() //这个要替换成水
 F -> ofBlock(gt.blockreinforced, 13);
 G-> addElement('G', ofBlocks(Blocks.field_150355_j, 0)

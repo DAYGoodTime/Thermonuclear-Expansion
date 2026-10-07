@@ -11,7 +11,7 @@ import com.lin.thermonuclear.Thermonuclear;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-public final class BlockMachineComponent extends Block {
+public class BlockMachineComponent extends Block {
 
     private final String sideTexture;
     private final String topTexture;
