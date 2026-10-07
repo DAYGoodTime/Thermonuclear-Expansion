@@ -1,13 +1,13 @@
 # Gradle 开发指南
 
 > 创建日期: 2026-09-30 12:28
-> 最后更新: 2026-10-07 11:29
+> 最后更新: 2026-10-07
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
 ## 环境与构建入口
 
-当前用户要求后续不要执行 Gradle 脚本。以下 Wrapper 命令保留为构建方式说明；未经用户重新明确允许，开发代理不运行 Wrapper、系统 Gradle 或间接调用 Gradle 的脚本。禁止执行期间可进行独立 Java 逻辑验证和差异检查，但不能将其描述为完整构建、Spotless 或游戏验收通过。
+用户已允许全部格式检查及配套的自动格式化，可通过 Wrapper 执行 `spotlessApply`、`spotlessCheck` 及各语言格式检查。编译、测试、资源处理和打包等其他 Gradle 任务仍需用户另行明确许可，不使用系统 Gradle。以下其他 Wrapper 命令保留为构建方式说明；独立 Java 逻辑验证和差异检查不能替代完整构建或游戏验收，格式任务通过也只说明对应格式检查通过。
 
 在仓库根目录使用 `gradlew.bat`（Windows）或 `./gradlew`，不替换为系统 Gradle。IDE 导入根目录 Gradle 项目，使用 Wrapper 与 `.java-version` 指定的 JDK `25`。当前 `gradle/wrapper/gradle-wrapper.properties` 指向 **Gradle 9.8.0**；旧版构建记录不证明该版本已通过验证。
 
