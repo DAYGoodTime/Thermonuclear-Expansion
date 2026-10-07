@@ -20,8 +20,8 @@
 - GT-Not-Leisure 仅作为只读参考，不自动添加构建依赖、不修改参考仓库、不复用其机器 ID 或平衡数值；复制代码或资源前核对来源许可证与署名要求。
 - 不擅自确定规划中的冲突、机器 ID、流体注册名和最终平衡数值。
 - 用户批准本模组机器 ID 从 `32100` 递增；当前三台使用 `32100—32102`。注册前检查当前 GT5U 范围及占用，不自动改号；原型配置不是最终平衡。
-- 保持现有 GTNH convention / RetroFuturaGradle 构建方式，使用仓库的 Gradle Wrapper。
-- 代码格式化使用 Gradle Wrapper 运行 `spotlessApply` 任务（Windows 下执行 `gradlew.bat spotlessApply`），不要手动维护格式化结果。
+- 保持现有 GTNH convention / RetroFuturaGradle 构建方式。用户要求后续不要执行 Gradle 脚本；未经用户重新明确允许，不运行 Wrapper、系统 Gradle 或间接调用 Gradle 的脚本。
+- 代码格式化仍以 Wrapper 的 `spotlessApply` 为项目标准，不手动维护格式化结果；在禁止执行 Gradle 期间不运行该任务，交付时明确格式检查未完成。可使用不调用 Gradle 的独立验证，并说明其覆盖范围。
 - 不覆盖用户未提交的修改，不把生成的 `Tags.java` 当作手写源文件维护。
 - 更新构建流程、依赖或实现入口后同步维护项目知识库；文档使用中文、相对链接，区分事实、规划和验证结果。
 

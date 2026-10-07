@@ -7,6 +7,8 @@
 
 ## 环境与构建入口
 
+当前用户要求后续不要执行 Gradle 脚本。以下 Wrapper 命令保留为构建方式说明；未经用户重新明确允许，开发代理不运行 Wrapper、系统 Gradle 或间接调用 Gradle 的脚本。禁止执行期间可进行独立 Java 逻辑验证和差异检查，但不能将其描述为完整构建、Spotless 或游戏验收通过。
+
 在仓库根目录使用 `gradlew.bat`（Windows）或 `./gradlew`，不替换为系统 Gradle。IDE 导入根目录 Gradle 项目，使用 Wrapper 与 `.java-version` 指定的 JDK `25`。当前 `gradle/wrapper/gradle-wrapper.properties` 指向 **Gradle 9.8.0**；旧版构建记录不证明该版本已通过验证。
 
 构建配置入口：`settings.gradle.kts` 管理插件仓库与 settings convention，`build.gradle.kts` 应用 Elytra / GTNH convention，`gradle.properties` 管理模组、Jabel 与生成版本类，`dependencies.gradle` 声明整合包清单及依赖，`repositories.gradle` 配置仅服务 `net.glease` 的 glease 仓库。配置缓存与并行构建已启用；其余技术基线见[项目知识库](项目知识库.md#当前技术基线)。
