@@ -30,6 +30,7 @@ public class Config {
     public static double ordinarySteamPerHotCoolant = 160.0;
     public static double superheatedSteamPerHotCoolant = 160.0;
     public static double supercriticalSteamPerHotCoolant = 160.0;
+    public static double ultraSupercriticalSteamPerHotCoolant = 160.0;
     public static double rotorEfficiencyMultiplier = 1.5;
     public static double rotorCapacityMultiplier = 2.0;
     public static int nuclearStartupTicks = 1200;
@@ -83,6 +84,12 @@ public class Config {
         supercriticalSteamPerHotCoolant = number(
             configuration,
             "supercriticalSteamLitresPerHotCoolant",
+            160,
+            0.001,
+            1000000);
+        ultraSupercriticalSteamPerHotCoolant = number(
+            configuration,
+            "ultraSupercriticalSteamLitresPerHotCoolant",
             160,
             0.001,
             1000000);

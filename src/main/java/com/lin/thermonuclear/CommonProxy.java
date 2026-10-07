@@ -4,6 +4,7 @@ import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
+import com.lin.thermonuclear.registry.ModFluids;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -18,6 +19,7 @@ public class CommonProxy {
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
+        ModFluids.register();
         BlockLoader.register();
 
         Thermonuclear.LOG.info(Config.greeting);

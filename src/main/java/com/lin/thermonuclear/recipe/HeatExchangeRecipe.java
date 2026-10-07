@@ -45,6 +45,7 @@ public enum HeatExchangeRecipe {
             case ORDINARY -> Config.ordinarySteamPerHotCoolant;
             case SUPERHEATED -> Config.superheatedSteamPerHotCoolant;
             case SUPERCRITICAL -> Config.supercriticalSteamPerHotCoolant;
+            case ULTRA_SUPERCRITICAL -> Config.ultraSupercriticalSteamPerHotCoolant;
         };
     }
 }

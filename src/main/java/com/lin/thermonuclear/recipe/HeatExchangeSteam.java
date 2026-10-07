@@ -8,7 +8,8 @@ public enum HeatExchangeSteam {
 
     ORDINARY("ordinary"),
     SUPERHEATED("superheated"),
-    SUPERCRITICAL("supercritical");
+    SUPERCRITICAL("supercritical"),
+    ULTRA_SUPERCRITICAL("ultrasupercritical");
 
     private final String id;
 
@@ -29,6 +30,7 @@ public enum HeatExchangeSteam {
             case ORDINARY -> WorkingFluids.steam;
             case SUPERHEATED -> WorkingFluids.superheatedSteam;
             case SUPERCRITICAL -> WorkingFluids.supercriticalSteam;
+            case ULTRA_SUPERCRITICAL -> WorkingFluids.ultraSupercriticalSteam;
         };
     }
 }

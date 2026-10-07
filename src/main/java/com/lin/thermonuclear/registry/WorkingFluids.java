@@ -15,6 +15,7 @@ public final class WorkingFluids {
     public static Fluid steam;
     public static Fluid superheatedSteam;
     public static Fluid supercriticalSteam;
+    public static Fluid ultraSupercriticalSteam;
     public static Fluid distilledWater;
     public static Fluid ic2Coolant;
     public static Fluid ic2HotCoolant;
@@ -27,6 +28,9 @@ public final class WorkingFluids {
         steam = required("GT ordinary steam", Materials.Steam.getGas(1));
         superheatedSteam = required("IC2 superheated steam", FluidRegistry.getFluidStack("ic2superheatedsteam", 1));
         supercriticalSteam = required("GT supercritical steam", FluidRegistry.getFluidStack("supercriticalsteam", 1));
+        ultraSupercriticalSteam = required(
+            "Thermonuclear ultra-supercritical steam",
+            FluidRegistry.getFluidStack(ModFluids.ULTRA_SUPERCRITICAL_STEAM_NAME, 1));
         distilledWater = required("IC2 distilled water", GTModHandler.getDistilledWater(1));
         ic2Coolant = required("IC2 coolant", GTModHandler.getIC2Coolant(1));
         ic2HotCoolant = required("IC2 hot coolant", GTModHandler.getHotCoolant(1));
