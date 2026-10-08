@@ -24,6 +24,10 @@ import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.block.BlockAxialMachineComponent;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
+import com.lin.thermonuclear.recipe.ProcessingCycleMath;
+import com.lin.thermonuclear.recipe.SteamTurbineFuel;
+import com.lin.thermonuclear.recipe.SteamTurbineMath;
+import com.lin.thermonuclear.recipe.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
@@ -38,6 +42,7 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.items.MetaGeneratedTool;
 import gregtech.api.metatileentity.implementations.MTEHatch;
+import gregtech.api.recipe.RecipeMap;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
@@ -250,10 +255,12 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         return new LargeSteamTurbineGui(this);
     }
 
-    private int condensationRemainder;
+    private int condensationRemainderLitres;
     private ItemStack rotorReference;
     private NBTTagCompound rotorIdentity;
-    private int flowLimit;
+    private long effectiveSteamLimitLitresPerCycle;
+    private long steamLimitLitresPerCycle = Long.MAX_VALUE;
+    private SteamTurbineFuel currentFuel;
     private long rotorDurability;
     private long rotorMaxDurability;
 
@@ -298,7 +305,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             rotorReference = null;
             rotorIdentity = null;
             rotorDurability = rotorMaxDurability = 0;
-            flowLimit = 0;
+            effectiveSteamLimitLitresPerCycle = 0;
             return;
         }
         ItemStack identityStack = rotor.copy();
@@ -320,35 +327,46 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     protected boolean processCycle() {
         ItemStack rotor = getControllerSlot();
         if (!isCorrectMachinePart(rotor)) return fail("rotor");
-        if (WorkingFluids.steam == null || WorkingFluids.distilledWater == null) return fail("fluids_missing");
-        long rating = dynamoRating();
-        if (rating <= 0) return fail("hatches");
+        currentFuel = null;
+        if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
+        if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
+        for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
+            if (fuel.fluid() != null && available(fuel.fluid()) > 0) {
+                currentFuel = fuel;
+                break;
+            }
+        }
+        if (currentFuel == null) return fail("steam");
         TurbineStatCalculator stats = new TurbineStatCalculator((MetaGeneratedTool) rotor.getItem(), rotor);
-        double efficiency = Math.min(1, stats.getSteamEfficiency() * Config.rotorEfficiencyMultiplier);
-        double rotorFlow = stats.getOptimalSteamFlow() * Config.rotorCapacityMultiplier;
-        if (!Double.isFinite(efficiency) || efficiency <= 0 || !Double.isFinite(rotorFlow) || rotorFlow < 1) {
+        double efficiency = Math
+            .min(1, stats.getSteamEfficiency() * Config.largeSteamTurbine.rotorEfficiencyMultiplier);
+        if (!Double.isFinite(efficiency) || efficiency <= 0) {
             return fail("invalid_value");
         }
-        // "Optimal" is only a rotor capacity attribute here; there is no matching-flow requirement or penalty.
-        flowLimit = (int) Math.min(1000000000, Math.floor(rotorFlow));
-        fullLoadEUt = Math.min(rating, flowLimit * 0.5 * efficiency);
-        flowLimit = (int) Math.min(flowLimit, Math.max(1, Math.floor(fullLoadEUt / (0.5 * efficiency))));
-        int steam = (int) Math.min(
-            Math.min((long) flowLimit * CYCLE_TICKS, Integer.MAX_VALUE - condensationRemainder),
-            available(WorkingFluids.steam));
-        if (steam <= 0) return fail("steam");
-        int water = (steam + condensationRemainder) / GTValues.STEAM_PER_WATER;
+        double effectiveEUPerLitre = currentFuel.euPerLitre() * efficiency;
+        effectiveSteamLimitLitresPerCycle = SteamTurbineMath
+            .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
+        double fullLoadSteamLitresPerTick = ProcessingCycleMath
+            .litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
+        fullLoadEUt = SteamTurbineMath.generationEUt(fullLoadSteamLitresPerTick, effectiveEUPerLitre);
+        long steamLitresPerCycle = Math.min(effectiveSteamLimitLitresPerCycle, available(currentFuel.fluid()));
+        if (steamLitresPerCycle <= 0) return fail("steam");
+        int waterLitresPerCycle = (int) ((steamLitresPerCycle + condensationRemainderLitres)
+            / GTValues.STEAM_PER_WATER);
         // Reserve a water path even before the first integer litre accumulates.
-        FluidEjectionHelper outputs = prepareOutputs(new FluidStack(WorkingFluids.distilledWater, Math.max(1, water)));
+        FluidEjectionHelper outputs = prepareOutputs(
+            new FluidStack(WorkingFluids.distilledWater, Math.max(1, waterLitresPerCycle)));
         if (outputs == null) return fail("output_full");
-        if (water == 0) outputs = null;
-        consume(WorkingFluids.steam, steam);
+        if (waterLitresPerCycle == 0) outputs = null;
+        consume(currentFuel.fluid(), steamLitresPerCycle);
         if (outputs != null) commitOutput(outputs::commit);
-        final int remainder = (steam + condensationRemainder) % GTValues.STEAM_PER_WATER;
-        commitOutput(() -> condensationRemainder = remainder);
-        inputRate = steam / (double) CYCLE_TICKS;
-        outputRate = water / (double) CYCLE_TICKS;
-        cycleEUt = Math.min(fullLoadEUt, steam * 0.5 * efficiency / CYCLE_TICKS);
+        final int remainingSteamLitres = (int) ((steamLitresPerCycle + condensationRemainderLitres)
+            % GTValues.STEAM_PER_WATER);
+        commitOutput(() -> condensationRemainderLitres = remainingSteamLitres);
+        // Integer batches stay at the fluid transaction boundary; all operating rates use ticks.
+        inputLitresPerTick = ProcessingCycleMath.litresPerTick(steamLitresPerCycle, CYCLE_TICKS);
+        outputLitresPerTick = ProcessingCycleMath.litresPerTick(waterLitresPerCycle, CYCLE_TICKS);
+        operatingEUt = SteamTurbineMath.generationEUt(inputLitresPerTick, effectiveEUPerLitre);
         return true;
     }
 
@@ -375,7 +393,11 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setInteger("tnCondensationRemainder", condensationRemainder);
+        nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
+        nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
+        nbt.setLong("tnTurbineCycleLimit", effectiveSteamLimitLitresPerCycle);
+        if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.name());
+        else nbt.removeTag("tnTurbineFuel");
         if (rotorIdentity != null) nbt.setTag("tnRotorIdentity", rotorIdentity.copy());
         else nbt.removeTag("tnRotorIdentity");
     }
@@ -383,7 +405,18 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        condensationRemainder = Math.max(0, nbt.getInteger("tnCondensationRemainder")) % GTValues.STEAM_PER_WATER;
+        condensationRemainderLitres = Math.max(0, nbt.getInteger("tnCondensationRemainder")) % GTValues.STEAM_PER_WATER;
+        steamLimitLitresPerCycle = nbt.hasKey("tnSteamLimitPerCycle") ? Math.max(0, nbt.getLong("tnSteamLimitPerCycle"))
+            : Long.MAX_VALUE;
+        effectiveSteamLimitLitresPerCycle = SteamTurbineMath.steamLimitLitresPerCycle(
+            nbt.getLong("tnTurbineCycleLimit"),
+            GTValues.STEAM_PER_WATER,
+            condensationRemainderLitres);
+        currentFuel = null;
+        for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
+            if (fuel.name()
+                .equals(nbt.getString("tnTurbineFuel"))) currentFuel = fuel;
+        }
         rotorIdentity = nbt.hasKey("tnRotorIdentity") ? nbt.getCompoundTag("tnRotorIdentity") : null;
         rotorReference = null;
     }
@@ -392,7 +425,27 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     public void setItemNBT(NBTTagCompound nbt) {
         super.setItemNBT(nbt);
         // Preserve already-consumed steam's sub-litre water entitlement, but never startup or power.
-        nbt.setInteger("tnCondensationRemainder", condensationRemainder);
+        nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
+        nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
+    }
+
+    public long getSteamLimitLitresPerCycle() {
+        return steamLimitLitresPerCycle;
+    }
+
+    public void setSteamLimitFromGui(String text) {
+        if (getBaseMetaTileEntity() == null || !getBaseMetaTileEntity().isServerSide()) return;
+        long limitLitresPerCycle = SteamTurbineMath.parseLimit(text, steamLimitLitresPerCycle);
+        if (limitLitresPerCycle != steamLimitLitresPerCycle) {
+            // Already-prepaid generation is unchanged; the new cap starts with the next cycle.
+            steamLimitLitresPerCycle = limitLitresPerCycle;
+            markDirty();
+        }
+    }
+
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return SteamTurbineRecipes.DISPLAY;
     }
 
     @Override
@@ -407,12 +460,12 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     protected int startupTicks() {
-        return Config.turbineStartupTicks;
+        return Config.largeSteamTurbine.turbineStartupTicks;
     }
 
     @Override
     protected int decayTicks() {
-        return Config.turbineDecayTicks;
+        return Config.largeSteamTurbine.turbineDecayTicks;
     }
 
     @Override
@@ -427,8 +480,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public String[] displayKeys() {
-        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "rotor", "steam_limit",
-            "steam_input", "water_output" };
+        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "rotor", "turbine_steam_type",
+            "steam_cycle_limit", "steam_input", "water_output" };
     }
 
     @Override
@@ -438,9 +491,10 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         addStartupInfo(info);
         addGenerationInfo(info);
         info.put("rotor", rotorDurability + " / " + rotorMaxDurability);
-        info.put("steam_limit", flowLimit + " L/t");
-        info.put("steam_input", decimal(inputRate));
-        info.put("water_output", decimal(outputRate));
+        info.put("turbine_steam_type", currentFuel == null ? "thermonuclear.recipe.none" : currentFuel.nameKey());
+        info.put("steam_cycle_limit", Long.toString(steamLimitLitresPerCycle));
+        info.put("steam_input", decimal(inputLitresPerTick));
+        info.put("water_output", decimal(outputLitresPerTick));
         return info;
     }
 }

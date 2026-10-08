@@ -58,11 +58,12 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected long sentEUt;
     protected long discardedEUt;
     protected boolean powerLimited;
-    protected double inputRate;
-    protected double outputRate;
+    protected double inputLitresPerTick;
+    protected double outputLitresPerTick;
     private double energyFraction;
     private boolean hadStructure;
-    protected double cycleEUt;
+    // Prepaid operating power in EU/t, not total EU for the processing cycle; excludes startup.
+    protected double operatingEUt;
     protected boolean cycleAdvancesStartup = true;
     private List<FluidStack> cycleFluids;
     private final List<Runnable> outputCommits = new ArrayList<>();
@@ -211,7 +212,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             if (mMaxProgresstime <= 0) startup.decay(decayTicks());
             if (!mMachine) status = "structure";
             else if (!tile.isAllowedToWork()) status = "stopped";
-            if (mMaxProgresstime <= 0) inputRate = outputRate = fullLoadEUt = 0;
+            if (mMaxProgresstime <= 0) inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
         }
         tile.setActive(running);
         if (startup.get() != previousStartup) markDirty();
@@ -221,7 +222,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected void runMachine(IGregTechTileEntity tile, long tick) {
         if (!tile.isAllowedToWork()) {
             mMaxProgresstime = mProgresstime = 0;
-            cycleEUt = 0;
+            operatingEUt = 0;
             return;
         }
         super.runMachine(tile, tick);
@@ -229,7 +230,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     @Override
     public final CheckRecipeResult checkProcessing() {
-        cycleEUt = inputRate = outputRate = fullLoadEUt = 0;
+        operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
         cycleAdvancesStartup = true;
         outputCommits.clear();
         beforeProcessingCycle();
@@ -242,7 +243,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         mOutputItems = null;
         mOutputFluids = null;
         status = "running";
-        return cycleEUt > 0 ? CheckRecipeResultRegistry.GENERATING : CheckRecipeResultRegistry.SUCCESSFUL;
+        return operatingEUt > 0 ? CheckRecipeResultRegistry.GENERATING : CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
     private CheckRecipeResult failureResult() {
@@ -265,7 +266,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected final boolean processIdleCycle(BooleanSupplier processor) {
-        cycleEUt = inputRate = outputRate = fullLoadEUt = 0;
+        operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
         cycleAdvancesStartup = false;
         outputCommits.clear();
         beforeProcessingCycle();
@@ -293,7 +294,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
                 outputCommits.forEach(Runnable::run);
             } else {
                 mMaxProgresstime = mProgresstime = 0;
-                cycleEUt = 0;
+                operatingEUt = 0;
             }
             updateSlots();
             for (var hatch : mInputHatches) if (hatch.isValid()) hatch.markDirty();
@@ -338,7 +339,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public boolean onRunningTick(ItemStack stack) {
         running = true;
-        if (cycleEUt > 0) generate(cycleEUt * startup.next(startupTicks()));
+        if (operatingEUt > 0) generate(operatingEUt * startup.next(startupTicks()));
         status = powerLimited ? "power_discarded" : "running";
         if (startupTicks() > 0) {
             if (cycleAdvancesStartup) startup.advance(startupTicks());
@@ -375,10 +376,15 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected void consume(Fluid fluid, int amount) {
+        consume(fluid, (long) amount);
+    }
+
+    protected void consume(Fluid fluid, long amount) {
+        if (amount < 0) throw new IllegalArgumentException("Negative fluid consumption");
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (FluidStack stack : cycleFluids) {
             if (stack == null || stack.getFluid() != fluid || !seen.add(stack)) continue;
-            int used = Math.min(amount, Math.max(0, stack.amount));
+            int used = (int) Math.min(amount, Math.max(0, stack.amount));
             stack.amount -= used;
             amount -= used;
             if (amount == 0) return;
@@ -436,9 +442,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return amps == 0 ? 0 : volts > Long.MAX_VALUE / amps ? Long.MAX_VALUE : volts * amps;
     }
 
-    protected void generate(double amount) {
-        if (!Double.isFinite(amount) || amount <= 0) return;
-        double total = amount + energyFraction;
+    protected void generate(double euPerTick) {
+        if (!Double.isFinite(euPerTick) || euPerTick <= 0) return;
+        // Called once per running tick: EU/t becomes this tick's EU, plus the sub-EU remainder.
+        double total = euPerTick + energyFraction;
         producedEUt = (long) Math.min(total, Long.MAX_VALUE);
         energyFraction = total < Long.MAX_VALUE ? StartupProgress.fraction(total - producedEUt) : 0;
         long[] before = storedDynamoEnergy();
@@ -486,7 +493,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public long getEUtForDamageCalc() {
         // The parent applies wear before onRunningTick, so the reset display counter is not usable here.
-        return (long) Math.min(Long.MAX_VALUE, cycleEUt * startup.next(startupTicks()));
+        return (long) Math.min(Long.MAX_VALUE, operatingEUt * startup.next(startupTicks()));
     }
 
     @Override
@@ -496,11 +503,12 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         nbt.setDouble("tnEnergyFraction", energyFraction);
         nbt.setBoolean("tnHadStructure", mMachine || hadStructure);
         nbt.setInteger("tnCycleVersion", 1);
-        nbt.setDouble("tnCycleEUt", cycleEUt);
+        // Legacy keys already store tick-based rates; retain their names and value units.
+        nbt.setDouble("tnCycleEUt", operatingEUt);
         nbt.setBoolean("tnCycleAdvancesStartup", cycleAdvancesStartup);
         nbt.setDouble("tnFullLoadEUt", fullLoadEUt);
-        nbt.setDouble("tnInputRate", inputRate);
-        nbt.setDouble("tnOutputRate", outputRate);
+        nbt.setDouble("tnInputRate", inputLitresPerTick);
+        nbt.setDouble("tnOutputRate", outputLitresPerTick);
     }
 
     @Override
@@ -516,14 +524,14 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         if (nbt.getInteger("tnCycleVersion") == 1 && mMaxProgresstime == CYCLE_TICKS
             && mProgresstime >= 0
             && mProgresstime < CYCLE_TICKS) {
-            cycleEUt = finiteRate(nbt.getDouble("tnCycleEUt"));
+            operatingEUt = finiteRate(nbt.getDouble("tnCycleEUt"));
             cycleAdvancesStartup = !nbt.hasKey("tnCycleAdvancesStartup") || nbt.getBoolean("tnCycleAdvancesStartup");
             fullLoadEUt = finiteRate(nbt.getDouble("tnFullLoadEUt"));
-            inputRate = finiteRate(nbt.getDouble("tnInputRate"));
-            outputRate = finiteRate(nbt.getDouble("tnOutputRate"));
+            inputLitresPerTick = finiteRate(nbt.getDouble("tnInputRate"));
+            outputLitresPerTick = finiteRate(nbt.getDouble("tnOutputRate"));
         } else {
             mMaxProgresstime = mProgresstime = 0;
-            cycleEUt = 0;
+            operatingEUt = 0;
         }
         fixAllIssues();
     }

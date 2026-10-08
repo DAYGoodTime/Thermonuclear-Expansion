@@ -33,7 +33,8 @@ public enum HeatExchangeRecipe {
     }
 
     public double coolantPerHeat() {
-        return this == IC2_COOLANT ? Config.ic2CoolantPerHeat : Config.superCoolantPerHeat;
+        return this == IC2_COOLANT ? Config.nuclearPowerPlant.ic2CoolantPerHeat
+            : Config.nuclearPowerPlant.superCoolantPerHeat;
     }
 
     public double steamEfficiency() {

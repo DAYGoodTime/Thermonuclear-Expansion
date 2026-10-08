@@ -7,8 +7,8 @@ import com.lin.thermonuclear.machine.NuclearOperatingMode;
 public interface NuclearEfficiencyPolicy {
 
     NuclearEfficiencyPolicy CONFIGURED = mode -> switch (mode) {
-        case DIRECT_GENERATION -> Config.nuclearDirectEfficiency;
-        case HEAT_SUPPLY -> Config.nuclearHeatEfficiency;
+        case DIRECT_GENERATION -> Config.nuclearPowerPlant.nuclearDirectEfficiency;
+        case HEAT_SUPPLY -> Config.nuclearPowerPlant.nuclearHeatEfficiency;
     };
 
     double efficiency(NuclearOperatingMode mode);

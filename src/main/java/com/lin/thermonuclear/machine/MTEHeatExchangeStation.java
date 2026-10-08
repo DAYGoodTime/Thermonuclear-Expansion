@@ -338,9 +338,9 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             waterCredit = batch.waterCredit();
             steamRemainders[steamIndex] = batch.steamRemainder();
         });
-        inputRate = hot / (double) CYCLE_TICKS;
+        inputLitresPerTick = hot / (double) CYCLE_TICKS;
         waterRate = water / (double) CYCLE_TICKS;
-        outputRate = steam / (double) CYCLE_TICKS;
+        outputLitresPerTick = steam / (double) CYCLE_TICKS;
         return true;
     }
 
@@ -457,10 +457,10 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         if (selected != null) {
             info.put("steam_multiplier", decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L");
         }
-        info.put("hot_input", decimal(inputRate));
-        info.put("water_input", decimal(inputRate > 0 ? waterRate : 0));
-        info.put("steam_output", decimal(outputRate));
-        info.put("coolant_return", decimal(inputRate));
+        info.put("hot_input", decimal(inputLitresPerTick));
+        info.put("water_input", decimal(inputLitresPerTick > 0 ? waterRate : 0));
+        info.put("steam_output", decimal(outputLitresPerTick));
+        info.put("coolant_return", decimal(inputLitresPerTick));
         if (mMaxProgresstime > 0) info.put("cycle", mProgresstime + " / " + CYCLE_TICKS);
         return info;
     }
