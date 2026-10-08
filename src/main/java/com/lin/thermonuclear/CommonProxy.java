@@ -3,6 +3,7 @@ package com.lin.thermonuclear;
 import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
+import com.lin.thermonuclear.loader.RecipeLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipes;
 import com.lin.thermonuclear.recipe.SteamTurbineRecipes;
@@ -42,6 +43,7 @@ public class CommonProxy {
         WorkingFluids.resolve();
         HeatExchangeRecipes.register();
         SteamTurbineRecipes.register();
+        RecipeLoader.register();
     }
 
     // register server commands in this event handler (Remove if not needed)
