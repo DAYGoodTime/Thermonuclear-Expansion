@@ -21,6 +21,7 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.gui.HeatExchangeStationGui;
 import com.lin.thermonuclear.recipe.HeatExchangeBatch;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
+import com.lin.thermonuclear.recipe.HeatExchangeRecipes;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
@@ -34,6 +35,7 @@ import gregtech.api.interfaces.IOutputHatch;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
+import gregtech.api.recipe.RecipeMap;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
@@ -416,6 +418,11 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     @Override
     protected boolean usesItemBusses() {
         return false;
+    }
+
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return HeatExchangeRecipes.DISPLAY;
     }
 
     @Override

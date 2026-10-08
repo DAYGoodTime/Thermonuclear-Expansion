@@ -40,7 +40,6 @@ import gregtech.api.enums.ItemList;
 import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.items.MetaGeneratedTool;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.structure.error.StructureError;
@@ -48,10 +47,8 @@ import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.api.util.TurbineStatCalculator;
 import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
-import gregtech.common.items.MetaGeneratedTool01;
 
 public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTELargeSteamTurbine>
     implements INEIPreviewModifier {
@@ -256,24 +253,9 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     private int condensationRemainderLitres;
-    private ItemStack rotorReference;
-    private NBTTagCompound rotorIdentity;
     private long effectiveSteamLimitLitresPerCycle;
     private long steamLimitLitresPerCycle = Long.MAX_VALUE;
     private SteamTurbineFuel currentFuel;
-    private long rotorDurability;
-    private long rotorMaxDurability;
-
-    @Override
-    public void onContentsChanged(int slot) {
-        super.onContentsChanged(slot);
-        if (slot == 1 && startup != null && getBaseMetaTileEntity() != null && getBaseMetaTileEntity().isServerSide()) {
-            // GUI and item-handler extraction/insertion also pass through this hook; tool wear does not.
-            startup.clear();
-            rotorReference = null;
-            rotorIdentity = null;
-        }
-    }
 
     public MTELargeSteamTurbine(int id, String name, String regional) {
         super(id, name, regional);
@@ -289,44 +271,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    public boolean isCorrectMachinePart(ItemStack stack) {
-        return stack != null && stack.stackSize == 1
-            && stack.getItem() instanceof MetaGeneratedTool01
-            && stack.getItemDamage() >= 170
-            && stack.getItemDamage() <= 179
-            && MetaGeneratedTool.getToolMaxDamage(stack) > MetaGeneratedTool.getToolDamage(stack);
-    }
-
-    @Override
-    protected void beforeProcessingCycle() {
-        ItemStack rotor = getControllerSlot();
-        if (!isCorrectMachinePart(rotor)) {
-            startup.clear();
-            rotorReference = null;
-            rotorIdentity = null;
-            rotorDurability = rotorMaxDurability = 0;
-            effectiveSteamLimitLitresPerCycle = 0;
-            return;
-        }
-        ItemStack identityStack = rotor.copy();
-        identityStack.getTagCompound()
-            .getCompoundTag("GT.ToolStats")
-            .removeTag("Damage");
-        NBTTagCompound identity = identityStack.writeToNBT(new NBTTagCompound());
-        // An object replacement catches even an identical new rotor. Across load, the saved fingerprint takes over.
-        if ((rotorReference != null && rotorReference != rotor)
-            || (rotorIdentity != null && !rotorIdentity.equals(identity))) startup.clear();
-        rotorIdentity = identity;
-        rotorReference = rotor;
-        TurbineStatCalculator stats = new TurbineStatCalculator((MetaGeneratedTool) rotor.getItem(), rotor);
-        rotorDurability = stats.getCurrentDurability();
-        rotorMaxDurability = stats.getMaxDurability();
-    }
-
-    @Override
     protected boolean processCycle() {
-        ItemStack rotor = getControllerSlot();
-        if (!isCorrectMachinePart(rotor)) return fail("rotor");
         currentFuel = null;
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
@@ -337,13 +282,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             }
         }
         if (currentFuel == null) return fail("steam");
-        TurbineStatCalculator stats = new TurbineStatCalculator((MetaGeneratedTool) rotor.getItem(), rotor);
-        double efficiency = Math
-            .min(1, stats.getSteamEfficiency() * Config.largeSteamTurbine.rotorEfficiencyMultiplier);
-        if (!Double.isFinite(efficiency) || efficiency <= 0) {
-            return fail("invalid_value");
-        }
-        double effectiveEUPerLitre = currentFuel.euPerLitre() * efficiency;
+        double effectiveEUPerLitre = currentFuel.euPerLitre();
         effectiveSteamLimitLitresPerCycle = SteamTurbineMath
             .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
         double fullLoadSteamLitresPerTick = ProcessingCycleMath
@@ -371,26 +310,6 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    public boolean onRunningTick(ItemStack stack) {
-        if (!isCorrectMachinePart(getControllerSlot())) {
-            startup.clear();
-            return false;
-        }
-        return super.onRunningTick(stack);
-    }
-
-    @Override
-    public void onPostTick(IGregTechTileEntity tile, long tick) {
-        super.onPostTick(tile, tick);
-        if (tile.isServerSide() && !isCorrectMachinePart(getControllerSlot())) startup.clear();
-    }
-
-    @Override
-    public int getDamageToComponent(ItemStack stack) {
-        return 1;
-    }
-
-    @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
@@ -398,8 +317,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         nbt.setLong("tnTurbineCycleLimit", effectiveSteamLimitLitresPerCycle);
         if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.name());
         else nbt.removeTag("tnTurbineFuel");
-        if (rotorIdentity != null) nbt.setTag("tnRotorIdentity", rotorIdentity.copy());
-        else nbt.removeTag("tnRotorIdentity");
+        nbt.removeTag("tnRotorIdentity");
     }
 
     @Override
@@ -417,8 +335,6 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             if (fuel.name()
                 .equals(nbt.getString("tnTurbineFuel"))) currentFuel = fuel;
         }
-        rotorIdentity = nbt.hasKey("tnRotorIdentity") ? nbt.getCompoundTag("tnRotorIdentity") : null;
-        rotorReference = null;
     }
 
     @Override
@@ -480,7 +396,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public String[] displayKeys() {
-        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "rotor", "turbine_steam_type",
+        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "turbine_steam_type",
             "steam_cycle_limit", "steam_input", "water_output" };
     }
 
@@ -490,7 +406,6 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         info.put("shaft_tier", Integer.toString(getShaftTier()));
         addStartupInfo(info);
         addGenerationInfo(info);
-        info.put("rotor", rotorDurability + " / " + rotorMaxDurability);
         info.put("turbine_steam_type", currentFuel == null ? "thermonuclear.recipe.none" : currentFuel.nameKey());
         info.put("steam_cycle_limit", Long.toString(steamLimitLitresPerCycle));
         info.put("steam_input", decimal(inputLitresPerTick));

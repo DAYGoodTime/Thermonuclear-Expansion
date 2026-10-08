@@ -145,11 +145,6 @@ public class Config {
 
     public static class LargeSteamTurbine {
 
-        @Comment("GT 转子蒸汽效率倍率，无量纲；倍率计算后的实际效率封顶为 1。")
-        @DefaultDouble(1)
-        @RangeDouble(min = 1, max = 100)
-        public double rotorEfficiencyMultiplier;
-
         @Comment("蒸汽涡轮启动进度从 0 升至 1 所需的 tick 数；20 tick = 1 秒。")
         @DefaultInt(600)
         @RangeInt(min = 1, max = 720000)

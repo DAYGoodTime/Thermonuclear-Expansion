@@ -249,7 +249,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     private CheckRecipeResult failureResult() {
         return switch (status) {
             case "fuel", "steam" -> CheckRecipeResultRegistry.NO_FUEL_FOUND;
-            case "rotor" -> CheckRecipeResultRegistry.NO_TURBINE_FOUND;
             case "spent_full" -> CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
             case "output_full" -> CheckRecipeResultRegistry.FLUID_OUTPUT_FULL;
             default -> SimpleCheckRecipeResult.ofFailure("thermonuclear.status." + status);

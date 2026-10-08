@@ -31,6 +31,7 @@ public final class ModFluids {
 
         private UltraSupercriticalSteam() {
             super(ULTRA_SUPERCRITICAL_STEAM_NAME);
+            setUnlocalizedName(ULTRA_SUPERCRITICAL_STEAM_NAME);
             setGaseous(true);
         }
 
