@@ -29,7 +29,8 @@ public final class HeatExchangeRecipes {
             info -> Arrays.asList(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.nei.heat_exchange_water",
-                    HeatExchangeBatch.STEAM_PER_WATER))).build();
+                    HeatExchangeBatch.STEAM_PER_WATER)))
+        .build();
     private static boolean registered;
 
     private HeatExchangeRecipes() {}
