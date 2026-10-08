@@ -4,6 +4,7 @@ import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
+import com.lin.thermonuclear.recipe.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.ModFluids;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
@@ -18,11 +19,11 @@ public class CommonProxy {
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
-        Config.synchronizeConfiguration();
+        Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
         ModFluids.register();
         BlockLoader.register();
 
-        Thermonuclear.LOG.info(Config.General.greeting);
+        Thermonuclear.LOG.info(Config.general.greeting);
         Thermonuclear.LOG.info("Thermonuclear prototype at version " + Tags.VERSION);
     }
 
@@ -38,6 +39,7 @@ public class CommonProxy {
     public void loadComplete(FMLLoadCompleteEvent event) {
         // BW/GT material loaders have finished before resolving their registered fluid instances.
         WorkingFluids.resolve();
+        SteamTurbineRecipes.register();
     }
 
     // register server commands in this event handler (Remove if not needed)
