@@ -23,6 +23,7 @@ public final class RecipeLoader {
     private RecipeLoader() {}
 
     public static void register() {
+        // Two fluid inputs require the industrial mixer map, not the single-block mixer map.
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Redstone, 64),
@@ -31,7 +32,7 @@ public final class RecipeLoader {
             .fluidOutputs(new FluidStack(ModFluids.nakCompositeCoolant, 1000))
             .duration(20 * SECONDS)
             .eut(TierEU.RECIPE_LuV)
-            .addTo(RecipeMaps.mixerRecipes);
+            .addTo(RecipeMaps.mixerNonCellRecipes);
 
         GTValues.RA.stdBuilder()
             .itemInputs(

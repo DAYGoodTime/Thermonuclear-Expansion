@@ -48,7 +48,7 @@ public final class ModFluids {
         @Override
         @SideOnly(Side.CLIENT)
         public IIcon getStillIcon() {
-            Fluid reference = hot ? WorkingFluids.hotSuperCoolant : WorkingFluids.superCoolant;
+            Fluid reference = hot ? WorkingFluids.ic2HotCoolant : WorkingFluids.superCoolant;
             IIcon icon = reference == null ? null : reference.getStillIcon();
             return icon == null ? FluidRegistry.WATER.getStillIcon() : icon;
         }
@@ -56,7 +56,7 @@ public final class ModFluids {
         @Override
         @SideOnly(Side.CLIENT)
         public IIcon getFlowingIcon() {
-            Fluid reference = hot ? WorkingFluids.hotSuperCoolant : WorkingFluids.superCoolant;
+            Fluid reference = hot ? WorkingFluids.ic2HotCoolant : WorkingFluids.superCoolant;
             IIcon icon = reference == null ? null : reference.getFlowingIcon();
             return icon == null ? getStillIcon() : icon;
         }
