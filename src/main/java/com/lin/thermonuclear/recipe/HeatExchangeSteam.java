@@ -30,7 +30,7 @@ public enum HeatExchangeSteam {
             case ORDINARY -> 40;
             case SUPERHEATED -> 20;
             case SUPERCRITICAL -> 10;
-            case ULTRA_SUPERCRITICAL -> 0;
+            case ULTRA_SUPERCRITICAL -> 100;
         };
     }
 

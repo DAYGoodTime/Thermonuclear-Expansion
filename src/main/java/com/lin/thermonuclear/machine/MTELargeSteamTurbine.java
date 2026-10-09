@@ -47,6 +47,7 @@ import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.shutdown.SimpleShutDownReason;
 import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
@@ -275,13 +276,18 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         currentFuel = null;
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
+        boolean unsupportedSteam = false;
         for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
             if (fuel.fluid() != null && available(fuel.fluid()) > 0) {
+                if (!fuel.supportsShaftTier(shaftTier)) {
+                    unsupportedSteam = true;
+                    continue;
+                }
                 currentFuel = fuel;
                 break;
             }
         }
-        if (currentFuel == null) return fail("steam");
+        if (currentFuel == null) return fail(unsupportedSteam ? "shaft_steam_unsupported" : "steam");
         double effectiveEUPerLitre = currentFuel.euPerLitre();
         effectiveSteamLimitLitresPerCycle = SteamTurbineMath
             .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
@@ -307,6 +313,16 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         outputLitresPerTick = ProcessingCycleMath.litresPerTick(waterLitresPerCycle, CYCLE_TICKS);
         operatingEUt = SteamTurbineMath.generationEUt(inputLitresPerTick, effectiveEUPerLitre);
         return true;
+    }
+
+    @Override
+    public boolean onRunningTick(ItemStack stack) {
+        // A structure downgrade must not resume prepaid ultra-supercritical generation on low-pressure shafts.
+        if (currentFuel != null && !currentFuel.supportsShaftTier(shaftTier)) {
+            stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.shaft_steam_unsupported"));
+            return fail("shaft_steam_unsupported");
+        }
+        return super.onRunningTick(stack);
     }
 
     @Override

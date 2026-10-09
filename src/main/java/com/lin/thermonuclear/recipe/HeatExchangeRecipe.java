@@ -8,7 +8,8 @@ import com.lin.thermonuclear.registry.WorkingFluids;
 public enum HeatExchangeRecipe {
 
     IC2_COOLANT("ic2"),
-    SUPER_COOLANT("super");
+    SUPER_COOLANT("super"),
+    NAK_COMPOSITE_COOLANT("nak_composite");
 
     private final String id;
 
@@ -25,16 +26,27 @@ public enum HeatExchangeRecipe {
     }
 
     public Fluid hot() {
-        return this == IC2_COOLANT ? WorkingFluids.ic2HotCoolant : WorkingFluids.hotSuperCoolant;
+        return switch (this) {
+            case IC2_COOLANT -> WorkingFluids.ic2HotCoolant;
+            case SUPER_COOLANT -> WorkingFluids.hotSuperCoolant;
+            case NAK_COMPOSITE_COOLANT -> WorkingFluids.hotNakCompositeCoolant;
+        };
     }
 
     public Fluid cold() {
-        return this == IC2_COOLANT ? WorkingFluids.ic2Coolant : WorkingFluids.superCoolant;
+        return switch (this) {
+            case IC2_COOLANT -> WorkingFluids.ic2Coolant;
+            case SUPER_COOLANT -> WorkingFluids.superCoolant;
+            case NAK_COMPOSITE_COOLANT -> WorkingFluids.nakCompositeCoolant;
+        };
     }
 
     public double coolantPerHeat() {
-        return this == IC2_COOLANT ? Config.nuclearPowerPlant.ic2CoolantPerHeat
-            : Config.nuclearPowerPlant.superCoolantPerHeat;
+        return switch (this) {
+            case IC2_COOLANT -> Config.nuclearPowerPlant.ic2CoolantPerHeat;
+            case SUPER_COOLANT -> Config.nuclearPowerPlant.superCoolantPerHeat;
+            case NAK_COMPOSITE_COOLANT -> Config.nuclearPowerPlant.nakCompositeCoolantPerHeat;
+        };
     }
 
     public double steamEfficiency() {
@@ -45,6 +57,7 @@ public enum HeatExchangeRecipe {
         return switch (this) {
             case IC2_COOLANT -> steam == HeatExchangeSteam.ORDINARY || steam == HeatExchangeSteam.SUPERHEATED;
             case SUPER_COOLANT -> steam == HeatExchangeSteam.SUPERCRITICAL;
+            case NAK_COMPOSITE_COOLANT -> steam == HeatExchangeSteam.ULTRA_SUPERCRITICAL;
         };
     }
 

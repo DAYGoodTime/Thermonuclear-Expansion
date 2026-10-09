@@ -27,6 +27,10 @@ public enum SteamTurbineFuel {
         return fluid.get();
     }
 
+    public boolean supportsShaftTier(int shaftTier) {
+        return shaftTier >= (this == ULTRA_SUPERCRITICAL ? 2 : 1);
+    }
+
     public String nameKey() {
         return "thermonuclear.steam." + key;
     }

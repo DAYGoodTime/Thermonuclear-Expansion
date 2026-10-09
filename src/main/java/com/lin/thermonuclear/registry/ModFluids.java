@@ -13,17 +13,52 @@ public final class ModFluids {
 
     public static final String ULTRA_SUPERCRITICAL_STEAM_NAME = Thermonuclear.MODID + ".ultrasupercriticalsteam";
     public static final Fluid ultraSupercriticalSteam = new UltraSupercriticalSteam();
+    public static final String NAK_COMPOSITE_COOLANT_NAME = Thermonuclear.MODID + ".nakcompositecoolant";
+    public static final String HOT_NAK_COMPOSITE_COOLANT_NAME = Thermonuclear.MODID + ".hotnakcompositecoolant";
+    public static final Fluid nakCompositeCoolant = new CompositeCoolant(NAK_COMPOSITE_COOLANT_NAME, false);
+    public static final Fluid hotNakCompositeCoolant = new CompositeCoolant(HOT_NAK_COMPOSITE_COOLANT_NAME, true);
 
     private ModFluids() {}
 
     public static void register() {
-        if (FluidRegistry.isFluidRegistered(ULTRA_SUPERCRITICAL_STEAM_NAME)) {
-            throw new IllegalStateException(
-                "Thermonuclear approved fluid name is occupied: " + ULTRA_SUPERCRITICAL_STEAM_NAME);
+        Fluid[] fluids = { ultraSupercriticalSteam, nakCompositeCoolant, hotNakCompositeCoolant };
+        // Check the full set before registering any fluid; never silently reuse an occupied approved name.
+        for (Fluid fluid : fluids) {
+            if (FluidRegistry.isFluidRegistered(fluid.getName())) {
+                throw new IllegalStateException("Thermonuclear approved fluid name is occupied: " + fluid.getName());
+            }
         }
-        if (!FluidRegistry.registerFluid(ultraSupercriticalSteam)) {
-            throw new IllegalStateException(
-                "Unable to register Thermonuclear fluid: " + ULTRA_SUPERCRITICAL_STEAM_NAME);
+        for (Fluid fluid : fluids) {
+            if (!FluidRegistry.registerFluid(fluid)) {
+                throw new IllegalStateException("Unable to register Thermonuclear fluid: " + fluid.getName());
+            }
+        }
+    }
+
+    private static final class CompositeCoolant extends Fluid {
+
+        private final boolean hot;
+
+        private CompositeCoolant(String name, boolean hot) {
+            super(name);
+            setUnlocalizedName(name);
+            this.hot = hot;
+        }
+
+        @Override
+        @SideOnly(Side.CLIENT)
+        public IIcon getStillIcon() {
+            Fluid reference = hot ? WorkingFluids.hotSuperCoolant : WorkingFluids.superCoolant;
+            IIcon icon = reference == null ? null : reference.getStillIcon();
+            return icon == null ? FluidRegistry.WATER.getStillIcon() : icon;
+        }
+
+        @Override
+        @SideOnly(Side.CLIENT)
+        public IIcon getFlowingIcon() {
+            Fluid reference = hot ? WorkingFluids.hotSuperCoolant : WorkingFluids.superCoolant;
+            IIcon icon = reference == null ? null : reference.getFlowingIcon();
+            return icon == null ? getStillIcon() : icon;
         }
     }
 

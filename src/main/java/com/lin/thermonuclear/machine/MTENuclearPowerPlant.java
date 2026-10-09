@@ -379,9 +379,17 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private enum CoolingFluid {
-        IC2,
-        SUPER,
-        DISTILLED
+
+        IC2(HeatExchangeRecipe.IC2_COOLANT),
+        SUPER(HeatExchangeRecipe.SUPER_COOLANT),
+        NAK_COMPOSITE(HeatExchangeRecipe.NAK_COMPOSITE_COOLANT),
+        DISTILLED(null);
+
+        private final HeatExchangeRecipe recipe;
+
+        CoolingFluid(HeatExchangeRecipe recipe) {
+            this.recipe = recipe;
+        }
     }
 
     private final NuclearEfficiencyPolicy efficiencyPolicy = NuclearEfficiencyPolicy.CONFIGURED;
@@ -553,8 +561,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         selectCoolingFluid();
         if (selectedCoolingFluid == null || !availableCoolingFluid(selectedCoolingFluid)) return true;
         boolean distilled = selectedCoolingFluid == CoolingFluid.DISTILLED;
-        HeatExchangeRecipe coolant = selectedCoolingFluid == CoolingFluid.IC2 ? HeatExchangeRecipe.IC2_COOLANT
-            : HeatExchangeRecipe.SUPER_COOLANT;
+        HeatExchangeRecipe coolant = selectedCoolingFluid.recipe;
         Fluid input = distilled ? WorkingFluids.distilledWater : coolant.cold();
         Fluid output = distilled ? HeatExchangeSteam.ORDINARY.fluid() : coolant.hot();
         if (output == null) return fail("fluids_missing");
@@ -640,10 +647,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     private boolean selectCoolingFluid() {
         if (selectedCoolingFluid != null) return availableCoolingFluid(selectedCoolingFluid);
-        for (HeatExchangeRecipe coolant : HeatExchangeRecipe.values()) {
-            if (coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) {
-                selectedCoolingFluid = coolant == HeatExchangeRecipe.IC2_COOLANT ? CoolingFluid.IC2
-                    : CoolingFluid.SUPER;
+        for (CoolingFluid candidate : CoolingFluid.values()) {
+            HeatExchangeRecipe coolant = candidate.recipe;
+            if (coolant != null && coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) {
+                selectedCoolingFluid = candidate;
                 return true;
             }
         }
@@ -655,11 +662,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private boolean availableCoolingFluid(CoolingFluid fluid) {
-        return switch (fluid) {
-            case IC2 -> WorkingFluids.ic2Coolant != null && available(WorkingFluids.ic2Coolant) > 0;
-            case SUPER -> WorkingFluids.superCoolant != null && available(WorkingFluids.superCoolant) > 0;
-            case DISTILLED -> WorkingFluids.distilledWater != null && available(WorkingFluids.distilledWater) > 0;
-        };
+        Fluid input = fluid == CoolingFluid.DISTILLED ? WorkingFluids.distilledWater : fluid.recipe.cold();
+        return input != null && available(input) > 0;
     }
 
     @Override
@@ -713,6 +717,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         String selected = nbt.getString("tnSelectedCoolant");
         if ("ic2".equals(selected)) selectedCoolingFluid = CoolingFluid.IC2;
         if ("super".equals(selected)) selectedCoolingFluid = CoolingFluid.SUPER;
+        if ("nak_composite".equals(selected)) selectedCoolingFluid = CoolingFluid.NAK_COMPOSITE;
         if ("distilled".equals(selected)) selectedCoolingFluid = CoolingFluid.DISTILLED;
         distilledSteamRemainder = StartupProgress.fraction(nbt.getDouble("tnDistilledSteamRemainder"));
         double savedHeat = nbt.getDouble("tnReactorHeat");
@@ -833,14 +838,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             info.put(
                 "coolant",
                 selectedCoolingFluid == null ? "thermonuclear.recipe.none"
-                    : selectedCoolingFluid == CoolingFluid.IC2 ? HeatExchangeRecipe.IC2_COOLANT.translationKey()
-                        : selectedCoolingFluid == CoolingFluid.SUPER ? HeatExchangeRecipe.SUPER_COOLANT.translationKey()
-                            : "thermonuclear.recipe.distilled");
+                    : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
+                        : selectedCoolingFluid.recipe.translationKey());
             boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
             if (selectedCoolingFluid != null) {
                 double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
-                    : (selectedCoolingFluid == CoolingFluid.IC2 ? Config.nuclearPowerPlant.ic2CoolantPerHeat
-                        : Config.nuclearPowerPlant.superCoolantPerHeat);
+                    : selectedCoolingFluid.recipe.coolantPerHeat();
                 info.put(water ? "water_limit" : "heat_limit", decimal(fullLoadHeatRate * litresPerHeat));
                 info.put(water ? "water_input" : "coolant_input", decimal(inputLitresPerTick));
                 info.put(water ? "steam_output" : "hot_output", decimal(outputLitresPerTick));

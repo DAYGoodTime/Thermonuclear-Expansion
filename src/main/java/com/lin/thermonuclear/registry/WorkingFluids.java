@@ -21,6 +21,8 @@ public final class WorkingFluids {
     public static Fluid ic2HotCoolant;
     public static Fluid superCoolant;
     public static Fluid hotSuperCoolant;
+    public static Fluid nakCompositeCoolant;
+    public static Fluid hotNakCompositeCoolant;
 
     private WorkingFluids() {}
 
@@ -36,6 +38,12 @@ public final class WorkingFluids {
         ic2HotCoolant = required("IC2 hot coolant", GTModHandler.getHotCoolant(1));
         superCoolant = required("GT super coolant", Materials.SuperCoolant.getFluid(1));
         hotSuperCoolant = required("BW hot super coolant", WerkstoffMaterialPool.HotSuperCoolant.getFluidOrGas(1));
+        nakCompositeCoolant = required(
+            "Thermonuclear NaK composite coolant",
+            FluidRegistry.getFluidStack(ModFluids.NAK_COMPOSITE_COOLANT_NAME, 1));
+        hotNakCompositeCoolant = required(
+            "Thermonuclear hot NaK composite coolant",
+            FluidRegistry.getFluidStack(ModFluids.HOT_NAK_COMPOSITE_COOLANT_NAME, 1));
     }
 
     private static Fluid required(String name, FluidStack stack) {

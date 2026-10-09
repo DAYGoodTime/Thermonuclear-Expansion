@@ -103,6 +103,12 @@ public class Config {
         @RangeDouble(min = 0.001, max = 1000)
         public double superCoolantPerHeat;
 
+        @Name("nakCompositeCoolantLitresPerFuelHeatUnit")
+        @Comment("核电站每单位缓存热量加热的钾钠合金复合冷却液，单位：L/热量；原型默认每升带走 8 点热量。")
+        @DefaultDouble(0.125)
+        @RangeDouble(min = 0.001, max = 1000)
+        public double nakCompositeCoolantPerHeat;
+
         @Comment("燃料代表堆栈数量大于 4 时追加的反射脉冲数，不是结构中反射板的数量。")
         @DefaultInt(4)
         @RangeInt(min = 0, max = 6)
