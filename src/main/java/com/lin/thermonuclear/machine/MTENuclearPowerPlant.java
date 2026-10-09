@@ -76,24 +76,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .addShape(PIECE, SHAPE)
         .addElement(
             'C',
-            StructureUtility.withChannel(
-                "fluid_pipe_casing",
-                StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered((block, meta) -> {
-                    if (block == GregTechAPI.sBlockCasings2 && meta >= 12 && meta <= 15) return meta - 11;
-                    if (block == GregTechAPI.sBlockCasings8 && meta == 1) return 5;
-                    if (block == GregTechAPI.sBlockCasings9 && meta == 0) return 6;
-                    return null;
-                },
-                    Arrays.asList(
-                        Pair.of(GregTechAPI.sBlockCasings2, 12),
-                        Pair.of(GregTechAPI.sBlockCasings2, 13),
-                        Pair.of(GregTechAPI.sBlockCasings2, 14),
-                        Pair.of(GregTechAPI.sBlockCasings2, 15),
-                        Pair.of(GregTechAPI.sBlockCasings8, 1),
-                        Pair.of(GregTechAPI.sBlockCasings9, 0)),
-                    -1,
-                    (machine, tier) -> machine.pipeTier = tier,
-                    machine -> machine.pipeTier)))
+            StructureUtility.ofChain(
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 12),
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 13),
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 14),
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 15),
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings8, 1),
+                StructureUtility.ofBlock(GregTechAPI.sBlockCasings9, 0)))
         .addElement(
             'D',
             StructureUtility.withChannel(
@@ -148,7 +137,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 coolantPreviewPlacement()))
         .build();
 
-    private int pipeTier = -1;
     private int fuelRodTier = -1;
     private boolean constructing;
     private boolean previewConstruction;
@@ -256,22 +244,43 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return (hasConstructedCoolantInput() ? ItemList.Hatch_Output_ULV : ItemList.Hatch_Input_ULV).get(1);
     }
 
-    public int getPipeTier() {
-        return pipeTier;
+    public int getFuelRodLimit() {
+        return Math.min(getMaxParallel(), getTrueParallel());
     }
 
-    public int getFuelRodLimit() {
-        return pipeTier < 1 || pipeTier > 6 ? 0 : Config.nuclearPowerPlant.nuclearFuelRodsPerPipeTier * pipeTier;
+    @Override
+    public int getMaxParallelRecipes() {
+        // The GT input field requires a nonempty range even before the structure tier is known.
+        return Math.max(1, getMaxParallel());
     }
 
     public int getFuelRodTier() {
         return fuelRodTier;
     }
 
+    public int getMaxParallel() {
+        return switch (fuelRodTier) {
+            case 1 -> 8;
+            case 2 -> 32;
+            case 3 -> 128;
+            case 4 -> 512;
+            default -> 0;
+        };
+    }
+
+    public int getHeatCapacity() {
+        return switch (fuelRodTier) {
+            case 1 -> 50000;
+            case 2 -> 100000;
+            case 3 -> 1000000;
+            case 4 -> Integer.MAX_VALUE;
+            default -> 0;
+        };
+    }
+
     @Override
     public void clearHatches() {
         super.clearHatches();
-        pipeTier = -1;
         fuelRodTier = -1;
     }
 
@@ -298,10 +307,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
-        pipeTier = -1;
         fuelRodTier = -1;
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
-            pipeTier = -1;
             fuelRodTier = -1;
             return;
         }
@@ -314,7 +321,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         // Dynamos remain mode-dependent; maintenance hatches are optional and do not enable failures.
         if (!errors.isEmpty()) {
-            pipeTier = -1;
             fuelRodTier = -1;
         }
     }
@@ -464,7 +470,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             return flushDepleted() || coolingOnly(cooled, "spent_full");
         }
         // Keep paid-for batches intact after a downgrade; pause instead of discarding or over-processing them.
-        if (getFuelRodLimit() <= 0 || (workingFuel != null && workingFuel.stackSize > getFuelRodLimit())) {
+        if (getMaxParallel() <= 0 || (workingFuel != null && workingFuel.stackSize > getMaxParallel())) {
             return coolingOnly(cooled, "fuel_limit");
         }
         takeFuel();
@@ -508,7 +514,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     return coolingOnly(cooled, "invalid_value");
                 fullLoadHeatRate = heatPerFuelCycle * Config.nuclearPowerPlant.fuelCyclesPerSecond / CYCLE_TICKS;
                 double generatedHeat = heatPerFuelCycle * cycles;
-                if (generatedHeat > Config.nuclearPowerPlant.nuclearHeatCapacity - reactorHeat) {
+                if (generatedHeat > getHeatCapacity() - reactorHeat) {
                     stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.heat_overflow"));
                     markDirty();
                     return fail("heat_overflow");
@@ -710,9 +716,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if ("distilled".equals(selected)) selectedCoolingFluid = CoolingFluid.DISTILLED;
         distilledSteamRemainder = StartupProgress.fraction(nbt.getDouble("tnDistilledSteamRemainder"));
         double savedHeat = nbt.getDouble("tnReactorHeat");
-        reactorHeat = Double.isFinite(savedHeat)
-            ? Math.max(0, Math.min(Config.nuclearPowerPlant.nuclearHeatCapacity, savedHeat))
-            : 0;
+        // Structure tiers are not known during load or transaction rollback. Preserve heat after a downgrade.
+        reactorHeat = Double.isFinite(savedHeat) ? Math.max(0, Math.min(Integer.MAX_VALUE, savedHeat)) : 0;
     }
 
     @Override
@@ -796,17 +801,19 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "startup", "full_load", "produced", "pipe_tier", "fuel_limit", "fuel",
-            "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate", "coolant", "heat_limit",
-            "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent" };
+        return new String[] { "status", "mode", "fuel_rod_tier", "max_parallel", "fuel_limit", "startup", "full_load",
+            "produced", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate",
+            "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
+            "pending_spent" };
     }
 
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
         info.put("mode", mode.translationKey());
-        if (mMachine && pipeTier > 0) {
-            info.put("pipe_tier", Integer.toString(pipeTier));
+        if (mMachine && fuelRodTier > 0) {
+            info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));
+            info.put("max_parallel", Integer.toString(getMaxParallel()));
             info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
         }
         if (mode == NuclearOperatingMode.DIRECT_GENERATION) info.put("startup", decimal(100));
@@ -820,7 +827,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             info.put("fuel_rate", decimal(running ? consumedFuelCycles : 0));
         }
         info.put("heat", decimal(reactorHeat));
-        info.put("heat_capacity", Integer.toString(Config.nuclearPowerPlant.nuclearHeatCapacity));
+        info.put("heat_capacity", Integer.toString(getHeatCapacity()));
         info.put("heat_rate", decimal(running ? fullLoadHeatRate : 0));
         if (mode == NuclearOperatingMode.HEAT_SUPPLY || stoppedInputRate > 0) {
             info.put(

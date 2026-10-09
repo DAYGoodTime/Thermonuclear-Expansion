@@ -38,11 +38,14 @@ public enum HeatExchangeRecipe {
     }
 
     public double steamEfficiency() {
-        return this == SUPER_COOLANT ? 2 : 1;
+        return this == SUPER_COOLANT ? 5 : 1;
     }
 
     public boolean supportsSteam(HeatExchangeSteam steam) {
-        return steam != HeatExchangeSteam.ULTRA_SUPERCRITICAL;
+        return switch (this) {
+            case IC2_COOLANT -> steam == HeatExchangeSteam.ORDINARY || steam == HeatExchangeSteam.SUPERHEATED;
+            case SUPER_COOLANT -> steam == HeatExchangeSteam.SUPERCRITICAL;
+        };
     }
 
     public double steamPerHotCoolant(HeatExchangeSteam steam) {
