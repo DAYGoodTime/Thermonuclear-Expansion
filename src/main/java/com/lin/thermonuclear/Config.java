@@ -71,7 +71,7 @@ public class Config {
         @RangeDouble(min = 0.001, max = 1)
         public double nuclearHeatEfficiency;
 
-        @Comment("核电站热缓存容量，单位：热量。计划产热超过容量时关机。")
+        @Comment("旧热缓存容量兼容参数，当前不读取；热量上限由燃料棒方块等级决定。")
         @DefaultInt(50000)
         @RangeInt(min = 1, max = Integer.MAX_VALUE)
         public int nuclearHeatCapacity;
@@ -86,7 +86,7 @@ public class Config {
         @RangeDouble(min = 0.001, max = 100)
         public double fuelCyclesPerSecond;
 
-        @Comment("每级流体管道外壳允许装载的燃料棒数量，单位：根/等级。")
+        @Comment("旧管道等级批量兼容参数，当前不读取；装载上限由燃料棒方块等级与电源面板并行设置决定。")
         @DefaultInt(256)
         @RangeInt(min = 1, max = 256)
         public int nuclearFuelRodsPerPipeTier;
@@ -118,13 +118,13 @@ public class Config {
         @RangeDouble(min = 0.001, max = 100)
         public double nuclearHeatOutputMultiplier;
 
-        @Comment("核电站每单位缓存热量加热的蒸馏水，单位：L/热量。")
-        @DefaultDouble(1)
+        @Comment("核电站每单位缓存热量加热的蒸馏水，单位：L/热量；默认每升带走 5 点热量。")
+        @DefaultDouble(0.2)
         @RangeDouble(min = 0.001, max = 1000)
         public double nuclearDistilledWaterPerHeat;
 
         @Comment("核电站每升蒸馏水产生的普通蒸汽，单位：L/L；不用于热交换站。")
-        @DefaultDouble(10)
+        @DefaultDouble(160)
         @RangeDouble(min = 0.001, max = 1000000)
         public double nuclearSteamPerDistilledWater;
 
