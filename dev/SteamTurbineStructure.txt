@@ -3,20 +3,24 @@
 Structure:
 
 Blocks:
-A-> addElement('A', Casings.SolidSteelMachineCasing.asElement()
-B-> addElement('B', Casings.SteelGearBoxCasing.asElement()
-C-> addElement('C', Casings.SteelPipeCasing.asElement()
-D -> ofBlock(gt.blockmetal6, 13);
-E -> ofBlock(tile.thermonuclear.low_pressure_turbine_shaft, 0);
+A -> Casings.SolidSteelMachineCasing.asElement(); // 代码字符 C；可替换为发电仓
+B -> Casings.SteelGearBoxCasing.asElement(); // 代码字符 D
+C -> Casings.SteelPipeCasing.asElement(); // 代码字符 E
+D -> ofBlock(BlockLoader.turbineBlade, 0); // thermonuclear:turbine_blade；代码字符 F
+E -> 同级低压／高压涡轮轴，轴向沿机身长轴；代码字符 G
+
+输入／输出仓（恢复旧记录的 A/B 仓室，避免与新版外壳 A/B 重名）：
+I -> 流体输入仓（旧 B，代码字符 B）；首层管道环中心
+O -> 流体输出仓（旧 A，代码字符 A）；末层管道环中心
 
 Special Tiles:
-F -> ofSpecialTileAdder(gregtech.api.metatileentity.BaseMetaTileEntity);
+F -> 主机；代码字符 H，结构定义中使用 ~
 
 Offsets:
--1, 14, 0
+7, 13, 1 // StructureLib 偏移；主机位于 x=7、从顶部计 y=13、深度 z=1
 
 Dimensions (Width, Height, Length)
-15, 15, 30
+15, 15, 27
 
 Normal Scan:
 
@@ -29,7 +33,7 @@ new String[][]{
     "               ",
     "               ",
     "       C       ",
-    "      C C      ",
+    "      CIC      ",
     "       C       ",
     "               ",
     "               ",
@@ -445,7 +449,7 @@ new String[][]{
     "               ",
     "               ",
     "       C       ",
-    "      C C      ",
+    "      COC      ",
     "       C       ",
     "               ",
     "               ",

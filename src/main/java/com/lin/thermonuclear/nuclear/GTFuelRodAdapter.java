@@ -12,9 +12,7 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
     @Override
     public boolean accepts(ItemStack stack) {
         if (stack == null || !(stack.getItem() instanceof ItemRadioactiveCellIC rod)) return false;
-        return rod.sEnergy > 0
-            && rod.sHeat > 0
-            && rod.sDepleted != null;
+        return rod.sEnergy > 0 && rod.sHeat > 0 && rod.sDepleted != null;
     }
 
     @Override

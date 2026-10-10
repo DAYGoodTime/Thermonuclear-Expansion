@@ -32,7 +32,6 @@ import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.HatchElement;
@@ -73,7 +72,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                 .buildAndChain(CASING.asElement()))
         .addElement('D', Casings.SteelGearBoxCasing.asElement())
         .addElement('E', Casings.SteelPipeCasing.asElement())
-        .addElement('F', StructureUtility.ofBlock(GregTechAPI.sBlockMetal6, 13))
+        .addElement('F', StructureUtility.ofBlock(BlockLoader.turbineBlade, 0))
         .addElement(
             'G',
             StructureUtility.withChannel(
@@ -82,7 +81,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                     (MTELargeSteamTurbine machine) -> shaftElement(
                         BlockAxialMachineComponent.axisMetadata(
                             machine.getExtendedFacing()
-                                .getRelativeLeftInWorld())))))
+                                .getRelativeBackInWorld())))))
         .build();
 
     private int shaftTier;
@@ -91,7 +90,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     private EntityPlayer previewPlayer;
 
     private static IStructureElement<MTELargeSteamTurbine> shaftElement(int axisMetadata) {
-        // The 26 G positions run along local X after rotating the exported structure.
+        // The 23 G positions run along local depth, perpendicular to the inlet end cap.
         return StructureUtility.<MTELargeSteamTurbine, Integer>ofBlocksTiered((block, meta) -> {
             if (meta != axisMetadata) return null;
             if (block == BlockLoader.lowPressureTurbineShaft) return 1;
@@ -154,12 +153,12 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                     0.5f,
                     0)) return false;
                 if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
-                    // The inlet is at local -X, the outlet at +X after the structure rotation.
+                    // The two port hatches face outwards from the inlet and outlet ends.
                     tile.setFrontFacing(
                         input ? machine.getExtendedFacing()
-                            .getRelativeLeftInWorld()
+                            .getRelativeForwardInWorld()
                             : machine.getExtendedFacing()
-                                .getRelativeRightInWorld());
+                                .getRelativeBackInWorld());
                     if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CASING.textureId);
                 }
                 return true;
