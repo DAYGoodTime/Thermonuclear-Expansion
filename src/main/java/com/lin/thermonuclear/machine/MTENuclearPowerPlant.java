@@ -395,6 +395,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private final NuclearEfficiencyPolicy efficiencyPolicy = NuclearEfficiencyPolicy.CONFIGURED;
     private NuclearOperatingMode mode = NuclearOperatingMode.DIRECT_GENERATION;
     private ItemStack workingFuel;
+    private FuelRodAdapter workingFuelAdapter;
+    private int workingFuelRemainingCycles;
     private ItemStack pendingDepleted;
     private double fuelFraction;
     private double distilledSteamRemainder;
@@ -430,14 +432,17 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return true;
     }
 
-    private static FuelRodAdapter adapter(ItemStack stack) {
-        return FuelRodAdapters.find(stack);
+    private void setWorkingFuel(ItemStack stack) {
+        workingFuel = stack;
+        // Resolve only when the batch changes, including NBT restoration and transaction rollback.
+        workingFuelAdapter = stack == null ? null : FuelRodAdapters.find(stack);
+        workingFuelRemainingCycles = workingFuelAdapter == null ? 0 : workingFuelAdapter.remainingCycles(stack);
     }
 
     private void takeFuel() {
         if (workingFuel != null || pendingDepleted != null) return;
         fuelPlan = FuelBatch.prepare(cycleItems(), FuelRodAdapters.all(), getFuelRodLimit());
-        workingFuel = fuelPlan == null ? null : fuelPlan.fuel;
+        setWorkingFuel(fuelPlan == null ? null : fuelPlan.fuel);
     }
 
     private boolean flushDepleted() {
@@ -482,12 +487,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             return coolingOnly(cooled, "fuel_limit");
         }
         takeFuel();
-        FuelRodAdapter fuel = adapter(workingFuel);
+        FuelRodAdapter fuel = workingFuelAdapter;
         if (fuel == null) return coolingOnly(cooled, "fuel");
-        if (fuel.remainingCycles(workingFuel) == 0) {
+        if (workingFuelRemainingCycles == 0) {
             cycleAdvancesStartup = false;
             pendingDepleted = depletedBatch(fuel);
-            workingFuel = null;
+            setWorkingFuel(null);
             fuelFraction = 0;
             return flushDepleted() || coolingOnly(cooled, "spent_full");
         }
@@ -495,7 +500,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if (!Double.isFinite(efficiency) || efficiency <= 0 || efficiency > 1)
             return coolingOnly(cooled, "invalid_value");
         double ramp = startup.averageNext(Config.nuclearPowerPlant.nuclearStartupTicks, CYCLE_TICKS);
-        double remaining = fuel.remainingCycles(workingFuel) - fuelFraction;
+        double remaining = workingFuelRemainingCycles - fuelFraction;
         double cycles = Math.min(
             remaining,
             Config.nuclearPowerPlant.fuelCyclesPerSecond * (mode == NuclearOperatingMode.HEAT_SUPPLY ? ramp : 1));
@@ -534,10 +539,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         double used = fuelFraction + cycles;
         int damage = (int) Math.floor(used);
         if (damage > 0) fuel.consumeCycles(workingFuel, damage);
+        workingFuelRemainingCycles = fuel.remainingCycles(workingFuel);
         fuelFraction = StartupProgress.fraction(used - damage);
-        if (fuel.remainingCycles(workingFuel) == 0) {
+        if (workingFuelRemainingCycles == 0) {
             pendingDepleted = depletedBatch(fuel);
-            workingFuel = null;
+            setWorkingFuel(null);
             fuelFraction = 0;
             // Retain the entire spent batch when output is blocked; never load a second batch behind it.
             flushDepleted();
@@ -549,7 +555,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private boolean coolingOnly(boolean cooled, String reason) {
         // A cooling-only success must not retain a staged fuel batch without paying for its inputs.
         if (fuelPlan != null) {
-            workingFuel = null;
+            setWorkingFuel(null);
             fuelPlan = null;
         }
         cycleAdvancesStartup = false;
@@ -710,7 +716,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     private void loadFuelState(NBTTagCompound nbt) {
         mode = NuclearOperatingMode.fromId(nbt.getString("tnNuclearMode"));
-        workingFuel = FuelBatch.load(nbt, "tnWorkingFuel", "tnFuelCount");
+        setWorkingFuel(FuelBatch.load(nbt, "tnWorkingFuel", "tnFuelCount"));
         pendingDepleted = FuelBatch.load(nbt, "tnPendingDepleted", "tnPendingDepletedCount");
         fuelFraction = workingFuel == null ? 0 : StartupProgress.fraction(nbt.getDouble("tnFuelFraction"));
         selectedCoolingFluid = null;
@@ -824,11 +830,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if (mode == NuclearOperatingMode.DIRECT_GENERATION) info.put("startup", decimal(100));
         else addStartupInfo(info);
         if (mode == NuclearOperatingMode.DIRECT_GENERATION) addGenerationInfo(info);
-        FuelRodAdapter fuel = adapter(workingFuel);
         info.put("fuel", workingFuel == null ? "thermonuclear.recipe.none" : workingFuel.getDisplayName());
         if (workingFuel != null) {
             info.put("fuel_count", Integer.toString(workingFuel.stackSize));
-            info.put("fuel_remaining", fuel == null ? "0" : decimal(fuel.remainingCycles(workingFuel) - fuelFraction));
+            info.put(
+                "fuel_remaining",
+                workingFuelAdapter == null ? "0" : decimal(workingFuelRemainingCycles - fuelFraction));
             info.put("fuel_rate", decimal(running ? consumedFuelCycles : 0));
         }
         info.put("heat", decimal(reactorHeat));

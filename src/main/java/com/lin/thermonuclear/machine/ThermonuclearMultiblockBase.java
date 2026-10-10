@@ -583,7 +583,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected final void addGenerationInfo(Map<String, String> info) {
         info.put("full_load", decimal(fullLoadEUt));
-        info.put("produced", String.format(Locale.ROOT, "%,d", running ? producedEUt : 0));
     }
 
     public static String formatInfo(String key, String value) {
