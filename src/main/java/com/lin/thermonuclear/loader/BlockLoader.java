@@ -4,6 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.block.BlockAxialMachineComponent;
+import com.lin.thermonuclear.block.BlockTurbineBlade;
 import com.lin.thermonuclear.block.ItemBlockMachineComponent;
 import com.lin.thermonuclear.registry.ModItems;
 
@@ -13,6 +14,7 @@ public final class BlockLoader {
 
     public static Block lowPressureTurbineShaft;
     public static Block highPressureTurbineShaft;
+    public static Block turbineBlade;
     public static Block fuelRodTier1;
     public static Block fuelRodTier2;
     public static Block fuelRodTier3;
@@ -23,6 +25,9 @@ public final class BlockLoader {
     public static void register() {
         lowPressureTurbineShaft = registerShaft("low_pressure_turbine_shaft", 1);
         highPressureTurbineShaft = registerShaft("high_pressure_turbine_shaft", 4);
+        turbineBlade = new BlockTurbineBlade();
+        GameRegistry.registerBlock(turbineBlade, ItemBlockMachineComponent.class, "turbine_blade");
+        ModItems.register(new ItemStack(turbineBlade));
         fuelRodTier1 = registerFuelRod(1);
         fuelRodTier2 = registerFuelRod(2);
         fuelRodTier3 = registerFuelRod(3);

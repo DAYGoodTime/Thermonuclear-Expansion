@@ -24,6 +24,10 @@ public final class ItemBlockMachineComponent extends ItemBlock {
     public void addInformation(ItemStack stack, EntityPlayer player, List<String> tooltip, boolean advanced) {
         super.addInformation(stack, player, tooltip, advanced);
         Block block = Block.getBlockFromItem(stack.getItem());
+        if (block == BlockLoader.turbineBlade) {
+            GTSplit.splitLocalizedFormatted(tooltip, "thermonuclear.tooltip.turbine_blade");
+            return;
+        }
         boolean shaft = block == BlockLoader.lowPressureTurbineShaft || block == BlockLoader.highPressureTurbineShaft;
         GTSplit.splitLocalizedFormatted(
             tooltip,

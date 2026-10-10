@@ -15,6 +15,7 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMaps;
+import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gtPlusPlus.core.material.MaterialsAlloy;
 
@@ -23,6 +24,46 @@ public final class RecipeLoader {
     private RecipeLoader() {}
 
     public static void register() {
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTModHandler.getIC2Item("nuclearReactor", 32),
+                GTModHandler.getIC2Item("reinforcedStone", 64),
+                GTModHandler.getIC2Item("reactorChamber", 64))
+            .itemOutputs(MachineLoader.nuclearPowerPlant.copy())
+            .duration(10 * SECONDS)
+            .eut(TierEU.RECIPE_LV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Machine_Multi_HeatExchanger.get(16),
+                ItemList.Casing_SolidSteel.get(64),
+                ItemList.Casing_Pipe_Bronze.get(64),
+                GTModHandler.getIC2Item("reactorHeatSwitchDiamond", 6))
+            .itemOutputs(MachineLoader.heatExchangeStation.copy())
+            .duration(10 * SECONDS)
+            .eut(TierEU.RECIPE_LV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.SteamTurbine.get(64),
+                ItemList.Casing_SolidSteel.get(64),
+                GTOreDictUnificator.get(OrePrefixes.gear, Materials.Steel, 64))
+            .itemOutputs(MachineLoader.largeSteamTurbine.copy())
+            .duration(10 * SECONDS)
+            .eut(TierEU.RECIPE_LV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.rotor, Materials.Steel, 1),
+                GTOreDictUnificator.get(OrePrefixes.pipeTiny, Materials.Steel, 4))
+            .itemOutputs(new ItemStack(BlockLoader.turbineBlade, 1, 0))
+            .duration(10 * SECONDS)
+            .eut(TierEU.RECIPE_LV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
         // Two fluid inputs require the industrial mixer map, not the single-block mixer map.
         GTValues.RA.stdBuilder()
             .itemInputs(
