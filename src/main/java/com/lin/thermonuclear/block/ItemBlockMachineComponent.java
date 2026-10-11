@@ -6,12 +6,12 @@ import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.StatCollector;
 
 import com.lin.thermonuclear.loader.BlockLoader;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import gregtech.api.util.GTSplit;
 
 public final class ItemBlockMachineComponent extends ItemBlock {
 
@@ -25,12 +25,18 @@ public final class ItemBlockMachineComponent extends ItemBlock {
         super.addInformation(stack, player, tooltip, advanced);
         Block block = Block.getBlockFromItem(stack.getItem());
         if (block == BlockLoader.turbineBlade) {
-            GTSplit.splitLocalizedFormatted(tooltip, "thermonuclear.tooltip.turbine_blade");
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.turbine_blade"));
             return;
         }
         boolean shaft = block == BlockLoader.lowPressureTurbineShaft || block == BlockLoader.highPressureTurbineShaft;
-        GTSplit.splitLocalizedFormatted(
-            tooltip,
-            shaft ? "thermonuclear.tooltip.turbine_shaft" : "thermonuclear.tooltip.component");
+        if (shaft) {
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.turbine_shaft.0"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.turbine_shaft.1"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.turbine_shaft.2"));
+        } else {
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.component.0"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.component.1"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.component.2"));
+        }
     }
 }

@@ -250,7 +250,11 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().beginStructureBlock(WIDTH, HEIGHT, LENGTH, true)
+        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.3"))
+            .beginStructureBlock(WIDTH, HEIGHT, LENGTH, true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.box"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"))
@@ -443,11 +447,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     @Override
     public String nameKey() {
         return "thermonuclear.machine.heat_exchange.name";
-    }
-
-    @Override
-    protected String machineKind() {
-        return "heat_exchange";
     }
 
     @Override

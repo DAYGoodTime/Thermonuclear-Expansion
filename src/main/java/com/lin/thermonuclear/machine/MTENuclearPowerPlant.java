@@ -358,23 +358,46 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip()
+        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.3"))
             .beginStructureBlock(
                 NuclearPowerPlantStructure.WIDTH,
                 NuclearPowerPlantStructure.HEIGHT,
                 NuclearPowerPlantStructure.LENGTH,
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes"))
-            .addStructureHint("thermonuclear.structure.nuclear.services", 1)
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.0"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.1"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.2"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.3"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.4"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes.0"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes.1"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.0"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.1"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.2"))
+            .addStructureHint("thermonuclear.structure.nuclear.services.0", 1)
             .addStructureHint("thermonuclear.structure.nuclear.coolant_io", 2)
-            .addInputBus("1+", "B", 1)
-            .addOutputBus("1+", "B", 1)
-            .addInputHatch("1", "A", 2)
-            .addOutputHatch("1", "A", 2)
-            .addDynamoHatch("0+", "B", 1)
-            .addMaintenanceHatch("0+", "B", 1)
+            .addInputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
+            .addOutputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
+            .addInputHatch(
+                "1",
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.coolant_io.location"),
+                2)
+            .addOutputHatch(
+                "1",
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.coolant_io.location"),
+                2)
+            .addDynamoHatch(
+                "0+",
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"),
+                1)
+            .addMaintenanceHatch(
+                "0+",
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"),
+                1)
             .toolTipFinisher();
     }
 
@@ -805,16 +828,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
-    protected String machineKind() {
-        return "nuclear";
-    }
-
-    @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
         return new String[] { "status", "mode", "fuel_rod_tier", "max_parallel", "fuel_limit", "startup", "full_load",
-            "produced", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate",
-            "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
+            "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate", "coolant",
+            "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
             "pending_spent" };
     }
 

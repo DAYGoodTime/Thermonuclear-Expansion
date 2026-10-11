@@ -228,22 +228,31 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip()
+        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.3"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.4"))
             .beginStructureBlock(
                 SteamTurbineStructure.WIDTH,
                 SteamTurbineStructure.HEIGHT,
                 SteamTurbineStructure.LENGTH,
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.turbine.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.0"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.1"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.2"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.3"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.4"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts.0"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts.1"))
             .addStructureHint("thermonuclear.structure.turbine.output", 1)
             .addStructureHint("thermonuclear.structure.turbine.input", 2)
             .addStructureHint("thermonuclear.structure.turbine.dynamo", 3)
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
-            .addInputHatch("1", "B", 2)
-            .addOutputHatch("1", "A", 1)
-            .addDynamoHatch("1+", "C", 3)
+            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.input.location"), 2)
+            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.output.location"), 1)
+            .addDynamoHatch("1+", StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"), 3)
             .toolTipFinisher();
     }
 
@@ -405,14 +414,9 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    protected String machineKind() {
-        return "steam_turbine";
-    }
-
-    @Override
     public String[] displayKeys() {
-        return new String[] { "status", "shaft_tier", "startup", "full_load", "produced", "turbine_steam_type",
-            "steam_cycle_limit", "steam_input", "water_output" };
+        return new String[] { "status", "shaft_tier", "startup", "full_load", "turbine_steam_type", "steam_cycle_limit",
+            "steam_input", "water_output" };
     }
 
     @Override

@@ -145,15 +145,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected MultiblockTooltipBuilder machineTooltip() {
-        MultiblockTooltipBuilder tooltip = new MultiblockTooltipBuilder()
-            .addMachineType(StatCollector.translateToLocal(nameKey()))
+        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.no_maintenance"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip." + machineKind()));
-        return tooltip;
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.no_maintenance"));
     }
-
-    protected abstract String machineKind();
 
     @Override
     public RecipeMap<?> getRecipeMap() {
