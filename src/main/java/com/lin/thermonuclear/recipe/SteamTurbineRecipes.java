@@ -6,6 +6,7 @@ import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.loader.MachineLoader;
+import com.lin.thermonuclear.nei.NEIFluidDisplays;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.recipe.RecipeMap;
@@ -20,6 +21,7 @@ public final class SteamTurbineRecipes {
         .minInputs(0, 1)
         .dontUseProgressBar()
         .frontend(SteamTurbineRecipeFrontend::new)
+        .neiFluidInputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidInputs))
         .neiHandlerInfo(builder -> builder.setDisplayStack(MachineLoader.largeSteamTurbine))
         .neiSpecialInfoFormatter(
             info -> Arrays.asList(

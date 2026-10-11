@@ -6,6 +6,7 @@ import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.loader.MachineLoader;
+import com.lin.thermonuclear.nei.NEIFluidDisplays;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import gregtech.api.enums.GTValues;
@@ -21,6 +22,8 @@ public final class HeatExchangeRecipes {
         .minInputs(0, 2)
         .dontUseProgressBar()
         .frontend(HeatExchangeRecipeFrontend::new)
+        .neiFluidInputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidInputs))
+        .neiFluidOutputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidOutputs))
         .neiHandlerInfo(
             builder -> builder.setDisplayStack(MachineLoader.heatExchangeStation)
                 .setHeight(190)
