@@ -15,8 +15,7 @@ public final class GTBreederRod {
 
     public static boolean accepts(ItemStack stack) {
         return stack != null && stack.getMaxDamage() > 0
-            && (stack.getItem() == ItemLoader.thoriumBreederRod
-                || stack.getItem() instanceof ItemRareEarthBreederRod rod && !rod.isBred()
+            && (stack.getItem() instanceof ItemRareEarthBreederRod rod && !rod.isBred()
                 || stack.getItem() instanceof ItemBreederCell
                     && (isRod(stack, ItemList.RodLithium) || isRod(stack, ItemList.RodGlowstone)));
     }
@@ -31,9 +30,8 @@ public final class GTBreederRod {
         if (stack.getItem() instanceof ItemRareEarthBreederRod rod) {
             product = new ItemStack(ItemLoader.rareEarthRod(rod.route(), true));
         } else {
-            product = stack.getItem() == ItemLoader.thoriumBreederRod ? new ItemStack(ItemLoader.bredThoriumRod)
-                : (isRod(stack, ItemList.RodLithium) ? ItemList.DepletedRodLithium : ItemList.DepletedRodGlowstone)
-                    .get(1);
+            product = (isRod(stack, ItemList.RodLithium) ? ItemList.DepletedRodLithium : ItemList.DepletedRodGlowstone)
+                .get(1);
         }
         // ItemList.get delegates to copyAmount, which silently caps requested counts at 64 in .133.
         product.stackSize = stack.stackSize;

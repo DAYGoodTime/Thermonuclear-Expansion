@@ -146,8 +146,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected MultiblockTooltipBuilder machineTooltip() {
         return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.no_maintenance"));
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"));
     }
 
     @Override

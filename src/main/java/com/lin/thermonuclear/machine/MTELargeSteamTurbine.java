@@ -228,28 +228,49 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.2"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.3"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.4"))
+        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.generation.title"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.generation.formula"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.variables"))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.steam_turbine.energy.0",
+                    decimal(SteamTurbineFuel.ORDINARY.euPerLitre()),
+                    decimal(SteamTurbineFuel.SUPERHEATED.euPerLitre())))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.steam_turbine.energy.1",
+                    decimal(SteamTurbineFuel.SUPERCRITICAL.euPerLitre()),
+                    decimal(SteamTurbineFuel.ULTRA_SUPERCRITICAL.euPerLitre())))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.shaft_limits"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.features"))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.steam_turbine.startup",
+                    Config.largeSteamTurbine.turbineStartupTicks,
+                    Config.largeSteamTurbine.turbineDecayTicks))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.power_limits"))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.steam_turbine.condensation",
+                    GTValues.STEAM_PER_WATER))
+            .addInfo(StatCollector.translateToLocalFormatted("thermonuclear.tooltip.steam_turbine.intake", CYCLE_TICKS))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.support"))
             .beginStructureBlock(
                 SteamTurbineStructure.WIDTH,
                 SteamTurbineStructure.HEIGHT,
                 SteamTurbineStructure.LENGTH,
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.turbine.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.0"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.1"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.2"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.3"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.4"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts.0"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts.1"))
-            .addStructureHint("thermonuclear.structure.turbine.output", 1)
-            .addStructureHint("thermonuclear.structure.turbine.input", 2)
-            .addStructureHint("thermonuclear.structure.turbine.dynamo", 3)
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
+            .addCasing("1407", StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.0"), false)
+            .addCasing("2", StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.1"), false)
+            .addCasing("12", StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.2"), false)
+            .addCasing("700", StatCollector.translateToLocal("thermonuclear.structure.turbine.blocks.3"), false)
+            .addCasing("23", StatCollector.translateToLocal("thermonuclear.structure.turbine.shafts"), true)
+            .addStructureHint("thermonuclear.structure.turbine.casing_hint", 3)
             .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.input.location"), 2)
             .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.output.location"), 1)
             .addDynamoHatch("1+", StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"), 3)

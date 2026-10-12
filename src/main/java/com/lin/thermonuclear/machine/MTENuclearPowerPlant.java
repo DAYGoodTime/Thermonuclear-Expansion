@@ -382,34 +382,56 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
+        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.title"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.3"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.formula.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.formula.1"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.title"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat_mode"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.formula.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.formula.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.cooling"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.features"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.variables"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.pulses"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.limits"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat_capacity"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.3"))
+            .addSeparator()
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.support_any"))
             .beginStructureBlock(
                 NuclearPowerPlantStructure.WIDTH,
                 NuclearPowerPlantStructure.HEIGHT,
                 NuclearPowerPlantStructure.LENGTH,
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.0"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.1"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.2"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.3"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.4"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes.0"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes.1"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.0"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.1"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.2"))
-            .addStructureHint("thermonuclear.structure.nuclear.services.0", 1)
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.breeder_io"))
-            .addStructureHint("thermonuclear.structure.nuclear.coolant_io", 2)
+            .addCasing("52", StatCollector.translateToLocal("thermonuclear.structure.nuclear.fuel_rods"), true)
+            .addCasing("2006", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
+            .addCasing("353", StatCollector.translateToLocal("thermonuclear.structure.nuclear.water"), false)
+            .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipe_casings"), false)
+            .addStructureHint("thermonuclear.structure.nuclear.blocks.3", 1)
             .addInputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
             .addOutputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
+            .addMiscHatch(
+                "0+",
+                StatCollector.translateToLocal("thermonuclear.hatch.breeder_input.name"),
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.breeder.location"),
+                1)
+            .addMiscHatch(
+                "0+",
+                StatCollector.translateToLocal("thermonuclear.hatch.breeder_output.name"),
+                StatCollector.translateToLocal("thermonuclear.structure.nuclear.breeder.location"),
+                1)
             .addInputHatch(
                 "1",
                 StatCollector.translateToLocal("thermonuclear.structure.nuclear.coolant_io.location"),

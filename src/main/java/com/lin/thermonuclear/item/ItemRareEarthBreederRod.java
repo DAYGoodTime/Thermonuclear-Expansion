@@ -14,7 +14,7 @@ import gregtech.api.GregTechAPI;
 /** Each route has distinct working/completed items; vanilla damage stores breeding progress only. */
 public final class ItemRareEarthBreederRod extends Item {
 
-    // User-approved prototype: the same target as the thorium breeder rod.
+    // User-approved prototype target; not final balance.
     public static final int REQUIRED_PROGRESS = 10000;
     private final RareEarthBreedingRoute route;
     private final boolean bred;
@@ -56,7 +56,6 @@ public final class ItemRareEarthBreederRod extends Item {
         } else {
             tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.0"));
             tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.1"));
-            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.2"));
         }
         if (!bred) {
             tooltip.add(

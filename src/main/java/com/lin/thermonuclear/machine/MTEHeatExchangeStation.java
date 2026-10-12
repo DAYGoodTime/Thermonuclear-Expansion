@@ -250,22 +250,44 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.2"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.3"))
+        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.exchange.title"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.exchange.formula"))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.heat_exchange.coefficient.ic2",
+                    decimal(HeatExchangeRecipe.IC2_COOLANT.steamPerHotCoolant(HeatExchangeSteam.ORDINARY)),
+                    decimal(HeatExchangeRecipe.IC2_COOLANT.steamPerHotCoolant(HeatExchangeSteam.SUPERHEATED))))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.heat_exchange.coefficient.super",
+                    decimal(HeatExchangeRecipe.SUPER_COOLANT.steamPerHotCoolant(HeatExchangeSteam.SUPERCRITICAL)),
+                    decimal(HeatExchangeRecipe.SUPER_COOLANT.steamEfficiency())))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.heat_exchange.coefficient.nak_composite",
+                    decimal(
+                        HeatExchangeRecipe.NAK_COMPOSITE_COOLANT
+                            .steamPerHotCoolant(HeatExchangeSteam.ULTRA_SUPERCRITICAL))))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.features"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.coolant_return"))
+            .addInfo(
+                StatCollector.translateToLocalFormatted(
+                    "thermonuclear.tooltip.heat_exchange.water",
+                    HeatExchangeBatch.STEAM_PER_WATER))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.limits"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.mode_switch"))
             .beginStructureBlock(WIDTH, HEIGHT, LENGTH, true)
-            .addController(StatCollector.translateToLocal("thermonuclear.structure.controller"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.box"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_output"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_input"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_output"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.hatches"))
-            .addStructureHint("thermonuclear.structure.heat_exchange.cold_input", 1)
-            .addStructureHint("thermonuclear.structure.heat_exchange.cold_output", 2)
-            .addStructureHint("thermonuclear.structure.heat_exchange.hot_input", 3)
-            .addStructureHint("thermonuclear.structure.heat_exchange.hot_output", 4)
+            .addController(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.controller"))
+            .addCasing("253", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.casings"), false)
+            .addCasing("55", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.pipes"), false)
+            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"), 1)
+            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_output"), 2)
+            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_input"), 3)
+            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_output"), 4)
             .toolTipFinisher();
     }
 
