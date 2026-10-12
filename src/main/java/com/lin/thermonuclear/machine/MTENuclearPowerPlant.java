@@ -382,11 +382,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding"))
         return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.3"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.2"))
             .beginStructureBlock(
                 NuclearPowerPlantStructure.WIDTH,
                 NuclearPowerPlantStructure.HEIGHT,
@@ -404,9 +406,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.1"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.2"))
             .addStructureHint("thermonuclear.structure.nuclear.services.0", 1)
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks"))
-            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes"))
-            .addStructureHint("thermonuclear.structure.nuclear.services", 1)
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.breeder_io"))
             .addStructureHint("thermonuclear.structure.nuclear.coolant_io", 2)
             .addInputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
@@ -916,12 +915,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         // Keep sync identities stable while the same open GUI switches operating mode.
         return new String[] { "status", "mode", "fuel_rod_tier", "max_parallel", "fuel_limit", "startup", "full_load",
             "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate", "coolant",
-            "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
-            "pending_spent" };
-            "produced", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate",
-            "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
-            "pending_spent", "breeder_count", "breeder_limit", "breeder_pulses", "breeder_rate", "breeder_progress",
-            "breeder_pending" };
+            "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
+            "breeder_count", "breeder_limit", "breeder_pulses", "breeder_rate", "breeder_progress", "breeder_pending" };
     }
 
     @Override

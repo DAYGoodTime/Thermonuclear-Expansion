@@ -51,9 +51,13 @@ public final class ItemRareEarthBreederRod extends Item {
 
     @Override
     public void addInformation(ItemStack stack, EntityPlayer player, List<String> tooltip, boolean advanced) {
-        tooltip.add(
-            StatCollector.translateToLocal(
-                "thermonuclear.tooltip." + (bred ? "bred_rare_earth_rod" : "rare_earth_breeder_rod")));
+        if (bred) {
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.bred_rare_earth_rod"));
+        } else {
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.0"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.1"));
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.tooltip.rare_earth_breeder_rod.2"));
+        }
         if (!bred) {
             tooltip.add(
                 StatCollector.translateToLocalFormatted(
