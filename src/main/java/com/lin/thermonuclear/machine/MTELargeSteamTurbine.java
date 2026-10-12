@@ -1,9 +1,10 @@
 package com.lin.thermonuclear.machine;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -21,7 +22,8 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
-import com.lin.thermonuclear.block.BlockAxialMachineComponent;
+import com.lin.thermonuclear.block.BlockMachineComponent;
+import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.recipe.ProcessingCycleMath;
@@ -79,7 +81,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                 "turbine_shaft",
                 StructureUtility.defer(
                     (MTELargeSteamTurbine machine) -> shaftElement(
-                        BlockAxialMachineComponent.axisMetadata(
+                        BlockMachineComponent.axisMetadata(
                             machine.getExtendedFacing()
                                 .getRelativeBackInWorld())))))
         .build();
@@ -93,13 +95,12 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         // The 23 G positions run along local depth, perpendicular to the inlet end cap.
         return StructureUtility.<MTELargeSteamTurbine, Integer>ofBlocksTiered((block, meta) -> {
             if (meta != axisMetadata) return null;
-            if (block == BlockLoader.lowPressureTurbineShaft) return 1;
-            if (block == BlockLoader.highPressureTurbineShaft) return 2;
-            return null;
+            return block instanceof BlockTurbineShaft shaft ? shaft.tier() : null;
         },
-            Arrays.asList(
-                Pair.of(BlockLoader.lowPressureTurbineShaft, axisMetadata),
-                Pair.of(BlockLoader.highPressureTurbineShaft, axisMetadata)),
+            BlockLoader.turbineShafts()
+                .stream()
+                .map(block -> Pair.<Block, Integer>of(block, axisMetadata))
+                .collect(Collectors.toList()),
             0,
             (machine, tier) -> machine.shaftTier = tier,
             machine -> machine.shaftTier);

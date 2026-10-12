@@ -1,10 +1,11 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -25,7 +26,8 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.api.FuelRodAdapter;
 import com.lin.thermonuclear.api.FuelRodAdapters;
-import com.lin.thermonuclear.block.BlockAxialMachineComponent;
+import com.lin.thermonuclear.block.BlockFuelRod;
+import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
@@ -92,18 +94,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             StructureUtility.withChannel(
                 "fuel_rod",
                 StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered((block, meta) -> {
-                    if (!BlockAxialMachineComponent.isAxisMetadata(meta)) return null;
-                    if (block == BlockLoader.fuelRodTier1) return 1;
-                    if (block == BlockLoader.fuelRodTier2) return 2;
-                    if (block == BlockLoader.fuelRodTier3) return 3;
-                    if (block == BlockLoader.fuelRodTier4) return 4;
-                    return null;
+                    if (!BlockMachineComponent.isAxisMetadata(meta)) return null;
+                    return block instanceof BlockFuelRod rod ? rod.tier() : null;
                 },
-                    Arrays.asList(
-                        Pair.of(BlockLoader.fuelRodTier1, 0),
-                        Pair.of(BlockLoader.fuelRodTier2, 0),
-                        Pair.of(BlockLoader.fuelRodTier3, 0),
-                        Pair.of(BlockLoader.fuelRodTier4, 0)),
+                    BlockLoader.fuelRods()
+                        .stream()
+                        .map(block -> Pair.<Block, Integer>of(block, BlockMachineComponent.AXIS_Y))
+                        .collect(Collectors.toList()),
                     -1,
                     (machine, tier) -> machine.fuelRodTier = tier,
                     machine -> machine.fuelRodTier)))
@@ -265,23 +262,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     public int getMaxParallel() {
-        return switch (fuelRodTier) {
-            case 1 -> 8;
-            case 2 -> 32;
-            case 3 -> 128;
-            case 4 -> 512;
-            default -> 0;
-        };
+        return BlockFuelRod.maxParallel(fuelRodTier);
     }
 
     public int getHeatCapacity() {
-        return switch (fuelRodTier) {
-            case 1 -> 50000;
-            case 2 -> 100000;
-            case 3 -> 1000000;
-            case 4 -> Integer.MAX_VALUE;
-            default -> 0;
-        };
+        return BlockFuelRod.heatCapacity(fuelRodTier);
     }
 
     @Override

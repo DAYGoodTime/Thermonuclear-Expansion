@@ -1,13 +1,9 @@
 package com.lin.thermonuclear.block;
 
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
-
-import com.lin.thermonuclear.Thermonuclear;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -15,7 +11,7 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.util.GTOreDictUnificator;
 
-public final class BlockTurbineBlade extends Block {
+public final class BlockTurbineBlade extends BlockMachineComponent {
 
     @SideOnly(Side.CLIENT)
     private Block steelBlock;
@@ -24,13 +20,8 @@ public final class BlockTurbineBlade extends Block {
     private int steelMetadata;
 
     public BlockTurbineBlade() {
-        super(Material.iron);
-        setBlockName(Thermonuclear.MODID + ".turbine_blade");
-        setCreativeTab(CreativeTabs.tabBlock);
-        setHardness(5.0F);
-        setResistance(10.0F);
-        setStepSound(soundTypeMetal);
-        setHarvestLevel("pickaxe", 1);
+        super("turbine_blade");
+        addInfo("thermonuclear.tooltip.turbine_blade.0");
     }
 
     @Override

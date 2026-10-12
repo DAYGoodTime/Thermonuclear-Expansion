@@ -8,19 +8,21 @@ import com.lin.thermonuclear.registry.WorkingFluids;
 
 public enum SteamTurbineFuel {
 
-    ORDINARY("ordinary", () -> WorkingFluids.steam, 3),
-    SUPERHEATED("superheated", () -> WorkingFluids.superheatedSteam, 9),
-    SUPERCRITICAL("supercritical", () -> WorkingFluids.supercriticalSteam, 15),
-    ULTRA_SUPERCRITICAL("ultrasupercritical", () -> WorkingFluids.ultraSupercriticalSteam, 21);
+    ORDINARY("ordinary", () -> WorkingFluids.steam, 3, 1),
+    SUPERHEATED("superheated", () -> WorkingFluids.superheatedSteam, 9, 1),
+    SUPERCRITICAL("supercritical", () -> WorkingFluids.supercriticalSteam, 15, 1),
+    ULTRA_SUPERCRITICAL("ultrasupercritical", () -> WorkingFluids.ultraSupercriticalSteam, 21, 2);
 
     private final String key;
     private final Supplier<Fluid> fluid;
     private final int twiceEUPerLitre;
+    private final int requireShaftTier;
 
-    SteamTurbineFuel(String key, Supplier<Fluid> fluid, int twiceEUPerLitre) {
+    SteamTurbineFuel(String key, Supplier<Fluid> fluid, int twiceEUPerLitre, int requireShaftTier) {
         this.key = key;
         this.fluid = fluid;
         this.twiceEUPerLitre = twiceEUPerLitre;
+        this.requireShaftTier = requireShaftTier;
     }
 
     public Fluid fluid() {
@@ -29,6 +31,10 @@ public enum SteamTurbineFuel {
 
     public boolean supportsShaftTier(int shaftTier) {
         return shaftTier >= (this == ULTRA_SUPERCRITICAL ? 2 : 1);
+    }
+
+    public int supportsShaftTier() {
+        return this.requireShaftTier;
     }
 
     public String nameKey() {
