@@ -28,6 +28,9 @@ import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.block.BlockAxialMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.loader.BlockLoader;
+import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
+import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
+import com.lin.thermonuclear.nuclear.BreederPool;
 import com.lin.thermonuclear.nuclear.FuelBatch;
 import com.lin.thermonuclear.nuclear.NuclearCoolingMath;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
@@ -42,6 +45,7 @@ import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.ItemList;
 import gregtech.api.interfaces.INEIPreviewModifier;
+import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
@@ -138,6 +142,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .build();
 
     private int fuelRodTier = -1;
+    private final List<MTEBreederInputBus> breederInputs = new ArrayList<>();
+    private final List<MTEBreederOutputBus> breederOutputs = new ArrayList<>();
     private boolean constructing;
     private boolean previewConstruction;
     private EntityPlayer previewPlayer;
@@ -281,12 +287,26 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void clearHatches() {
         super.clearHatches();
+        breederInputs.clear();
+        breederOutputs.clear();
         fuelRodTier = -1;
     }
 
     private boolean addServiceHatch(IGregTechTileEntity tile, int texture) {
         if (tile == null || tile.getMetaTileEntity() == null || tile.getMetaTileEntity() instanceof IDualInputHatch)
             return false;
+        if (tile.getMetaTileEntity() instanceof MTEBreederInputBus bus) {
+            bus.updateTexture(texture);
+            bus.updateCraftingIcon(getMachineCraftingIcon());
+            addIfSmartInput(bus);
+            return breederInputs.add(bus);
+        }
+        if (tile.getMetaTileEntity() instanceof MTEBreederOutputBus bus) {
+            bus.updateTexture(texture);
+            bus.updateCraftingIcon(getMachineCraftingIcon());
+            addIfSmartInput(bus);
+            return breederOutputs.add(bus);
+        }
         return addInputBusToMachineList(tile, texture) || addOutputBusToMachineList(tile, texture)
             || addMaintenanceToMachineList(tile, texture)
             || addDynamoToMachineList(tile, texture)
@@ -316,6 +336,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             errors.add(StructureErrors.missingHatch(HatchElement.InputBus));
         }
         if (mOutputBusses.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputBus));
+        // Breeding is optional, but dedicated IO must be installed as a pair and never satisfies normal fuel IO.
+        if (breederInputs.isEmpty() != breederOutputs.isEmpty()) {
+            errors.add(StructureErrors.of("thermonuclear.structure.nuclear.breeder_io"));
+        }
         if (mInputHatches.size() != 1 || mOutputHatches.size() != 1) {
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.coolant_io"));
         }
@@ -358,6 +382,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
+        return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding"))
         return machineTooltip().addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
@@ -379,6 +404,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.1"))
             .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.2"))
             .addStructureHint("thermonuclear.structure.nuclear.services.0", 1)
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks"))
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipes"))
+            .addStructureHint("thermonuclear.structure.nuclear.services", 1)
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.breeder_io"))
             .addStructureHint("thermonuclear.structure.nuclear.coolant_io", 2)
             .addInputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
             .addOutputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
@@ -421,6 +450,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private FuelRodAdapter workingFuelAdapter;
     private int workingFuelRemainingCycles;
     private ItemStack pendingDepleted;
+    private final BreederPool breederPool = new BreederPool();
+    private long breederPulses;
     private double fuelFraction;
     private double distilledSteamRemainder;
     private CoolingFluid selectedCoolingFluid;
@@ -480,11 +511,58 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return true;
     }
 
+    private void processBreeders(long pulses) {
+        breederPulses = pulses;
+        if (pulses <= 0 || breederInputs.isEmpty() || breederOutputs.isEmpty()) return;
+        List<ItemStack> inputs = new ArrayList<>();
+        for (MTEBreederInputBus bus : breederInputs) {
+            if (!bus.isValid()) continue;
+            for (int slot = 0; slot < bus.getCircuitSlot(); slot++) inputs.add(bus.getStackInSlot(slot));
+        }
+        Runnable consumeBreeders = breederPool.prepareLoad(inputs);
+        commitOutput(() -> {
+            consumeBreeders.run();
+            for (MTEBreederInputBus bus : breederInputs) {
+                if (!bus.isValid()) continue;
+                bus.updateSlots();
+                bus.markDirty();
+            }
+        });
+        breederPool.advance(pulses);
+    }
+
+    private boolean flushBreederProducts() {
+        if (breederPool.completedCount() == 0 || breederOutputs.isEmpty()) return false;
+        List<IOutputBus> outputs = new ArrayList<>();
+        for (MTEBreederOutputBus bus : breederOutputs) if (bus.isValid()) outputs.add(bus);
+        if (outputs.isEmpty()) return false;
+        // One helper reserves all products together, including partial output of different rod types.
+        ItemEjectionHelper helper = new ItemEjectionHelper(outputs, true);
+        List<ItemStack> remaining = breederPool.copyCompleted();
+        int ejected = 0;
+        for (ItemStack stack : remaining) ejected += helper.ejectStack(stack);
+        if (ejected == 0) return false;
+        commitOutput(() -> {
+            helper.commit();
+            breederPool.finishOutput(remaining);
+        });
+        return true;
+    }
+
     @Override
     protected boolean processCycle() {
         coolingInputCommit = null;
         try {
             boolean successful = processNuclearCycle();
+            if (successful) {
+                flushBreederProducts();
+            } else if (("fuel".equals(status) || "spent_full".equals(status)
+                || "fuel_limit".equals(status)
+                || "output_full".equals(status)) && flushBreederProducts()) {
+                    // Recover breeder products independently of ordinary fuel shortages, pauses and blocked outputs.
+                    cycleAdvancesStartup = false;
+                    successful = true;
+                }
             // A rejected heat cycle must not consume coolant while its outputs are discarded.
             if (successful && coolingInputCommit != null) coolingInputCommit.run();
             return successful;
@@ -559,6 +637,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             }
         }
         consumedFuelCycles = cycles * workingFuel.stackSize;
+        processBreeders((long) Math.max(0, fuel.cells(workingFuel)) * workingFuel.stackSize);
         double used = fuelFraction + cycles;
         int damage = (int) Math.floor(used);
         if (damage > 0) fuel.consumeCycles(workingFuel, damage);
@@ -699,6 +778,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     protected void beforeProcessingCycle() {
         consumedFuelCycles = 0;
         fullLoadHeatRate = 0;
+        breederPulses = 0;
     }
 
     private void saveFuelState(NBTTagCompound nbt) {
@@ -706,6 +786,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         nbt.setDouble("tnFuelFraction", fuelFraction);
         FuelBatch.save(nbt, "tnWorkingFuel", "tnFuelCount", workingFuel);
         FuelBatch.save(nbt, "tnPendingDepleted", "tnPendingDepletedCount", pendingDepleted);
+        breederPool.save(nbt);
+        nbt.setLong("tnBreederPulses", breederPulses);
         nbt.setDouble("tnDistilledSteamRemainder", distilledSteamRemainder);
         nbt.setDouble("tnReactorHeat", reactorHeat);
         nbt.setString(
@@ -741,6 +823,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         mode = NuclearOperatingMode.fromId(nbt.getString("tnNuclearMode"));
         setWorkingFuel(FuelBatch.load(nbt, "tnWorkingFuel", "tnFuelCount"));
         pendingDepleted = FuelBatch.load(nbt, "tnPendingDepleted", "tnPendingDepletedCount");
+        breederPool.load(nbt);
+        breederPulses = Math.max(0, nbt.getLong("tnBreederPulses"));
         fuelFraction = workingFuel == null ? 0 : StartupProgress.fraction(nbt.getDouble("tnFuelFraction"));
         selectedCoolingFluid = null;
         String selected = nbt.getString("tnSelectedCoolant");
@@ -834,6 +918,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate", "coolant",
             "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
             "pending_spent" };
+            "produced", "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate",
+            "coolant", "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output",
+            "pending_spent", "breeder_count", "breeder_limit", "breeder_pulses", "breeder_rate", "breeder_progress",
+            "breeder_pending" };
     }
 
     @Override
@@ -858,7 +946,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         info.put("heat", decimal(reactorHeat));
         info.put("heat_capacity", Integer.toString(getHeatCapacity()));
-        info.put("heat_rate", decimal(running ? fullLoadHeatRate : 0));
+        info.put("heat_rate", decimalPerCycle(running ? fullLoadHeatRate : 0));
         if (mode == NuclearOperatingMode.HEAT_SUPPLY || stoppedInputRate > 0) {
             info.put(
                 "coolant",
@@ -869,14 +957,20 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             if (selectedCoolingFluid != null) {
                 double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
                     : selectedCoolingFluid.recipe.coolantPerHeat();
-                info.put(water ? "water_limit" : "heat_limit", decimal(fullLoadHeatRate * litresPerHeat));
-                info.put(water ? "water_input" : "coolant_input", decimal(inputLitresPerTick));
-                info.put(water ? "steam_output" : "hot_output", decimal(outputLitresPerTick));
+                info.put(water ? "water_limit" : "heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
+                info.put(water ? "water_input" : "coolant_input", decimalPerCycle(inputLitresPerTick));
+                info.put(water ? "steam_output" : "hot_output", decimalPerCycle(outputLitresPerTick));
             }
         }
         if (pendingDepleted != null) {
             info.put("pending_spent", pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName());
         }
+        info.put("breeder_count", Integer.toString(breederPool.workingCount()));
+        info.put("breeder_limit", Integer.toString(BreederPool.MAX_RODS));
+        info.put("breeder_pulses", Long.toString(running ? breederPulses : 0));
+        info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
+        info.put("breeder_progress", breederPool.progressSummary());
+        info.put("breeder_pending", Integer.toString(breederPool.completedCount()));
         return info;
     }
 }

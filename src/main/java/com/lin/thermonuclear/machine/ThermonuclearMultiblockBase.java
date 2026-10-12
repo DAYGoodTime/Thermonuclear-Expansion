@@ -615,6 +615,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             + EnumChatFormatting.RESET;
     }
 
+    protected static String decimalPerCycle(double valuePerTick) {
+        return decimal(valuePerTick * CYCLE_TICKS);
+    }
+
     public static String decimal(double value) {
         return String.format(Locale.ROOT, "%,.3f", value)
             .replaceAll("0+$", "")

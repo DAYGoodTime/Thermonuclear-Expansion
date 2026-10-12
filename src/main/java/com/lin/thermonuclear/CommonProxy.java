@@ -2,6 +2,7 @@ package com.lin.thermonuclear;
 
 import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.loader.BlockLoader;
+import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.loader.RecipeLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
@@ -24,6 +25,7 @@ public class CommonProxy {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
         ModFluids.register();
         BlockLoader.register();
+        ItemLoader.register();
 
         Thermonuclear.LOG.info(Config.general.greeting);
         Thermonuclear.LOG.info("Thermonuclear prototype at version " + Tags.VERSION);

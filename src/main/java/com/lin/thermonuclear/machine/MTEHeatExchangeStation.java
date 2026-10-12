@@ -463,11 +463,11 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         if (selected != null) {
             info.put("steam_multiplier", decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L");
         }
-        info.put("hot_input", decimal(inputLitresPerTick));
-        info.put("water_input", decimal(inputLitresPerTick > 0 ? waterRate : 0));
-        info.put("steam_output", decimal(outputLitresPerTick));
-        info.put("coolant_return", decimal(inputLitresPerTick));
-        if (mMaxProgresstime > 0) info.put("cycle", mProgresstime + " / " + CYCLE_TICKS);
+        info.put("hot_input", decimalPerCycle(inputLitresPerTick));
+        info.put("water_input", decimalPerCycle(inputLitresPerTick > 0 ? waterRate : 0));
+        info.put("steam_output", decimalPerCycle(outputLitresPerTick));
+        info.put("coolant_return", decimalPerCycle(inputLitresPerTick));
+        if (mMaxProgresstime > 0) info.put("cycle", decimal(mProgresstime / (double) CYCLE_TICKS) + " / 1");
         return info;
     }
 

@@ -22,7 +22,7 @@ Offsets:
 Dimensions (Width, Height, Length)
 15, 15, 27
 
-Normal Scan:
+Normal Scan:dw
 
 //spotless:off
 new String[][]{

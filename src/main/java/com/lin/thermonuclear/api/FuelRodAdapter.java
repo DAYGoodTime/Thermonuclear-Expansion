@@ -16,4 +16,9 @@ public interface FuelRodAdapter {
     double heatPerCycle(ItemStack stack);
 
     ItemStack depleted(ItemStack stack);
+
+    /** Neutron pulses contributed by one running rod per reactor cycle; unknown fuels do not breed. */
+    default int cells(ItemStack stack) {
+        return 0;
+    }
 }

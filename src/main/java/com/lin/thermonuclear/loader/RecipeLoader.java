@@ -5,6 +5,7 @@ import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.lin.thermonuclear.nuclear.RareEarthBreedingRoute;
 import com.lin.thermonuclear.registry.ModFluids;
 
 import goodgenerator.items.GGMaterial;
@@ -18,12 +19,39 @@ import gregtech.api.recipe.RecipeMaps;
 import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gtPlusPlus.core.material.MaterialsAlloy;
+import gtPlusPlus.core.material.MaterialsElements;
 
 public final class RecipeLoader {
 
     private RecipeLoader() {}
 
     public static void register() {
+        // Prototype: one thorium dust is bred into one uranium-233 dust; the empty rod is recovered.
+        GTValues.RA.stdBuilder()
+            .itemInputs(ItemList.IC2_Fuel_Rod_Empty.get(1), Materials.Thorium.getDust(1))
+            .itemOutputs(new ItemStack(ItemLoader.thoriumBreederRod))
+            .duration(10 * SECONDS)
+            .eut(TierEU.RECIPE_LV)
+            .addTo(RecipeMaps.cannerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(new ItemStack(ItemLoader.bredThoriumRod))
+            .itemOutputs(MaterialsElements.getInstance().URANIUM233.getDust(1), ItemList.IC2_Fuel_Rod_Empty.get(1))
+            .duration(25 * SECONDS)
+            .eut(TierEU.RECIPE_MV)
+            .addTo(RecipeMaps.centrifugeRecipes);
+
+        // Display only: the controller advances this conversion using whole-reactor pulses, not a machine recipe.
+        GTValues.RA.stdBuilder()
+            .itemInputs(new ItemStack(ItemLoader.thoriumBreederRod))
+            .itemOutputs(new ItemStack(ItemLoader.bredThoriumRod))
+            .setNEIDesc(net.minecraft.util.StatCollector.translateToLocal("thermonuclear.nei.thorium_breeding"))
+            .duration(0)
+            .eut(0)
+            .addTo(RecipeMaps.ic2NuclearFakeRecipes);
+
+        registerRareEarthBreederRecipes();
+
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTModHandler.getIC2Item("nuclearReactor", 32),
@@ -142,5 +170,42 @@ public final class RecipeLoader {
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
+    }
+
+    private static void registerRareEarthBreederRecipes() {
+        for (RareEarthBreedingRoute route : RareEarthBreedingRoute.values()) {
+            ItemStack inputDust = route.inputMaterial()
+                .getDust(1);
+            ItemStack outputDust = route.outputMaterial()
+                .getDust(1);
+            if (inputDust == null || outputDust == null) {
+                throw new IllegalStateException("Missing elemental dust for " + route.itemName(false));
+            }
+            ItemStack workingRod = new ItemStack(ItemLoader.rareEarthRod(route, false));
+            ItemStack completedRod = new ItemStack(ItemLoader.rareEarthRod(route, true));
+
+            GTValues.RA.stdBuilder()
+                .itemInputs(ItemList.IC2_Fuel_Rod_Empty.get(1), inputDust)
+                .itemOutputs(workingRod.copy())
+                .duration(10 * SECONDS)
+                .eut(TierEU.RECIPE_LV)
+                .addTo(RecipeMaps.cannerRecipes);
+
+            GTValues.RA.stdBuilder()
+                .itemInputs(completedRod.copy())
+                .itemOutputs(outputDust, ItemList.IC2_Fuel_Rod_Empty.get(1))
+                .duration(25 * SECONDS)
+                .eut(TierEU.RECIPE_MV)
+                .addTo(RecipeMaps.centrifugeRecipes);
+
+            // Display only: the independent breeder pool performs this element-only conversion.
+            GTValues.RA.stdBuilder()
+                .itemInputs(workingRod)
+                .itemOutputs(completedRod)
+                .setNEIDesc(net.minecraft.util.StatCollector.translateToLocal("thermonuclear.nei.rare_earth_breeding"))
+                .duration(0)
+                .eut(0)
+                .addTo(RecipeMaps.ic2NuclearFakeRecipes);
+        }
     }
 }

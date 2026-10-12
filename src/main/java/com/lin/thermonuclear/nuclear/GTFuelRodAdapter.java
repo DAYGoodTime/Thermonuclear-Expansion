@@ -16,6 +16,11 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
     }
 
     @Override
+    public int cells(ItemStack stack) {
+        return ((ItemRadioactiveCellIC) stack.getItem()).numberOfCells;
+    }
+
+    @Override
     public int remainingCycles(ItemStack stack) {
         ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
         return Math.max(0, rod.getMaxDamageEx() - Math.max(0, rod.getDamageOfStack(stack)));

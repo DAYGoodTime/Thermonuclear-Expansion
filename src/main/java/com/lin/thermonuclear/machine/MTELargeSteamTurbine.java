@@ -427,8 +427,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         addGenerationInfo(info);
         info.put("turbine_steam_type", currentFuel == null ? "thermonuclear.recipe.none" : currentFuel.nameKey());
         info.put("steam_cycle_limit", Long.toString(steamLimitLitresPerCycle));
-        info.put("steam_input", decimal(inputLitresPerTick));
-        info.put("water_output", decimal(outputLitresPerTick));
+        info.put("steam_input", decimalPerCycle(inputLitresPerTick));
+        info.put("water_output", decimalPerCycle(outputLitresPerTick));
         return info;
     }
 }

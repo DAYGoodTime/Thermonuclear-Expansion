@@ -5,6 +5,8 @@ import net.minecraft.item.ItemStack;
 import com.lin.thermonuclear.machine.MTEHeatExchangeStation;
 import com.lin.thermonuclear.machine.MTELargeSteamTurbine;
 import com.lin.thermonuclear.machine.MTENuclearPowerPlant;
+import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
+import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.registry.ModItems;
 
 import gregtech.api.GregTechAPI;
@@ -15,14 +17,19 @@ public final class MachineLoader {
     public static final int NUCLEAR_ID = 32100;
     public static final int HEAT_EXCHANGE_ID = 32101;
     public static final int STEAM_TURBINE_ID = 32102;
+    public static final int BREEDER_INPUT_ID = 32103;
+    public static final int BREEDER_OUTPUT_ID = 32104;
     public static ItemStack nuclearPowerPlant;
     public static ItemStack heatExchangeStation;
     public static ItemStack largeSteamTurbine;
+    public static ItemStack breederInputBus;
+    public static ItemStack breederOutputBus;
 
     private MachineLoader() {}
 
     public static void register() {
-        for (int id : new int[] { NUCLEAR_ID, HEAT_EXCHANGE_ID, STEAM_TURBINE_ID }) {
+        for (int id : new int[] { NUCLEAR_ID, HEAT_EXCHANGE_ID, STEAM_TURBINE_ID, BREEDER_INPUT_ID,
+            BREEDER_OUTPUT_ID }) {
             if (id <= 0 || id >= GregTechAPI.METATILEENTITIES.length) {
                 throw new IllegalArgumentException("Thermonuclear machine ID outside GT5U registry: " + id);
             }
@@ -40,6 +47,12 @@ public final class MachineLoader {
                 .getStackForm(1));
         largeSteamTurbine = ModItems.register(
             new MTELargeSteamTurbine(STEAM_TURBINE_ID, "thermonuclear.large_steam_turbine", "Large Steam Turbine")
+                .getStackForm(1));
+        breederInputBus = ModItems.register(
+            new MTEBreederInputBus(BREEDER_INPUT_ID, "thermonuclear.breeder_input", "Breeder Input Bus")
+                .getStackForm(1));
+        breederOutputBus = ModItems.register(
+            new MTEBreederOutputBus(BREEDER_OUTPUT_ID, "thermonuclear.breeder_output", "Breeder Output Bus")
                 .getStackForm(1));
     }
 }
