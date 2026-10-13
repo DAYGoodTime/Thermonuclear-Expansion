@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
@@ -36,6 +37,7 @@ import com.lin.thermonuclear.nuclear.BreederPool;
 import com.lin.thermonuclear.nuclear.FuelBatch;
 import com.lin.thermonuclear.nuclear.NuclearCoolingMath;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
+import com.lin.thermonuclear.nuclear.NuclearMeltdownTimer;
 import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
@@ -55,6 +57,7 @@ import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.ItemEjectionHelper;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.SimpleShutDownReason;
@@ -76,7 +79,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final int CONCRETE_META = 13;
     private static final int CONCRETE_TEXTURE = 221;
     private static final String[][] SHAPE = NuclearPowerPlantStructure.createShape();
-    private static final List<int[]> COOLANT_OFFSETS = coolantOffsets();
+    private static final List<int[]> COOLANT_OFFSETS = structureOffsets('A');
+    private static final List<int[]> WATER_OFFSETS = structureOffsets('G');
+    private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
@@ -193,13 +198,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         };
     }
 
-    private static List<int[]> coolantOffsets() {
+    private static List<int[]> structureOffsets(char element) {
         List<int[]> offsets = new ArrayList<>();
         for (int z = 0; z < SHAPE.length; z++) {
             for (int y = 0; y < SHAPE[z].length; y++) {
                 String row = SHAPE[z][y];
                 for (int x = 0; x < row.length(); x++) {
-                    if (row.charAt(x) == 'A') offsets.add(new int[] { x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z });
+                    if (row.charAt(x) == element) offsets.add(new int[] { x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z });
                 }
             }
         }
@@ -389,6 +394,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat_capacity"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.meltdown"))
             .addSeparator()
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
@@ -462,6 +468,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private double distilledSteamRemainder;
     private CoolingFluid selectedCoolingFluid;
     private double reactorHeat;
+    private final NuclearMeltdownTimer meltdownTimer = new NuclearMeltdownTimer();
     private double consumedFuelCycles;
     private double fullLoadHeatRate;
     private NBTTagCompound fuelSnapshot;
@@ -634,11 +641,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     return coolingOnly(cooled, "invalid_value");
                 fullLoadHeatRate = heatPerFuelCycle * Config.nuclearPowerPlant.fuelCyclesPerSecond / CYCLE_TICKS;
                 double generatedHeat = heatPerFuelCycle * cycles;
-                if (generatedHeat > getHeatCapacity() - reactorHeat) {
-                    stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.heat_overflow"));
-                    markDirty();
-                    return fail("heat_overflow");
-                }
+                if (!Double.isFinite(generatedHeat) || !Double.isFinite(reactorHeat + generatedHeat))
+                    return coolingOnly(cooled, "invalid_value");
                 reactorHeat += generatedHeat;
             }
         }
@@ -807,6 +811,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         saveFuelState(nbt);
+        nbt.setInteger("tnOverheatTicks", meltdownTimer.elapsedTicks());
         nbt.setDouble("tnFullLoadHeatRate", fullLoadHeatRate);
     }
 
@@ -815,12 +820,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         super.setItemNBT(nbt);
         // Internal work fuel is not a normal inventory slot: carry it in the controller drop without restoring startup.
         saveFuelState(nbt);
+        nbt.setInteger("tnOverheatTicks", meltdownTimer.elapsedTicks());
     }
 
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
         loadFuelState(nbt);
+        meltdownTimer.restore(nbt.getInteger("tnOverheatTicks"));
         double savedRate = nbt.getDouble("tnFullLoadHeatRate");
         fullLoadHeatRate = Double.isFinite(savedRate) && savedRate > 0 ? savedRate : 0;
     }
@@ -841,19 +848,29 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         distilledSteamRemainder = StartupProgress.fraction(nbt.getDouble("tnDistilledSteamRemainder"));
         double savedHeat = nbt.getDouble("tnReactorHeat");
         // Structure tiers are not known during load or transaction rollback. Preserve heat after a downgrade.
-        reactorHeat = Double.isFinite(savedHeat) ? Math.max(0, Math.min(Integer.MAX_VALUE, savedHeat)) : 0;
+        reactorHeat = Double.isFinite(savedHeat) ? Math.max(0, savedHeat) : 0;
     }
 
     @Override
     public void onPostTick(IGregTechTileEntity tile, long tick) {
         super.onPostTick(tile, tick);
         if (!tile.isServerSide()) return;
-        if (tile.isAllowedToWork() || running) {
+        if ("chunk_unloaded".equals(status) || mStartUpCheck >= 0) return;
+        if (!mMachine) {
             stoppedInputRate = stoppedOutputRate = 0;
+            if (meltdownTimer.elapsedTicks() != 0) {
+                meltdownTimer.reset();
+                markDirty();
+            }
+            if ("thermonuclear.status.meltdown".equals(
+                tile.getLastShutDownReason()
+                    .getKey()))
+                status = "meltdown";
             return;
         }
-        if (!mMachine || mStartUpCheck >= 0 || "chunk_unloaded".equals(status)) {
+        if (tile.isAllowedToWork() || running) {
             stoppedInputRate = stoppedOutputRate = 0;
+            updateMeltdown(tile);
             return;
         }
         consumedFuelCycles = fullLoadHeatRate = 0;
@@ -876,15 +893,58 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         inputLitresPerTick = stoppedInputRate;
         outputLitresPerTick = stoppedOutputRate;
-        if ("thermonuclear.status.heat_overflow".equals(
-            tile.getLastShutDownReason()
-                .getKey())) {
-            status = "heat_overflow";
-        } else {
-            status = stoppedInputRate > 0 ? "stopped_cooling"
-                : reactorHeat > 0 && Config.nuclearPowerPlant.nuclearPassiveCoolingPerSecond > 0 ? "stopped_passive"
-                    : "stopped";
+        status = stoppedInputRate > 0 ? "stopped_cooling"
+            : reactorHeat > 0 && Config.nuclearPowerPlant.nuclearPassiveCoolingPerSecond > 0 ? "stopped_passive"
+                : "stopped";
+        updateMeltdown(tile);
+    }
+
+    private void updateMeltdown(IGregTechTileEntity tile) {
+        int previousTicks = meltdownTimer.elapsedTicks();
+        boolean meltdown = meltdownTimer.advance(reactorHeat, getHeatCapacity());
+        if (meltdownTimer.elapsedTicks() != previousTicks) markDirty();
+        if (meltdownTimer.elapsedTicks() > 0) status = "heat_overflow";
+        if (meltdown) {
+            meltCore(tile);
         }
+    }
+
+    private void meltCore(IGregTechTileEntity tile) {
+        World world = tile.getWorld();
+        int[] worldOffset = new int[3];
+        boolean dry = true;
+        // Remove every G water block before notifying neighbours or placing any lava, avoiding solidified rods.
+        for (int[] offset : WATER_OFFSETS) {
+            getExtendedFacing().getWorldOffset(offset, worldOffset);
+            int x = tile.getXCoord() + worldOffset[0];
+            int y = tile.getYCoord() + worldOffset[1];
+            int z = tile.getZCoord() + worldOffset[2];
+            if (GTUtility.isWater(world.getBlock(x, y, z))) {
+                world.setBlock(x, y, z, Blocks.air, 0, 2);
+                if (GTUtility.isWater(world.getBlock(x, y, z))) dry = false;
+            }
+        }
+        // A failed water replacement is retried next tick; never pour lava into a still-wet core.
+        if (!dry) return;
+        for (int[] offset : FUEL_ROD_OFFSETS) {
+            getExtendedFacing().getWorldOffset(offset, worldOffset);
+            int x = tile.getXCoord() + worldOffset[0];
+            int y = tile.getYCoord() + worldOffset[1];
+            int z = tile.getZCoord() + worldOffset[2];
+            if (world.getBlock(x, y, z) instanceof BlockFuelRod) world.setBlock(x, y, z, Blocks.lava, 0, 3);
+        }
+        stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.meltdown"));
+        mMachine = false;
+        fuelRodTier = -1;
+        running = false;
+        operatingEUt = fullLoadEUt = fullLoadHeatRate = 0;
+        inputLitresPerTick = outputLitresPerTick = stoppedInputRate = stoppedOutputRate = 0;
+        consumedFuelCycles = 0;
+        startup.clear();
+        meltdownTimer.reset();
+        status = "meltdown";
+        tile.setActive(false);
+        markDirty();
     }
 
     @Override
