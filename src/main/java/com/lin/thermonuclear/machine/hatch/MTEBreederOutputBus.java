@@ -51,7 +51,6 @@ public final class MTEBreederOutputBus extends MTEHatchOutputBus {
     @Override
     public String[] getDescription() {
         return new String[] { StatCollector.translateToLocal("thermonuclear.hatch.breeder_output.desc.0"),
-            StatCollector.translateToLocal("thermonuclear.hatch.breeder_output.desc.1"),
-            StatCollector.translateToLocal("thermonuclear.tooltip.mod") };
+            StatCollector.translateToLocal("thermonuclear.hatch.breeder_output.desc.1")};
     }
 }

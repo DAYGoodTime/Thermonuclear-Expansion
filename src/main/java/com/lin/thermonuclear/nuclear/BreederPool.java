@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 import net.minecraft.item.ItemStack;
@@ -102,8 +101,8 @@ public final class BreederPool {
         for (ItemStack stack : remaining) if (stack.stackSize > 0) completed.add(stack);
     }
 
-    private void updateSummary(){
-        if(working.isEmpty()) return;
+    private void updateSummary() {
+        if (working.isEmpty()) return;
         double lowest = 100;
         double highest = 0;
         for (ItemStack stack : working) {
@@ -116,9 +115,13 @@ public final class BreederPool {
         highestProgress = (float) highest;
     }
 
-    public float getLowestProgress() {return lowestProgress;}
+    public float getLowestProgress() {
+        return lowestProgress;
+    }
 
-    public float getHighestProgress() {return highestProgress;}
+    public float getHighestProgress() {
+        return highestProgress;
+    }
 
     public void save(NBTTagCompound nbt) {
         saveList(nbt, "tnBreederWorking", working);

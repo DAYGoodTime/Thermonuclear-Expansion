@@ -3,7 +3,6 @@ package com.lin.thermonuclear.machine;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import net.minecraft.block.Block;
@@ -508,8 +507,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     public boolean requestFuelEjection() {
         IGregTechTileEntity tile = getBaseMetaTileEntity();
-        if (tile == null || !tile.isServerSide() || !mMachine || tile.isAllowedToWork() || running
-            || fuelSnapshot != null || workingFuel == null || getOutputBusses().isEmpty()) return false;
+        if (tile == null || !tile.isServerSide()
+            || !mMachine
+            || tile.isAllowedToWork()
+            || running
+            || fuelSnapshot != null
+            || workingFuel == null
+            || getOutputBusses().isEmpty()) return false;
 
         ItemStack output = workingFuel.copy();
         // Rod items only store whole cycles: round up exported wear instead of refunding fractional fuel use.
@@ -1003,10 +1007,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load",
-            "fuel", "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant",
-            "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
-            "breeder_count", "breeder_rate", "breeder_progress"};
+        return new String[] { "status", "mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load", "fuel",
+            "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant", "heat_limit",
+            "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
+            "breeder_count", "breeder_rate", "breeder_progress" };
     }
 
     @Override
@@ -1018,15 +1022,15 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));
             info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
         }
-        boolean hasWorkingFuel  = workingFuel != null;
-        info.put("fuel", hasWorkingFuel ? workingFuel.getDisplayName() : "thermonuclear.recipe.none" );
+        boolean hasWorkingFuel = workingFuel != null;
+        info.put("fuel", hasWorkingFuel ? workingFuel.getDisplayName() : "thermonuclear.recipe.none");
         if (hasWorkingFuel) {
             info.put("fuel_count", Integer.toString(workingFuel.stackSize));
             info.put(
                 "fuel_remaining",
                 workingFuelAdapter == null ? "0" : decimal(workingFuelRemainingCycles - fuelFraction));
         }
-        switch (mode){
+        switch (mode) {
             case DIRECT_GENERATION:
                 info.put("startup", decimal(100));
                 break;
@@ -1039,7 +1043,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     "coolant",
                     selectedCoolingFluid == null ? "thermonuclear.recipe.none"
                         : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
-                        : selectedCoolingFluid.recipe.translationKey());
+                            : selectedCoolingFluid.recipe.translationKey());
                 boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
                 if (selectedCoolingFluid != null) {
                     double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat

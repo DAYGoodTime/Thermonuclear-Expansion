@@ -15,6 +15,7 @@ import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
+import gregtech.api.enums.ToolDictNames;
 import gregtech.api.recipe.RecipeMaps;
 import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
@@ -26,6 +27,7 @@ public final class RecipeLoader {
 
     public static void register() {
         registerRareEarthBreederRecipes();
+        registerBreederBusRecipes();
 
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -145,6 +147,39 @@ public final class RecipeLoader {
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
+    }
+
+    private static void registerBreederBusRecipes() {
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.IC2_Fuel_Rod_Empty.get(8),
+                ItemList.Hull_HV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Thorium, 8))
+            .circuit(1)
+            .itemOutputs(MachineLoader.breederInputBus.copy())
+            .duration(100)
+            .eut(TierEU.RECIPE_HV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.IC2_Fuel_Rod_Empty.get(8),
+                ItemList.Hull_HV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Thorium, 8))
+            .circuit(2)
+            .itemOutputs(MachineLoader.breederOutputBus.copy())
+            .duration(100)
+            .eut(TierEU.RECIPE_HV)
+            .addTo(RecipeMaps.assemblerRecipes);
+
+        GTModHandler.addShapelessCraftingRecipe(
+            MachineLoader.breederOutputBus.copy(),
+            GTModHandler.RecipeBits.BITS | GTModHandler.RecipeBits.DO_NOT_CHECK_FOR_COLLISIONS,
+            new Object[] { MachineLoader.breederInputBus.copy(), ToolDictNames.craftingToolScrewdriver });
+        GTModHandler.addShapelessCraftingRecipe(
+            MachineLoader.breederInputBus.copy(),
+            GTModHandler.RecipeBits.BITS | GTModHandler.RecipeBits.DO_NOT_CHECK_FOR_COLLISIONS,
+            new Object[] { MachineLoader.breederOutputBus.copy(), ToolDictNames.craftingToolScrewdriver });
     }
 
     private static void registerRareEarthBreederRecipes() {

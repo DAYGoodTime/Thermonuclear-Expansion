@@ -24,9 +24,8 @@ public final class NuclearPowerPlantGui extends ThermonuclearMultiblockGui<MTENu
             if (baseMetaTileEntity.isServerSide()) multiblock.requestModeChange();
         });
         manager.syncValue("tnChangeMode", change);
-        InteractionSyncHandler eject = new InteractionSyncHandler().setOnMousePressed(mouse -> {
-            if (baseMetaTileEntity.isServerSide()) multiblock.requestFuelEjection();
-        });
+        InteractionSyncHandler eject = new InteractionSyncHandler()
+            .setOnMousePressed(mouse -> { if (baseMetaTileEntity.isServerSide()) multiblock.requestFuelEjection(); });
         manager.syncValue("tnEjectFuel", eject);
         return row.child(
             new ButtonWidget<>().size(18)
