@@ -1,6 +1,19 @@
 thermonuclear.machine.nuclear.name=Nuclear Power Plant
 thermonuclear.machine.heat_exchange.name=Heat Exchange Station
 thermonuclear.machine.steam_turbine.name=Large Steam Turbine
+item.thermonuclear.wireless_upgrade_chip.name=Wireless Upgrade Chip
+thermonuclear.tooltip.wireless_chip.0=Right-click a Nuclear Power Plant or Large Steam Turbine controller; consumes 1 chip to permanently unlock wireless output
+thermonuclear.tooltip.wireless_chip.1=Without dynamos, generation goes directly to the controller owner's GT wireless energy network
+thermonuclear.tooltip.wireless.0=§bWireless output upgrade§7: right-click with this mod's Wireless Upgrade Chip; retained when dismantled
+thermonuclear.tooltip.wireless.1=No dynamos: wireless output to the controller owner's GT network; installed dynamos: wired output
+thermonuclear.chat.wireless.installed=Wireless upgrade installed: without dynamos, power goes to the controller owner's GT wireless energy network.
+thermonuclear.chat.wireless.already=This controller is already upgraded; no additional chip is consumed.
+thermonuclear.gui.power_mode=Power output
+thermonuclear.power_mode.wired=Wired (not upgraded)
+thermonuclear.power_mode.wired_upgraded=Wired (wireless unlocked)
+thermonuclear.power_mode.wireless=Wireless (controller owner's network)
+thermonuclear.status.wireless_owner_missing=Wireless output requires a controller owner UUID
+thermonuclear.structure.turbine.dynamo.quantity=1+ (0+ after wireless upgrade)
 thermonuclear.hatch.breeder_input.name=Breeder Input Bus
 thermonuclear.hatch.breeder_output.name=Breeder Output Bus
 thermonuclear.hatch.breeder_input.desc.0=Nuclear Power Plant breeder input bus: 64 slots (8x8), LV textures
@@ -84,7 +97,7 @@ thermonuclear.tooltip.nuclear.0=Fuel rod block tiers §61-4§7 allow max paralle
 thermonuclear.tooltip.nuclear.1=Parallel setting controls the number of fuel rods in newly loaded batches
 thermonuclear.tooltip.nuclear.2=Consumes shortest remaining lifetime first
 thermonuclear.tooltip.nuclear.meltdown=Exceeding heat capacity does not immediately stop the reactor; after §610 continuous seconds§7, core water evaporates and fuel rod blocks melt into lava
-thermonuclear.tooltip.nuclear.3=Consumes fuel to produce power; requires a dynamo hatch
+thermonuclear.tooltip.nuclear.3=Consumes fuel to produce power; requires a dynamo hatch unless wireless output is unlocked
 thermonuclear.tooltip.nuclear.direct.title=§bDirect generation mode§7
 thermonuclear.tooltip.nuclear.direct.formula.0=Generation (EU/t) = §6E x C x P x N x S x M x eta§7
 thermonuclear.tooltip.nuclear.direct.formula.1=E: base fuel energy per pulse; M: IC2 nuclear multiplier x configured direct multiplier; eta: configured direct efficiency
@@ -97,7 +110,7 @@ thermonuclear.tooltip.nuclear.features=§bFeatures and support§7
 thermonuclear.tooltip.nuclear.heat_capacity=Fuel rod block tiers §61-4§7 allow heat capacity: §650000 / 100000 / 1000000 / 2147483647§7
 thermonuclear.tooltip.nuclear.formula.variables=C: cells per fuel rod; N: rods in the current batch; S: configured fuel cycles per second
 thermonuclear.tooltip.nuclear.formula.pulses=Pulses per cell: §6P = 1 + floor(C / 2) + reflector pulses§7; configured reflector pulses apply above §64§7 rods per batch, otherwise §60§7
-thermonuclear.tooltip.nuclear.formula.limits=round applies per cell; limited remaining lifetime scales output by actual fuel use; dynamo capacity limits delivered power
+thermonuclear.tooltip.nuclear.formula.limits=round applies per cell; limited remaining lifetime scales output by actual fuel use; dynamo capacity limits wired output
 thermonuclear.tooltip.support_any=§aSupports Multi-Amp Dynamos and Laser Hatches§7
 thermonuclear.tooltip.heat_exchange.exchange.title=§bSteam production§7
 thermonuclear.tooltip.heat_exchange.exchange.formula=Steam (L) = hot coolant (L) x K; K: yield for the coolant and target steam
@@ -117,7 +130,7 @@ thermonuclear.tooltip.steam_turbine.shaft_limits=Low-pressure shafts accept ordi
 thermonuclear.tooltip.steam_turbine.features=§bGeneration mechanics and controls§7
 thermonuclear.tooltip.steam_turbine.variables=Q: actual steam intake (L/t); R: startup multiplier this tick (§60-1§7); no extra configured power multiplier
 thermonuclear.tooltip.steam_turbine.startup=Warmup time: §6%s ticks§7; turbine efficiency reaches zero after §6%s ticks§7 of shutdown
-thermonuclear.tooltip.steam_turbine.power_limits=Output is limited by dynamo hatches; excess power is discarded without reducing steam intake
+thermonuclear.tooltip.steam_turbine.power_limits=Wired output is limited by dynamos; excess power is discarded without reducing steam intake; wireless output bypasses dynamo limits
 thermonuclear.tooltip.steam_turbine.condensation=Returns §61 L§7 distilled water per §6%s L§7 steam; fractional water carries across batches; blocked output stops work
 thermonuclear.tooltip.steam_turbine.intake=GUI steam cap applies per §6%s-tick§7 cycle from the next cycle; §60§7 stops steam intake
 thermonuclear.tooltip.steam_turbine.support=§aSupports Multi-Amp Dynamos and Laser Dynamos§7

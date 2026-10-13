@@ -399,6 +399,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.2"))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.support_any"))
             .beginStructureBlock(
                 NuclearPowerPlantStructure.WIDTH,
@@ -652,7 +655,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         if (!Double.isFinite(cycles) || cycles <= 0) return coolingOnly(cooled, "invalid_value");
         switch (mode) {
             case DIRECT_GENERATION -> {
-                if (dynamoRating() <= 0) return fail("hatches");
+                if (!checkWirelessOwner()) return false;
+                if (!isWirelessMode() && dynamoRating() <= 0) return fail("hatches");
                 double baseEUt = fuel.baseEUt(workingFuel);
                 if (!Double.isFinite(baseEUt) || baseEUt <= 0) return fail("invalid_value");
                 double outputMultiplier = nuclearEnergyMultiplier();
@@ -1007,8 +1011,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load", "fuel",
-            "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant", "heat_limit",
+        return new String[] { "status", "mode", "power_mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load",
+            "fuel", "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant", "heat_limit",
             "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
             "breeder_count", "breeder_rate", "breeder_progress" };
     }

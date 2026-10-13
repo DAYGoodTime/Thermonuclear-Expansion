@@ -43,7 +43,7 @@ public final class MTEBreederInputBus extends MTEHatchInputBus {
     @Override
     public String[] getDescription() {
         return new String[] { StatCollector.translateToLocal("thermonuclear.hatch.breeder_input.desc.0"),
-            StatCollector.translateToLocal("thermonuclear.hatch.breeder_input.desc.1")};
+            StatCollector.translateToLocal("thermonuclear.hatch.breeder_input.desc.1") };
     }
 
     @Override

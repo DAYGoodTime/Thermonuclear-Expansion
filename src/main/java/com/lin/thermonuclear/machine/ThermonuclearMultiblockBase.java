@@ -10,18 +10,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
+
+import com.lin.thermonuclear.loader.ItemLoader;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.Textures;
@@ -40,6 +45,7 @@ import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
+import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -62,6 +68,8 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected double outputLitresPerTick;
     private double energyFraction;
     private boolean hadStructure;
+    private boolean wirelessUpgrade;
+    private UUID wirelessOwner;
     // Prepaid operating power in EU/t, not total EU for the processing cycle; excludes startup.
     protected double operatingEUt;
     protected boolean cycleAdvancesStartup = true;
@@ -80,6 +88,44 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected abstract boolean usesItemBusses();
 
     protected abstract boolean usesDynamo();
+
+    public final boolean isWirelessMode() {
+        // Hatch presence, not rating or free space, chooses the output path. Blocked wired output stays wired.
+        return usesDynamo() && wirelessUpgrade && mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty();
+    }
+
+    private UUID wirelessOwner() {
+        IGregTechTileEntity tile = getBaseMetaTileEntity();
+        return tile == null ? null : tile.getOwnerUuid();
+    }
+
+    protected final boolean checkWirelessOwner() {
+        return !isWirelessMode() || wirelessOwner() != null || fail("wireless_owner_missing");
+    }
+
+    @Override
+    public boolean onRightclick(IGregTechTileEntity tile, EntityPlayer player) {
+        ItemStack held = player.getHeldItem();
+        if (!usesDynamo() || held == null || held.stackSize <= 0 || held.getItem() != ItemLoader.wirelessUpgradeChip) {
+            return super.onRightclick(tile, player);
+        }
+        if (!tile.isServerSide()) return true;
+        if (wirelessUpgrade) {
+            player.addChatComponentMessage(new ChatComponentTranslation("thermonuclear.chat.wireless.already"));
+            return true;
+        }
+        wirelessUpgrade = true;
+        if (!player.capabilities.isCreativeMode) {
+            held.stackSize--;
+            if (held.stackSize == 0) player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
+            player.inventory.markDirty();
+        }
+        markDirty();
+        // The turbine may currently be unformed solely because its dynamo is missing.
+        onMachineBlockUpdate();
+        player.addChatComponentMessage(new ChatComponentTranslation("thermonuclear.chat.wireless.installed"));
+        return true;
+    }
 
     protected abstract boolean processCycle();
 
@@ -331,6 +377,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     @Override
     public boolean onRunningTick(ItemStack stack) {
+        if (operatingEUt > 0 && !checkWirelessOwner()) return false;
         running = true;
         if (operatingEUt > 0) generate(operatingEUt * startup.next(startupTicks()));
         status = powerLimited ? "power_discarded" : "running";
@@ -441,6 +488,21 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         double total = euPerTick + energyFraction;
         producedEUt = (long) Math.min(total, Long.MAX_VALUE);
         energyFraction = total < Long.MAX_VALUE ? StartupProgress.fraction(total - producedEUt) : 0;
+        if (isWirelessMode()) {
+            UUID owner = wirelessOwner();
+            if (owner != null && !owner.equals(wirelessOwner)) {
+                WirelessNetworkManager.strongCheckOrAddUser(owner);
+                wirelessOwner = owner;
+            }
+            // Credit only this running tick's actual output, never a prepaid cycle or both output paths.
+            sentEUt = owner != null
+                && (producedEUt == 0 || WirelessNetworkManager.addEUToGlobalEnergyMap(owner, producedEUt)) ? producedEUt
+                    : 0;
+            discardedEUt = producedEUt - sentEUt;
+            powerLimited = discardedEUt > 0;
+            if (powerLimited) energyFraction = 0;
+            return;
+        }
         long[] before = storedDynamoEnergy();
         boolean hadSpace = hasDynamoSpace();
         // GT5U .133 uses int injection counters and explodes above the aggregate dynamo rating.
@@ -492,6 +554,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
+        nbt.setBoolean("tnWirelessUpgrade", wirelessUpgrade);
         nbt.setDouble("tnStartup", startup.get());
         nbt.setDouble("tnEnergyFraction", energyFraction);
         nbt.setBoolean("tnHadStructure", mMachine || hadStructure);
@@ -507,6 +570,8 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
+        wirelessUpgrade = usesDynamo() && nbt.getBoolean("tnWirelessUpgrade");
+        wirelessOwner = null;
         startup.restore(nbt.getDouble("tnStartup"));
         energyFraction = StartupProgress.fraction(nbt.getDouble("tnEnergyFraction"));
         hadStructure = nbt.getBoolean("tnHadStructure");
@@ -534,10 +599,17 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     @Override
+    public void setItemNBT(NBTTagCompound nbt) {
+        super.setItemNBT(nbt);
+        nbt.setBoolean("tnWirelessUpgrade", wirelessUpgrade);
+    }
+
+    @Override
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
         tag.setBoolean("tnGenerator", usesDynamo());
+        if (usesDynamo()) tag.setString("tnPowerMode", powerModeKey());
         tag.setLong("tnProducedEUt", running ? producedEUt : 0);
         tag.setLong("tnSentEUt", running ? sentEUt : 0);
     }
@@ -548,6 +620,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         super.getWailaBody(stack, tooltip, accessor, config);
         NBTTagCompound tag = accessor.getNBTData();
         if (!tag.getBoolean("tnGenerator")) return;
+        tooltip.add(formatInfo("power_mode", tag.getString("tnPowerMode")));
         tooltip
             .add(StatCollector.translateToLocalFormatted("thermonuclear.waila.produced", tag.getLong("tnProducedEUt")));
         tooltip.add(StatCollector.translateToLocalFormatted("thermonuclear.waila.sent", tag.getLong("tnSentEUt")));
@@ -568,7 +641,13 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         boolean processingFailed = !running && (status.equals("running") || status.equals("power_discarded"))
             && !checkRecipeResult.wasSuccessful();
         info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
+        if (usesDynamo()) info.put("power_mode", powerModeKey());
         return info;
+    }
+
+    private String powerModeKey() {
+        return "thermonuclear.power_mode."
+            + (isWirelessMode() ? "wireless" : wirelessUpgrade ? "wired_upgraded" : "wired");
     }
 
     protected final void addStartupInfo(Map<String, String> info) {

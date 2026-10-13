@@ -191,7 +191,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         }
         if (!hasFluidInputs()) errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
         if (mOutputHatches.isEmpty()) errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
-        if (mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty()) {
+        if (mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty() && !isWirelessMode()) {
             errors.add(StructureErrors.missingHatch(HatchElement.Dynamo));
         }
         if (!errors.isEmpty()) shaftTier = 0;
@@ -259,6 +259,9 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                     "thermonuclear.tooltip.steam_turbine.condensation",
                     GTValues.STEAM_PER_WATER))
             .addInfo(StatCollector.translateToLocalFormatted("thermonuclear.tooltip.steam_turbine.intake", CYCLE_TICKS))
+            .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.support"))
             .beginStructureBlock(
                 SteamTurbineStructure.WIDTH,
@@ -274,7 +277,10 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             .addStructureHint("thermonuclear.structure.turbine.casing_hint", 3)
             .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.input.location"), 2)
             .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.turbine.output.location"), 1)
-            .addDynamoHatch("1+", StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"), 3)
+            .addDynamoHatch(
+                StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.quantity"),
+                StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"),
+                3)
             .toolTipFinisher();
     }
 
@@ -304,6 +310,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     @Override
     protected boolean processCycle() {
         currentFuel = null;
+        if (!checkWirelessOwner()) return false;
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
         boolean unsupportedSteam = false;
@@ -437,8 +444,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public String[] displayKeys() {
-        return new String[] { "status", "shaft_tier", "startup", "full_load", "turbine_steam_type", "steam_cycle_limit",
-            "steam_input", "water_output" };
+        return new String[] { "status", "power_mode", "shaft_tier", "startup", "full_load", "turbine_steam_type",
+            "steam_cycle_limit", "steam_input", "water_output" };
     }
 
     @Override
