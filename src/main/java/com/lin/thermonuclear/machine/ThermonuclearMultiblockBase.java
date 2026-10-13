@@ -609,7 +609,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
         tag.setBoolean("tnGenerator", usesDynamo());
-        if (usesDynamo()) tag.setString("tnPowerMode", powerModeKey());
+        tag.setBoolean("tnWirelessUpgrade", usesDynamo() && wirelessUpgrade);
         tag.setLong("tnProducedEUt", running ? producedEUt : 0);
         tag.setLong("tnSentEUt", running ? sentEUt : 0);
     }
@@ -620,9 +620,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         super.getWailaBody(stack, tooltip, accessor, config);
         NBTTagCompound tag = accessor.getNBTData();
         if (!tag.getBoolean("tnGenerator")) return;
-        tooltip.add(formatInfo("power_mode", tag.getString("tnPowerMode")));
-        tooltip
-            .add(StatCollector.translateToLocalFormatted("thermonuclear.waila.produced", tag.getLong("tnProducedEUt")));
+        if (tag.getBoolean("tnWirelessUpgrade")) {
+            tooltip.add(StatCollector.translateToLocal("thermonuclear.gui.wireless"));
+        }
         tooltip.add(StatCollector.translateToLocalFormatted("thermonuclear.waila.sent", tag.getLong("tnSentEUt")));
     }
 
@@ -641,13 +641,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         boolean processingFailed = !running && (status.equals("running") || status.equals("power_discarded"))
             && !checkRecipeResult.wasSuccessful();
         info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
-        if (usesDynamo()) info.put("power_mode", powerModeKey());
         return info;
-    }
-
-    private String powerModeKey() {
-        return "thermonuclear.power_mode."
-            + (isWirelessMode() ? "wireless" : wirelessUpgrade ? "wired_upgraded" : "wired");
     }
 
     protected final void addStartupInfo(Map<String, String> info) {
