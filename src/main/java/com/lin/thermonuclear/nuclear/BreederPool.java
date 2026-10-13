@@ -15,9 +15,11 @@ import net.minecraft.nbt.NBTTagList;
 /** Independent controller inventory. Completed rods retain their capacity reservation until output commits. */
 public final class BreederPool {
 
-    public static final int MAX_RODS = 512;
     private final List<ItemStack> working = new ArrayList<>();
     private final List<ItemStack> completed = new ArrayList<>();
+
+    private float lowestProgress = 0.0f;
+    private float highestProgress = 0.0f;
 
     public int workingCount() {
         return count(working);
@@ -34,8 +36,8 @@ public final class BreederPool {
     }
 
     /** Stages copies in the pool; physical input stacks are only consumed after the host transaction succeeds. */
-    public Runnable prepareLoad(List<ItemStack> inputs) {
-        int available = MAX_RODS - workingCount() - completedCount();
+    public Runnable prepareLoad(List<ItemStack> inputs, int maxRods) {
+        int available = maxRods - workingCount() - completedCount();
         List<ItemStack> sources = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         Set<ItemStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -76,6 +78,7 @@ public final class BreederPool {
                 stack.setItemDamage(Math.max(0, stack.getItemDamage()) + (int) (pulses * 4));
             }
         }
+        updateSummary();
     }
 
     private static void add(List<ItemStack> pool, ItemStack stack) {
@@ -99,8 +102,8 @@ public final class BreederPool {
         for (ItemStack stack : remaining) if (stack.stackSize > 0) completed.add(stack);
     }
 
-    public String progressSummary() {
-        if (working.isEmpty()) return "";
+    private void updateSummary(){
+        if(working.isEmpty()) return;
         double lowest = 100;
         double highest = 0;
         for (ItemStack stack : working) {
@@ -109,8 +112,13 @@ public final class BreederPool {
             lowest = Math.min(lowest, progress);
             highest = Math.max(highest, progress);
         }
-        return String.format(Locale.ROOT, "%.2f - %.2f", lowest, highest);
+        lowestProgress = (float) lowest;
+        highestProgress = (float) highest;
     }
+
+    public float getLowestProgress() {return lowestProgress;}
+
+    public float getHighestProgress() {return highestProgress;}
 
     public void save(NBTTagCompound nbt) {
         saveList(nbt, "tnBreederWorking", working);

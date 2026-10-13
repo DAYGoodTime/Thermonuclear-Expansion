@@ -24,10 +24,22 @@ public final class NuclearPowerPlantGui extends ThermonuclearMultiblockGui<MTENu
             if (baseMetaTileEntity.isServerSide()) multiblock.requestModeChange();
         });
         manager.syncValue("tnChangeMode", change);
+        InteractionSyncHandler eject = new InteractionSyncHandler().setOnMousePressed(mouse -> {
+            if (baseMetaTileEntity.isServerSide()) multiblock.requestFuelEjection();
+        });
+        manager.syncValue("tnEjectFuel", eject);
         return row.child(
             new ButtonWidget<>().size(18)
                 .overlay(GTGuiTextures.OVERLAY_BUTTON_CYCLIC)
                 .tooltipBuilder(t -> t.addLine(IKey.lang("thermonuclear.gui.switch_mode")))
-                .syncHandler(change));
+                .syncHandler(change))
+            .child(
+                new ButtonWidget<>().size(18)
+                    .overlay(GTGuiTextures.OVERLAY_BUTTON_EXPORT)
+                    .tooltipBuilder(t -> {
+                        t.addLine(IKey.lang("thermonuclear.gui.eject_fuel.0"));
+                        t.addLine(IKey.lang("thermonuclear.gui.eject_fuel.1"));
+                    })
+                    .syncHandler(eject));
     }
 }

@@ -3,6 +3,7 @@ package com.lin.thermonuclear.machine;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import net.minecraft.block.Block;
@@ -469,7 +470,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private CoolingFluid selectedCoolingFluid;
     private double reactorHeat;
     private final NuclearMeltdownTimer meltdownTimer = new NuclearMeltdownTimer();
-    private double consumedFuelCycles;
     private double fullLoadHeatRate;
     private NBTTagCompound fuelSnapshot;
     private FuelBatch.Plan fuelPlan;
@@ -506,6 +506,34 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         workingFuelRemainingCycles = workingFuelAdapter == null ? 0 : workingFuelAdapter.remainingCycles(stack);
     }
 
+    public boolean requestFuelEjection() {
+        IGregTechTileEntity tile = getBaseMetaTileEntity();
+        if (tile == null || !tile.isServerSide() || !mMachine || tile.isAllowedToWork() || running
+            || fuelSnapshot != null || workingFuel == null || getOutputBusses().isEmpty()) return false;
+
+        ItemStack output = workingFuel.copy();
+        // Rod items only store whole cycles: round up exported wear instead of refunding fractional fuel use.
+        if (fuelFraction > 0 && workingFuelAdapter != null) {
+            workingFuelAdapter.consumeCycles(output, 1);
+            if (workingFuelAdapter.remainingCycles(output) == 0) {
+                output = workingFuelAdapter.depleted(output);
+                output.stackSize = workingFuel.stackSize;
+            }
+        }
+        ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true);
+        int ejected = outputs.ejectStack(output);
+        if (ejected <= 0) return false;
+        outputs.commit();
+        workingFuel.stackSize -= ejected;
+        if (workingFuel.stackSize == 0) {
+            setWorkingFuel(null);
+            fuelFraction = 0;
+        }
+        updateSlots();
+        markDirty();
+        return true;
+    }
+
     private void takeFuel() {
         if (workingFuel != null || pendingDepleted != null) return;
         fuelPlan = FuelBatch.prepare(cycleItems(), FuelRodAdapters.all(), getFuelRodLimit());
@@ -532,7 +560,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             if (!bus.isValid()) continue;
             for (int slot = 0; slot < bus.getCircuitSlot(); slot++) inputs.add(bus.getStackInSlot(slot));
         }
-        Runnable consumeBreeders = breederPool.prepareLoad(inputs);
+        Runnable consumeBreeders = breederPool.prepareLoad(inputs, getFuelRodLimit());
         commitOutput(() -> {
             consumeBreeders.run();
             for (MTEBreederInputBus bus : breederInputs) {
@@ -585,7 +613,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private boolean processNuclearCycle() {
-        consumedFuelCycles = 0;
         if (getOutputBusses().isEmpty() || (mInputBusses.isEmpty() && mDualInputHatches.isEmpty())) {
             return fail("hatches");
         }
@@ -646,7 +673,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 reactorHeat += generatedHeat;
             }
         }
-        consumedFuelCycles = cycles * workingFuel.stackSize;
         processBreeders((long) Math.max(0, fuel.cells(workingFuel)) * workingFuel.stackSize);
         double used = fuelFraction + cycles;
         int damage = (int) Math.floor(used);
@@ -786,7 +812,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected void beforeProcessingCycle() {
-        consumedFuelCycles = 0;
         fullLoadHeatRate = 0;
         breederPulses = 0;
     }
@@ -873,7 +898,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             updateMeltdown(tile);
             return;
         }
-        consumedFuelCycles = fullLoadHeatRate = 0;
         if (reactorHeat <= 0) {
             stoppedInputRate = stoppedOutputRate = 0;
             selectedCoolingFluid = null;
@@ -939,7 +963,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         running = false;
         operatingEUt = fullLoadEUt = fullLoadHeatRate = 0;
         inputLitresPerTick = outputLitresPerTick = stoppedInputRate = stoppedOutputRate = 0;
-        consumedFuelCycles = 0;
         startup.clear();
         meltdownTimer.reset();
         status = "meltdown";
@@ -980,59 +1003,59 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "fuel_rod_tier", "max_parallel", "fuel_limit", "startup", "full_load",
-            "fuel", "fuel_count", "fuel_remaining", "fuel_rate", "heat", "heat_capacity", "heat_rate", "coolant",
+        return new String[] { "status", "mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load",
+            "fuel", "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant",
             "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
-            "breeder_count", "breeder_limit", "breeder_pulses", "breeder_rate", "breeder_progress", "breeder_pending" };
+            "breeder_count", "breeder_rate", "breeder_progress"};
     }
 
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
+        addGenerationInfo(info);
         info.put("mode", mode.translationKey());
         if (mMachine && fuelRodTier > 0) {
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));
-            info.put("max_parallel", Integer.toString(getMaxParallel()));
             info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
         }
-        if (mode == NuclearOperatingMode.DIRECT_GENERATION) info.put("startup", decimal(100));
-        else addStartupInfo(info);
-        if (mode == NuclearOperatingMode.DIRECT_GENERATION) addGenerationInfo(info);
-        info.put("fuel", workingFuel == null ? "thermonuclear.recipe.none" : workingFuel.getDisplayName());
-        if (workingFuel != null) {
+        boolean hasWorkingFuel  = workingFuel != null;
+        info.put("fuel", hasWorkingFuel ? workingFuel.getDisplayName() : "thermonuclear.recipe.none" );
+        if (hasWorkingFuel) {
             info.put("fuel_count", Integer.toString(workingFuel.stackSize));
             info.put(
                 "fuel_remaining",
                 workingFuelAdapter == null ? "0" : decimal(workingFuelRemainingCycles - fuelFraction));
-            info.put("fuel_rate", decimal(running ? consumedFuelCycles : 0));
         }
-        info.put("heat", decimal(reactorHeat));
-        info.put("heat_capacity", Integer.toString(getHeatCapacity()));
-        info.put("heat_rate", decimalPerCycle(running ? fullLoadHeatRate : 0));
-        if (mode == NuclearOperatingMode.HEAT_SUPPLY || stoppedInputRate > 0) {
-            info.put(
-                "coolant",
-                selectedCoolingFluid == null ? "thermonuclear.recipe.none"
-                    : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
+        switch (mode){
+            case DIRECT_GENERATION:
+                info.put("startup", decimal(100));
+                break;
+            case HEAT_SUPPLY:
+                addStartupInfo(info);
+                info.put("heat", decimal(reactorHeat));
+                info.put("heat_capacity", Integer.toString(getHeatCapacity()));
+                info.put("heat_rate", decimalPerCycle(running ? fullLoadHeatRate : 0));
+                info.put(
+                    "coolant",
+                    selectedCoolingFluid == null ? "thermonuclear.recipe.none"
+                        : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
                         : selectedCoolingFluid.recipe.translationKey());
-            boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
-            if (selectedCoolingFluid != null) {
-                double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
-                    : selectedCoolingFluid.recipe.coolantPerHeat();
-                info.put(water ? "water_limit" : "heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
-                info.put(water ? "water_input" : "coolant_input", decimalPerCycle(inputLitresPerTick));
-                info.put(water ? "steam_output" : "hot_output", decimalPerCycle(outputLitresPerTick));
-            }
+                boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
+                if (selectedCoolingFluid != null) {
+                    double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
+                        : selectedCoolingFluid.recipe.coolantPerHeat();
+                    info.put(water ? "water_limit" : "heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
+                    info.put(water ? "water_input" : "coolant_input", decimalPerCycle(inputLitresPerTick));
+                    info.put(water ? "steam_output" : "hot_output", decimalPerCycle(outputLitresPerTick));
+                }
+                break;
         }
         if (pendingDepleted != null) {
             info.put("pending_spent", pendingDepleted.stackSize + " x " + pendingDepleted.getDisplayName());
+            info.put("breeder_count", Integer.toString(breederPool.workingCount()));
+            info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
+            info.put("breeder_progress", Float.toString(breederPool.getHighestProgress()));
         }
-        info.put("breeder_count", Integer.toString(breederPool.workingCount()));
-        info.put("breeder_limit", Integer.toString(BreederPool.MAX_RODS));
-        info.put("breeder_pulses", Long.toString(running ? breederPulses : 0));
-        info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
-        info.put("breeder_progress", breederPool.progressSummary());
-        info.put("breeder_pending", Integer.toString(breederPool.completedCount()));
         return info;
     }
 }
