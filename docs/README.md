@@ -40,6 +40,7 @@
 | [热核扩展规划原稿](../plan/GTNH-Thermonuclear-Expansion-Plan.md) | 总体能源链与阶段目标，含待确认项 |
 | [蒸汽发电扩展规划](../plan/Plan-01.md) | 热交换站、涡轮、核电站与验收规划；与原稿的关系待确认 |
 | [第一阶段实现任务](../plan/2026-09-30-thermonuclear-stage1-tasks.md) | 首轮范围、任务依赖及后续差异，非当前未完成清单；实现以知识库和源码为准 |
+| [未来机制备忘](../plan/TODO.md) | 按已记录的 `origin/master` 核对后续待办；并行调整、堆叠结构与增殖游戏验收仍保留，功能代码同步边界见清单 |
 | [未来机制备忘](../plan/TODO.md) | 后续待办与机制设计；增殖总线制造及转换配方已有代码，游戏验收仍待完成 |
 | [低压涡轮轴](wiki/blocks/低压涡轮轴.md) / [高压涡轮轴](wiki/blocks/高压涡轮轴.md) | 已实现基础方块、三轴材质朝向、涡轮两级横向轴接入及 HV／IV 组装机配方；高压轴解锁超超临界蒸汽发电，游戏行为待验收 |
 | [燃料棒方块](wiki/blocks/燃料棒方块.md) | 四等级基础方块、三轴朝向、核电同级结构、LV 组装机配方及分级热容量／最大并行已实现；游戏行为待验收 |
@@ -51,6 +52,7 @@
 | 文档 | 用途与边界 |
 | --- | --- |
 | [GT-Not-Leisure 参考索引](wiki/references/GT-Not-Leisure参考索引.md) | 功能开发前必查的本地只读代码参考，含主题路径与版本差异 |
+| [TST 大型机器分片总结](wiki/references/TST大型机器分片总结.md) | TST 分片源码入口、三轴偏移、分次检查与 ZIP 记录格式；外部参考，未在本项目实现 |
 | [knowledge.md](knowledge.md) / [GT5U-NOTES.md](GT5U-NOTES.md) | MessTech 来源原文，保留原路径；不是本项目实现说明 |
 | [IC2 反应堆燃料棒公式](wiki/references/IC2-2.2.828反应堆燃料棒公式.md) | 燃料发电、发热与流体散热公式，含来源及实测边界 |
 | [Mekanism 裂变公式](wiki/references/Mekanism裂变反应堆发热与冷却剂公式.md) | 裂变发热与冷却剂换算参考；不代表本项目已实现 |
