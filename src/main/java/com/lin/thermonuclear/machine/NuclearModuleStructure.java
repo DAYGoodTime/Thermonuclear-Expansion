@@ -18,6 +18,15 @@ final class NuclearModuleStructure {
 
     private NuclearModuleStructure() {}
 
+    static int moduleLimit(int pipeTier) {
+        return switch (pipeTier) {
+            case 1 -> 1;
+            case 2 -> 3;
+            case 3 -> MAX_MODULES;
+            default -> 0;
+        };
+    }
+
     static String[][] shape() {
         String[][] copy = new String[TEMPLATE.length][];
         for (int i = 0; i < copy.length; i++) copy[i] = TEMPLATE[i].clone();

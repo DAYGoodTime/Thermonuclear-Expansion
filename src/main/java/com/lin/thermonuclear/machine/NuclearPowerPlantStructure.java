@@ -79,7 +79,7 @@ final class NuclearPowerPlantStructure {
         set(shape, 9, 22, 10, 'T');
         for (int y = 20; y <= 22; y++) set(shape, 9, y, 11, 'T');
         for (int x = 9; x <= 13; x++) set(shape, x, 23, 11, 'T');
-        // Bronze outlet support is required; its central pipe hole is ignored by A itself.
+        // Tiered outlet support is required; its central tungstensteel connection hole is ignored by A itself.
         for (int z = 15; z <= 19; z++) set(shape, 21, 23, z, 'P');
         set(shape, 21, 22, 15, 'P');
         set(shape, 21, 22, 19, 'P');

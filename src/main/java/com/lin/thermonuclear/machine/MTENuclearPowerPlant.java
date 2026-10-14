@@ -1,10 +1,6 @@
 package com.lin.thermonuclear.machine;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import net.minecraft.block.Block;
@@ -22,6 +18,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.gtnewhorizon.structurelib.alignment.constructable.ChannelDataAccessor;
 import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
@@ -91,6 +88,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
     private static final List<int[]> SERVICE_OFFSETS = structureOffsets('B');
     private static final Set<Position> MAIN_BLOCKS = mainBlocks();
+    private static final List<Casings> PIPE_CASINGS = new ArrayList<>(Arrays.asList(Casings.SteelPipeCasing, Casings.TitaniumPipeCasing, Casings.TungstensteelPipeCasing));
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
@@ -106,17 +104,13 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             'L',
             StructureUtility
                 .ofBlock(Casings.TungstensteelPipeCasing.getBlock(), Casings.TungstensteelPipeCasing.getBlockMeta()))
-        .addElement(
-            'P',
-            StructureUtility.ofBlock(Casings.BronzePipeCasing.getBlock(), Casings.BronzePipeCasing.getBlockMeta()))
+        .addElement('P', tieredPipe())
         .addElement('S', GTStructureUtility.ofFrame(Materials.Steel))
         .addElement(
             'T',
             StructureUtility
                 .ofBlock(Casings.SolidSteelMachineCasing.getBlock(), Casings.SolidSteelMachineCasing.getBlockMeta()))
-        .addElement(
-            'C',
-            StructureUtility.ofBlock(Casings.BronzePipeCasing.getBlock(), Casings.BronzePipeCasing.getBlockMeta()))
+        .addElement('C', tieredPipe())
         .addElement(
             'D',
             StructureUtility.withChannel(
@@ -169,6 +163,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .build();
 
     private int fuelRodTier = -1;
+    private int pipeTier = -1;
     private final List<MTEBreederInputBus> breederInputs = new ArrayList<>();
     private final List<MTEBreederOutputBus> breederOutputs = new ArrayList<>();
     private boolean constructing;
@@ -183,6 +178,23 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private int mainChunkX, mainChunkY, mainChunkZ;
     private boolean mainFitsWorld;
     private final Set<Long> mainChunks = new HashSet<>();
+
+    private static IStructureElement<MTENuclearPowerPlant> tieredPipe() {
+        return StructureUtility
+            .withChannel("pipe", StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered((block, meta) -> {
+                for (int i = 0; i < PIPE_CASINGS.size(); i++) {
+                    Casings casing = PIPE_CASINGS.get(i);
+                    if (block == casing.getBlock() && meta == casing.getBlockMeta()) return i + 1;
+                }
+                return null;
+            },
+                PIPE_CASINGS.stream()
+                    .map(casing -> Pair.of(casing.getBlock(), casing.getBlockMeta()))
+                    .collect(Collectors.toList()),
+                -1,
+                (machine, tier) -> machine.pipeTier = tier,
+                machine -> machine.pipeTier));
+    }
 
     private static Set<Position> mainBlocks() {
         Set<Position> blocks = new HashSet<>();
@@ -269,7 +281,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     && tile.getWorld()
                         .getBlockMetadata(p[0], p[1], p[2]) == meta;
             }
-        }, MAIN_BLOCKS, System::nanoTime).scan();
+        }, MAIN_BLOCKS, System::nanoTime, NuclearModuleStructure.moduleLimit(pipeTier)).scan();
         if (expansionScan.timedOut) {
             expansionState = "expansion_timeout";
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.expansion_timeout"));
@@ -491,6 +503,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         breederInputs.clear();
         breederOutputs.clear();
         fuelRodTier = -1;
+        pipeTier = -1;
     }
 
     private boolean addServiceHatch(IGregTechTileEntity tile, int texture) {
@@ -539,8 +552,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             return;
         }
         fuelRodTier = -1;
+        pipeTier = -1;
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
             fuelRodTier = -1;
+            pipeTier = -1;
             return;
         }
         if (mInputBusses.isEmpty()) {
@@ -557,6 +572,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         // Dynamos remain mode-dependent; maintenance hatches are optional and do not enable failures.
         if (!errors.isEmpty()) {
             fuelRodTier = -1;
+            pipeTier = -1;
         } else {
             scanExpansion(tile, errors);
         }
@@ -575,6 +591,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     public void construct(ItemStack stack, boolean hintsOnly) {
         constructing = true;
         try {
+            if (previewConstruction) {
+                // The fixed three-module NEI example requires titanium; do not mutate the caller's trigger.
+                stack = stack.copy();
+                ChannelDataAccessor.setChannelData(stack, "pipe", 2);
+            }
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
             // Only the explicit NEI callback enables BCE construction. Real-world additions are hints only.
             boolean preview = previewConstruction;
@@ -1302,7 +1323,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         addGenerationInfo(info);
         info.put("mode", mode.translationKey());
         if (expansionValidated) {
-            info.put("expansion_count", Integer.toString(expansionLevel - 1));
+            info.put("expansion_count", (expansionLevel - 1) + " / " + NuclearModuleStructure.moduleLimit(pipeTier));
         }
         if (mMachine && fuelRodTier > 0) {
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));

@@ -37,25 +37,34 @@ final class NuclearModuleSearch {
 
     private final Reader reader;
     private final LongSupplier clock;
+    private final int moduleLimit;
     private final Set<Position> occupied;
     private final Map<Position, Boolean> bodies = new HashMap<>();
     private final Set<Position> valid = new HashSet<>();
     private final Result result = new Result();
     private long started;
 
-    NuclearModuleSearch(Reader reader, Set<Position> mainBlocks, LongSupplier clock) {
+    NuclearModuleSearch(Reader reader, Set<Position> mainBlocks, LongSupplier clock, int moduleLimit) {
+        if (moduleLimit < 0 || moduleLimit > NuclearModuleStructure.MAX_MODULES)
+            throw new IllegalArgumentException("Invalid module limit: " + moduleLimit);
         this.reader = reader;
         this.occupied = new HashSet<>(mainBlocks);
         this.clock = clock;
+        this.moduleLimit = moduleLimit;
     }
 
     Result scan() {
         started = clock.getAsLong();
         try {
+            if (moduleLimit == 0) return result;
             result.edges++;
             if (!check(NuclearModuleStructure.entrance()) || !body(NuclearModuleStructure.FIRST)) return result;
             ArrayDeque<Position> queue = new ArrayDeque<>();
             accept(NuclearModuleStructure.FIRST, queue);
+            if (valid.size() == moduleLimit) {
+                result.capped = true;
+                return result;
+            }
             Set<Set<Position>> edges = new HashSet<>();
             while (!queue.isEmpty()) {
                 deadline();
@@ -73,7 +82,7 @@ final class NuclearModuleSearch {
                     if (valid.contains(to) || !body(to)) continue;
                     accept(to, queue);
                     deadline();
-                    if (valid.size() == NuclearModuleStructure.MAX_MODULES) {
+                    if (valid.size() == moduleLimit) {
                         result.capped = true;
                         return result;
                     }
