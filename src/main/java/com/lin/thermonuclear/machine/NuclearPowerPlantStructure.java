@@ -2,7 +2,7 @@ package com.lin.thermonuclear.machine;
 
 import java.util.Arrays;
 
-/** Geometry of dev/nulcearStructure.txt; the annex controller faces export -Z. */
+/** Controller-relative geometry; the BCE export adds one padding column and row, not a new core anchor. */
 final class NuclearPowerPlantStructure {
 
     static final int WIDTH = 29;
@@ -21,7 +21,7 @@ final class NuclearPowerPlantStructure {
     private static final String CAP = "              FFFFFFFFF      ";
     private static final String CORE_BASE = "          F  FFFFFFFFFFF  F  ";
     private static final String CORE_WATER = "         F   FGGGGGGGGGF   F ";
-    private static final String CORE_FLOOR = "         F   FFFFFFFFFFF   F ";
+    private static final String CORE_FLOOR = "         F   TFFFFFFFFFT   F ";
 
     private NuclearPowerPlantStructure() {}
 
@@ -41,7 +41,8 @@ final class NuclearPowerPlantStructure {
         for (int z : new int[] { 5, 15 }) {
             Arrays.fill(shape[z], 17, 23, CORE_BASE);
         }
-        shape[5][22] = "          F  FFCFFFFFCFF  F  ";
+        shape[5][22] = "          F  TTCTTTTTCTT  F  ";
+        shape[15][22] = "          F  TTTTTTTTPTT  F  ";
         for (int z = 6; z <= 14; z++) {
             // The export's glass roof E is now source water, identical to G.
             Arrays.fill(shape[z], 17, 22, CORE_WATER);
@@ -52,23 +53,51 @@ final class NuclearPowerPlantStructure {
             Arrays.fill(shape[z], 18, 22, rods);
         }
         for (int z = 7; z <= 13; z++) {
-            shape[z][18] = " FFFFFFFFF" + shape[z][18].substring(10);
+            shape[z][18] = " TTTTTTTTF" + shape[z][18].substring(10);
             for (int y = 19; y <= 21; y++) {
-                String annex = z == 7 || z == 13 ? " FBBBBBBFF" : " B       F";
+                String annex = z == 7 || z == 13 ? " TBBBBBBTF" : " T       F";
                 shape[z][y] = annex + shape[z][y].substring(10);
             }
-            shape[z][22] = (z == 7 || z == 13 ? " FFFFFFFFF" : " F       F") + shape[z][22].substring(10);
+            shape[z][22] = (z == 7 || z == 13 ? " TTTTTTTTF" : " T       F") + shape[z][22].substring(10);
         }
         // H is the real controller; the offset header belongs to the scanner outside the build.
-        shape[OFFSET_Z][OFFSET_Y] = " F~BBBBBFF   FGGGGGGGGGF   F ";
+        shape[OFFSET_Z][OFFSET_Y] = " T~BBBBBTF   FGGGGGGGGGF   F ";
         shape[19] = solidCapLayer(BACK_FLOOR);
         shape[20] = layer(BACK_FLOOR);
+        // The annex uses solid steel casings, with two real steel-frame rows inside.
+        for (int z = 8; z <= 12; z++) {
+            for (int y = 19; y <= 21; y++) set(shape, 1, y, z, 'T');
+        }
+        for (int y = 19; y <= 21; y++) {
+            for (int x = 2; x <= 7; x++) set(shape, x, y, 13, 'T');
+        }
+        for (int x = 2; x <= 8; x++) {
+            set(shape, x, 21, 9, 'S');
+            set(shape, x, 20, 11, 'S');
+        }
+        for (int y = 21; y <= 22; y++) set(shape, 9, y, 9, 'T');
+        set(shape, 9, 22, 10, 'T');
+        for (int y = 20; y <= 22; y++) set(shape, 9, y, 11, 'T');
+        for (int x = 9; x <= 13; x++) set(shape, x, 23, 11, 'T');
+        // Bronze outlet support is required; its central pipe hole is ignored by A itself.
+        for (int z = 15; z <= 19; z++) set(shape, 21, 23, z, 'P');
+        set(shape, 21, 22, 15, 'P');
+        set(shape, 21, 22, 19, 'P');
+        set(shape, 21, 21, 20, 'F');
+        set(shape, 20, 22, 20, 'F');
+        set(shape, 22, 22, 20, 'F');
         for (String[] slice : shape) {
             for (String row : slice) {
                 if (row.length() != WIDTH) throw new IllegalStateException("Invalid nuclear structure row width");
             }
         }
         return shape;
+    }
+
+    private static void set(String[][] shape, int x, int y, int z, char value) {
+        char[] row = shape[z][y].toCharArray();
+        row[x] = value;
+        shape[z][y] = new String(row);
     }
 
     private static String[] layer(String... bottomRows) {

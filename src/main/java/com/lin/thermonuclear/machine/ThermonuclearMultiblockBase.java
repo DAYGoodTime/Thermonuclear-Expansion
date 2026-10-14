@@ -150,6 +150,18 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected abstract int structureChunkRadius();
 
+    protected boolean requiredStructureChunksLoaded(IGregTechTileEntity tile) {
+        int radius = structureChunkRadius();
+        return tile.getWorld()
+            .checkChunksExist(
+                tile.getXCoord() - radius,
+                tile.getYCoord() - radius,
+                tile.getZCoord() - radius,
+                tile.getXCoord() + radius,
+                tile.getYCoord() + radius,
+                tile.getZCoord() + radius);
+    }
+
     protected boolean addMachineHatch(IGregTechTileEntity tile, int texture) {
         if (tile == null || tile.getMetaTileEntity() == null) return false;
         if (usesItemBusses() || tile.getMetaTileEntity() instanceof IDualInputHatch) {
@@ -227,15 +239,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         producedEUt = sentEUt = discardedEUt = 0;
         powerLimited = false;
         // A reload or an unloaded neighbour chunk is not a dismantled shell. Defer checks and processing.
-        int radius = structureChunkRadius();
-        if (!tile.getWorld()
-            .checkChunksExist(
-                tile.getXCoord() - radius,
-                tile.getYCoord() - radius,
-                tile.getZCoord() - radius,
-                tile.getXCoord() + radius,
-                tile.getYCoord() + radius,
-                tile.getZCoord() + radius)) {
+        if (!requiredStructureChunksLoaded(tile)) {
             status = "chunk_unloaded";
             tile.setActive(false);
             return;

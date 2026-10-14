@@ -1,8 +1,10 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import net.minecraft.block.Block;
@@ -20,6 +22,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
@@ -31,6 +34,8 @@ import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.loader.BlockLoader;
+import com.lin.thermonuclear.machine.NuclearModuleStructure.Position;
+import com.lin.thermonuclear.machine.NuclearModuleStructure.RequiredBlock;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.nuclear.BreederPool;
@@ -48,11 +53,13 @@ import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.ItemList;
+import gregtech.api.enums.Materials;
 import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
@@ -82,18 +89,34 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final List<int[]> COOLANT_OFFSETS = structureOffsets('A');
     private static final List<int[]> WATER_OFFSETS = structureOffsets('G');
     private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
+    private static final List<int[]> SERVICE_OFFSETS = structureOffsets('B');
+    private static final Set<Position> MAIN_BLOCKS = mainBlocks();
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
+        .addShape(NuclearModuleStructure.MODULE, NuclearModuleStructure.shape())
+        .addShape(NuclearModuleStructure.PIPE_X, new String[][] { { "LLLLL" } })
+        .addShape(NuclearModuleStructure.PIPE_Z, new String[][] { { "L" }, { "L" }, { "L" }, { "L" }, { "L" } })
+        .addElement(
+            'K',
+            StructureUtility.ofBlock(
+                Casings.RobustTungstenSteelMachineCasing.getBlock(),
+                Casings.RobustTungstenSteelMachineCasing.getBlockMeta()))
+        .addElement(
+            'L',
+            StructureUtility
+                .ofBlock(Casings.TungstensteelPipeCasing.getBlock(), Casings.TungstensteelPipeCasing.getBlockMeta()))
+        .addElement(
+            'P',
+            StructureUtility.ofBlock(Casings.BronzePipeCasing.getBlock(), Casings.BronzePipeCasing.getBlockMeta()))
+        .addElement('S', GTStructureUtility.ofFrame(Materials.Steel))
+        .addElement(
+            'T',
+            StructureUtility
+                .ofBlock(Casings.SolidSteelMachineCasing.getBlock(), Casings.SolidSteelMachineCasing.getBlockMeta()))
         .addElement(
             'C',
-            StructureUtility.ofChain(
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 12),
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 13),
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 14),
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings2, 15),
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings8, 1),
-                StructureUtility.ofBlock(GregTechAPI.sBlockCasings9, 0)))
+            StructureUtility.ofBlock(Casings.BronzePipeCasing.getBlock(), Casings.BronzePipeCasing.getBlockMeta()))
         .addElement(
             'D',
             StructureUtility.withChannel(
@@ -113,20 +136,22 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .addElement('G', GTStructureUtility.ofAnyWater())
         .addElement(
             'B',
-            GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
-                .anyOf(
-                    HatchElement.InputBus,
-                    HatchElement.OutputBus,
-                    HatchElement.Dynamo,
-                    HatchElement.ExoticDynamo,
-                    HatchElement.LaserSource,
-                    HatchElement.Maintenance)
-                .adder(MTENuclearPowerPlant::addServiceHatch)
-                .hatchItemFilter(machine -> stack -> isServiceHatchCandidate(ItemMachines.getMetaTileEntity(stack)))
-                .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
-                .casingIndex(CONCRETE_TEXTURE)
-                .hint(1)
-                .buildAndChain(GregTechAPI.sBlockReinforced, CONCRETE_META))
+            StructureUtility.ofChain(
+                servicePreviewPlacement(),
+                GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
+                    .anyOf(
+                        HatchElement.InputBus,
+                        HatchElement.OutputBus,
+                        HatchElement.Dynamo,
+                        HatchElement.ExoticDynamo,
+                        HatchElement.LaserSource,
+                        HatchElement.Maintenance)
+                    .adder(MTENuclearPowerPlant::addServiceHatch)
+                    .hatchItemFilter(machine -> stack -> isServiceHatchCandidate(ItemMachines.getMetaTileEntity(stack)))
+                    .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
+                    .casingIndex(CONCRETE_TEXTURE)
+                    .hint(1)
+                    .buildAndChain(GregTechAPI.sBlockReinforced, CONCRETE_META)))
         .addElement(
             'A',
             StructureUtility.ofChain(
@@ -149,6 +174,192 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private boolean constructing;
     private boolean previewConstruction;
     private EntityPlayer previewPlayer;
+    private int expansionLevel = 1;
+    private boolean expansionKnown;
+    private boolean expansionValidated;
+    private String expansionState = "checking";
+    private NuclearModuleSearch.Result expansionScan;
+    private ExtendedFacing mainChunkFacing;
+    private int mainChunkX, mainChunkY, mainChunkZ;
+    private boolean mainFitsWorld;
+    private final Set<Long> mainChunks = new HashSet<>();
+
+    private static Set<Position> mainBlocks() {
+        Set<Position> blocks = new HashSet<>();
+        for (int z = 0; z < SHAPE.length; z++) {
+            for (int y = 0; y < SHAPE[z].length; y++) {
+                for (int x = 0; x < SHAPE[z][y].length(); x++) {
+                    if (SHAPE[z][y].charAt(x) != ' ')
+                        blocks.add(new Position(x - OFFSET_X, y - OFFSET_Y, z - OFFSET_Z));
+                }
+            }
+        }
+        return blocks;
+    }
+
+    private int[] worldPosition(Position position) {
+        int[] offset = new int[3];
+        getExtendedFacing().getWorldOffset(new int[] { position.x, position.y, position.z }, offset);
+        IGregTechTileEntity tile = getBaseMetaTileEntity();
+        offset[0] += tile.getXCoord();
+        offset[1] += tile.getYCoord();
+        offset[2] += tile.getZCoord();
+        return offset;
+    }
+
+    @Override
+    protected boolean requiredStructureChunksLoaded(IGregTechTileEntity tile) {
+        // Only A can suspend the entire machine. Remote expansion chunks are handled as absent edges/bodies.
+        if (mainChunkFacing != getExtendedFacing() || mainChunkX != tile.getXCoord()
+            || mainChunkY != tile.getYCoord()
+            || mainChunkZ != tile.getZCoord()) {
+            mainChunkFacing = getExtendedFacing();
+            mainChunkX = tile.getXCoord();
+            mainChunkY = tile.getYCoord();
+            mainChunkZ = tile.getZCoord();
+            mainChunks.clear();
+            mainFitsWorld = true;
+            for (Position position : MAIN_BLOCKS) {
+                int[] world = worldPosition(position);
+                mainFitsWorld &= world[1] >= 0 && world[1] < tile.getWorld()
+                    .getHeight();
+                mainChunks.add(((long) (world[0] >> 4) << 32) ^ ((world[2] >> 4) & 0xffffffffL));
+            }
+        }
+        for (long chunk : mainChunks) {
+            if (!tile.getWorld()
+                .getChunkProvider()
+                .chunkExists((int) (chunk >> 32), (int) chunk)) {
+                expansionValidated = false;
+                expansionState = "chunk_unloaded";
+                // Revalidate before any prepaid cycle resumes after A's chunks return.
+                mUpdate = 1;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void scanExpansion(IGregTechTileEntity tile, List<StructureError> errors) {
+        expansionScan = new NuclearModuleSearch(new NuclearModuleSearch.Reader() {
+
+            @Override
+            public boolean loaded(Position position) {
+                int[] p = worldPosition(position);
+                return tile.getWorld()
+                    .blockExists(p[0], p[1], p[2]);
+            }
+
+            @Override
+            public boolean matches(RequiredBlock block) {
+                int[] p = worldPosition(block.position);
+                Block expected;
+                int meta;
+                if (block.material == 'F') {
+                    expected = GregTechAPI.sBlockReinforced;
+                    meta = CONCRETE_META;
+                } else {
+                    Casings casing = block.material == 'K' ? Casings.RobustTungstenSteelMachineCasing
+                        : Casings.TungstensteelPipeCasing;
+                    expected = casing.getBlock();
+                    meta = casing.getBlockMeta();
+                }
+                return tile.getWorld()
+                    .getBlock(p[0], p[1], p[2]) == expected
+                    && tile.getWorld()
+                        .getBlockMetadata(p[0], p[1], p[2]) == meta;
+            }
+        }, MAIN_BLOCKS, System::nanoTime).scan();
+        if (expansionScan.timedOut) {
+            expansionState = "expansion_timeout";
+            errors.add(StructureErrors.of("thermonuclear.structure.nuclear.expansion_timeout"));
+            stopExpansion("expansion_timeout");
+            return;
+        }
+        int next = 1 + expansionScan.modules;
+        // Match the existing allowed-to-work switch, including an enabled machine waiting for fuel.
+        boolean changedWhileEnabled = expansionKnown && expansionLevel != next
+            && (tile.isAllowedToWork() || mMaxProgresstime > 0);
+        expansionLevel = next;
+        expansionKnown = expansionValidated = true;
+        expansionState = expansionScan.capped ? "expansion_capped" : "expansion_valid";
+        if (changedWhileEnabled) stopExpansion("expansion_changed");
+        markDirty();
+    }
+
+    private void stopExpansion(String reason) {
+        stopMachine(SimpleShutDownReason.ofNormal("thermonuclear.status." + reason));
+        checkRecipeResult = SimpleCheckRecipeResult.ofFailurePersistOnShutdown("thermonuclear.status." + reason);
+        running = false;
+        operatingEUt = fullLoadEUt = fullLoadHeatRate = 0;
+        inputLitresPerTick = outputLitresPerTick = stoppedInputRate = stoppedOutputRate = 0;
+        startup.clear();
+        status = reason;
+        getBaseMetaTileEntity().setActive(false);
+        // Inventory, heat, fuel wear and breeder transactions belong to their existing persistent pools.
+        markDirty();
+    }
+
+    @Override
+    protected void runMachine(IGregTechTileEntity tile, long tick) {
+        if (!expansionValidated) return;
+        super.runMachine(tile, tick);
+    }
+
+    private static IStructureElement<MTENuclearPowerPlant> servicePreviewPlacement() {
+        return new IStructureElement<>() {
+
+            @Override
+            public boolean check(MTENuclearPowerPlant machine, World world, int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean spawnHint(MTENuclearPowerPlant machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                return false;
+            }
+
+            @Override
+            public boolean placeBlock(MTENuclearPowerPlant machine, World world, int x, int y, int z,
+                ItemStack trigger) {
+                if (!machine.previewConstruction || !machine.constructing
+                    || machine.previewPlayer == null
+                    || world instanceof WorldServer
+                    || !world.isAirBlock(x, y, z)) return false;
+                // Fixed minimum legal fuel IO + dynamo; all remaining service slots keep concrete fallback.
+                ItemList[] hatches = { ItemList.Hatch_Input_Bus_ULV, ItemList.Hatch_Output_Bus_ULV,
+                    ItemList.Hatch_Dynamo_ULV };
+                for (int i = 0; i < hatches.length; i++) {
+                    int[] offset = SERVICE_OFFSETS.get(i);
+                    int[] p = machine.worldPosition(new Position(offset[0], offset[1], offset[2]));
+                    if (p[0] == x && p[1] == y && p[2] == z)
+                        return machine.placePreviewHatch(hatches[i].get(1), world, x, y, z);
+                }
+                return world.setBlock(x, y, z, GregTechAPI.sBlockReinforced, CONCRETE_META, 2);
+            }
+        };
+    }
+
+    private boolean placePreviewHatch(ItemStack representative, World world, int x, int y, int z) {
+        if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
+            representative,
+            previewPlayer,
+            world,
+            x,
+            y,
+            z,
+            ForgeDirection.UP.ordinal(),
+            0.5f,
+            0.5f,
+            0.5f,
+            0)) return false;
+        if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
+            tile.setFrontFacing(getExtendedFacing().getRelativeForwardInWorld());
+            if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONCRETE_TEXTURE);
+        }
+        return true;
+    }
 
     private static IStructureElement<MTENuclearPowerPlant> coolantPreviewPlacement() {
         return new IStructureElement<>() {
@@ -317,6 +528,16 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
+        expansionValidated = false;
+        expansionState = "structure";
+        if (!requiredStructureChunksLoaded(tile)) {
+            errors.add(StructureErrors.of("thermonuclear.status.chunk_unloaded"));
+            return;
+        }
+        if (!mainFitsWorld) {
+            errors.add(StructureErrors.of("thermonuclear.structure.nuclear.world_bounds"));
+            return;
+        }
         fuelRodTier = -1;
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
             fuelRodTier = -1;
@@ -336,6 +557,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         // Dynamos remain mode-dependent; maintenance hatches are optional and do not enable failures.
         if (!errors.isEmpty()) {
             fuelRodTier = -1;
+        } else {
+            scanExpansion(tile, errors);
         }
     }
 
@@ -353,11 +576,42 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         constructing = true;
         try {
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+            // Only the explicit NEI callback enables BCE construction. Real-world additions are hints only.
+            boolean preview = previewConstruction;
+            Position first = NuclearModuleStructure.FIRST;
+            buildModule(stack, preview ? hintsOnly : true, first);
+            buildConnection(stack, preview ? hintsOnly : true, NuclearModuleStructure.entrance());
+            if (preview) {
+                for (int i = 1; i < NuclearModuleStructure.EXAMPLE.length; i++) {
+                    buildModule(stack, hintsOnly, NuclearModuleStructure.EXAMPLE[i]);
+                    // Example order is C (-X) then E (+Z), independent of search traversal order.
+                    buildConnection(
+                        stack,
+                        hintsOnly,
+                        NuclearModuleStructure.connection(first, i == 1 ? -1 : 0, i == 2 ? 1 : 0));
+                }
+            }
         } finally {
             constructing = false;
             previewConstruction = false;
             previewPlayer = null;
         }
+    }
+
+    private void buildModule(ItemStack stack, boolean hintsOnly, Position centre) {
+        buildPiece(NuclearModuleStructure.MODULE, stack, hintsOnly, 2 - centre.x, 1 - centre.y, 2 - centre.z);
+    }
+
+    private void buildConnection(ItemStack stack, boolean hintsOnly, List<RequiredBlock> blocks) {
+        Position first = blocks.get(0).position;
+        Position last = blocks.get(blocks.size() - 1).position;
+        buildPiece(
+            first.x == last.x ? NuclearModuleStructure.PIPE_Z : NuclearModuleStructure.PIPE_X,
+            stack,
+            hintsOnly,
+            -Math.min(first.x, last.x),
+            -first.y,
+            -Math.min(first.z, last.z));
     }
 
     @Override
@@ -400,6 +654,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.2"))
             .addSeparator()
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.0"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.1"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.2"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.3"))
+            .addSeparator()
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.0"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.1"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.support_any"))
@@ -410,9 +669,17 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
             .addCasing("52", StatCollector.translateToLocal("thermonuclear.structure.nuclear.fuel_rods"), true)
-            .addCasing("2006", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
+            .addCasing("1832", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
+            .addCasing("170", StatCollector.translateToLocal("thermonuclear.structure.nuclear.steel_casings"), false)
             .addCasing("353", StatCollector.translateToLocal("thermonuclear.structure.nuclear.water"), false)
             .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipe_casings"), false)
+            .addCasing("7", StatCollector.translateToLocal("thermonuclear.structure.nuclear.outlet"), false)
+            .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.frames"), false)
+            .addStructureInfo(StatCollector.translateToLocal("thermonuclear.structure.nuclear.module"))
+            .addStructureHint("thermonuclear.structure.nuclear.expansion_hint.0")
+            .addStructureHint("thermonuclear.structure.nuclear.expansion_hint.1")
+            .addStructureHint("thermonuclear.structure.nuclear.module")
+            .addStructureHint("thermonuclear.structure.nuclear.expansion_hint.2")
             .addStructureHint("thermonuclear.structure.nuclear.blocks.3", 1)
             .addInputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
             .addOutputBus("1+", StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"), 1)
@@ -843,6 +1110,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
+        nbt.setInteger("tnExpansionLevel", expansionLevel);
+        nbt.setBoolean("tnExpansionKnown", expansionKnown);
         saveFuelState(nbt);
         nbt.setInteger("tnOverheatTicks", meltdownTimer.elapsedTicks());
         nbt.setDouble("tnFullLoadHeatRate", fullLoadHeatRate);
@@ -859,6 +1128,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
+        int savedLevel = nbt.getInteger("tnExpansionLevel");
+        expansionKnown = nbt.getBoolean("tnExpansionKnown") && savedLevel >= 1
+            && savedLevel <= 1 + NuclearModuleStructure.MAX_MODULES;
+        expansionLevel = expansionKnown ? savedLevel : 1;
+        // History supports change detection, never formation or permission to resume a saved cycle.
+        expansionValidated = false;
+        expansionState = "checking";
+        expansionScan = null;
         loadFuelState(nbt);
         meltdownTimer.restore(nbt.getInteger("tnOverheatTicks"));
         double savedRate = nbt.getDouble("tnFullLoadHeatRate");
@@ -967,6 +1244,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.meltdown"));
         mMachine = false;
+        expansionValidated = false;
+        expansionState = "structure";
         fuelRodTier = -1;
         running = false;
         operatingEUt = fullLoadEUt = fullLoadHeatRate = 0;
@@ -1011,9 +1290,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public String[] displayKeys() {
         // Keep sync identities stable while the same open GUI switches operating mode.
-        return new String[] { "status", "mode", "fuel_rod_tier", "fuel_limit", "startup", "full_load", "fuel",
-            "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant", "heat_limit",
-            "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
+        return new String[] { "status", "mode", "expansion_count", "fuel_rod_tier", "fuel_limit", "startup",
+            "full_load", "fuel", "fuel_count", "fuel_remaining", "heat", "heat_capacity", "heat_rate", "coolant",
+            "heat_limit", "water_limit", "coolant_input", "hot_output", "water_input", "steam_output", "pending_spent",
             "breeder_count", "breeder_rate", "breeder_progress" };
     }
 
@@ -1022,6 +1301,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         Map<String, String> info = commonInfo();
         addGenerationInfo(info);
         info.put("mode", mode.translationKey());
+        if (expansionValidated) {
+            info.put("expansion_count", Integer.toString(expansionLevel - 1));
+        }
         if (mMachine && fuelRodTier > 0) {
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));
             info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
