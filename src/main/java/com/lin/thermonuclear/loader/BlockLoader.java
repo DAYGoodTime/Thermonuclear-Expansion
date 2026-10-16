@@ -3,6 +3,7 @@ package com.lin.thermonuclear.loader;
 import java.util.Collection;
 import java.util.Map;
 
+import com.lin.thermonuclear.block.BlockContainmentCasing;
 import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockTurbineBlade;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
@@ -12,6 +13,7 @@ public final class BlockLoader {
     private static Map<Integer, BlockTurbineShaft> turbineShafts;
     private static Map<Integer, BlockFuelRod> fuelRods;
     public static BlockTurbineBlade turbineBlade;
+    public static BlockContainmentCasing containmentCasing;
 
     private BlockLoader() {}
 
@@ -20,6 +22,8 @@ public final class BlockLoader {
         turbineBlade = new BlockTurbineBlade();
         turbineBlade.register();
         fuelRods = BlockFuelRod.registerTiers();
+        containmentCasing = new BlockContainmentCasing();
+        containmentCasing.register();
     }
 
     public static BlockTurbineShaft turbineShaft(int tier) {

@@ -19,6 +19,8 @@
 - 热交换站：16 个大型热交换机、64 个脱氧钢外壳、64 个青铜管道方块和 6 个 IC2 高级热交换器。
 - 大型蒸汽涡轮机：64 个 GT5U 当前版大型蒸汽涡轮、64 个脱氧钢机械方块和 64 个钢齿轮。
 
+安全壳机械方块已注册，引用 GT 防爆石材质；化学浸洗槽配方为 1 个钢框架、9 个致密铅板及 144 L 混凝土，耗时 10 秒、4 EU/t，产出 1 个方块。配方注册及游戏内选择行为待验收，详见[项目知识库](wiki/development/项目知识库.md)。
+
 增殖输入／输出总线均通过 HV 组装机制造：8 个 GT 空燃料棒、1 个 HV 机器外壳（`ItemList.Hull_HV`）、8 个钍板，耗时 100 ticks（5 秒），产出 1 个总线。输入总线使用编程电路 1，输出总线使用编程电路 2，电路不消耗；总线与螺丝刀可在合成台无序合成，双向转换输入／输出类型。
 
 配方入口为 `RecipeLoader.registerBreederBusRecipes()`，沿用 load-complete 注册。组织方式参考 GTNL `common/recipe/gregtech/AssemblerRecipes.java` 的电路区分与 `common/recipe/gtnl/CraftingTableRecipes.java` 的螺丝刀转换；API 按本项目缓存 GT5U `.133` 核对，不迁入参考库 `.183` 的自有配方工具类或工具箱扩展。新增配方尚未编译或游戏验收。

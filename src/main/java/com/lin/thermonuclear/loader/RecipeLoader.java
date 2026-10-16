@@ -1,5 +1,6 @@
 package com.lin.thermonuclear.loader;
 
+import static gregtech.api.util.GTRecipeBuilder.INGOTS;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 import net.minecraft.item.ItemStack;
@@ -28,6 +29,7 @@ public final class RecipeLoader {
     public static void register() {
         registerRareEarthBreederRecipes();
         registerBreederBusRecipes();
+        registerContainmentCasingRecipe();
 
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -147,6 +149,18 @@ public final class RecipeLoader {
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
+    }
+
+    private static void registerContainmentCasingRecipe() {
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.frameGt, Materials.Steel, 1),
+                GTOreDictUnificator.get(OrePrefixes.plateDense, Materials.Lead, 9))
+            .itemOutputs(new ItemStack(BlockLoader.containmentCasing, 1, 0))
+            .fluidInputs(Materials.Concrete.getMolten(INGOTS))
+            .duration(10 * SECONDS)
+            .eut(4)
+            .addTo(RecipeMaps.chemicalBathRecipes);
     }
 
     private static void registerBreederBusRecipes() {

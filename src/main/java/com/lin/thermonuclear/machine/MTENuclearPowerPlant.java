@@ -88,7 +88,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
     private static final List<int[]> SERVICE_OFFSETS = structureOffsets('B');
     private static final Set<Position> MAIN_BLOCKS = mainBlocks();
-    private static final List<Casings> PIPE_CASINGS = new ArrayList<>(Arrays.asList(Casings.SteelPipeCasing, Casings.TitaniumPipeCasing, Casings.TungstensteelPipeCasing));
+    private static final List<Casings> PIPE_CASINGS = new ArrayList<>(
+        Arrays.asList(Casings.SteelPipeCasing, Casings.TitaniumPipeCasing, Casings.TungstensteelPipeCasing));
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
