@@ -39,8 +39,8 @@ import com.lin.thermonuclear.nuclear.FuelBatch;
 import com.lin.thermonuclear.nuclear.NuclearCoolingMath;
 import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
 import com.lin.thermonuclear.nuclear.NuclearMeltdownTimer;
-import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
-import com.lin.thermonuclear.recipe.HeatExchangeSteam;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipe;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;

@@ -19,10 +19,10 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.gui.HeatExchangeStationGui;
-import com.lin.thermonuclear.recipe.HeatExchangeBatch;
-import com.lin.thermonuclear.recipe.HeatExchangeRecipe;
-import com.lin.thermonuclear.recipe.HeatExchangeRecipes;
-import com.lin.thermonuclear.recipe.HeatExchangeSteam;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeBatch;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipe;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
+import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeSteam;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;

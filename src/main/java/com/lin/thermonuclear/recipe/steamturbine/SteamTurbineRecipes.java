@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.steamturbine;
 
 import java.util.ArrayList;
 import java.util.List;

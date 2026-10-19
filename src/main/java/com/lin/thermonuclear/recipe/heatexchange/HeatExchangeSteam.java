@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.heatexchange;
 
 import net.minecraftforge.fluids.Fluid;
 

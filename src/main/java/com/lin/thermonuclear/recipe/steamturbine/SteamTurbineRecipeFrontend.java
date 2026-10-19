@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.steamturbine;
 
 import gregtech.api.recipe.BasicUIPropertiesBuilder;
 import gregtech.api.recipe.NEIRecipePropertiesBuilder;

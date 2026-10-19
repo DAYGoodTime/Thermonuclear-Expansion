@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.steamturbine;
 
 public final class SteamTurbineMath {
 

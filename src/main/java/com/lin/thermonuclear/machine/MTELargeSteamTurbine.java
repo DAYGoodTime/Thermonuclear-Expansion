@@ -26,10 +26,10 @@ import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.recipe.ProcessingCycleMath;
-import com.lin.thermonuclear.recipe.SteamTurbineFuel;
-import com.lin.thermonuclear.recipe.SteamTurbineMath;
-import com.lin.thermonuclear.recipe.SteamTurbineRecipes;
+import com.lin.thermonuclear.recipe.steamturbine.ProcessingCycleMath;
+import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineFuel;
+import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineMath;
+import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;

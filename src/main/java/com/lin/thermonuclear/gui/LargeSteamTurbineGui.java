@@ -10,7 +10,7 @@ import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.lin.thermonuclear.machine.MTELargeSteamTurbine;
-import com.lin.thermonuclear.recipe.SteamTurbineMath;
+import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineMath;
 
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.common.gui.modularui.widget.settings.SettingsPanel;

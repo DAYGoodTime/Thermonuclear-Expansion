@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.heatexchange;
 
 /** Whole-litre hot-fluid batch, with unused prepaid water carried as a steam allowance. */
 public final class HeatExchangeBatch {

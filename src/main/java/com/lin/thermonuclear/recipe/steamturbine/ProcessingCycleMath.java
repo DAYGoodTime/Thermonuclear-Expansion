@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.recipe;
+package com.lin.thermonuclear.recipe.steamturbine;
 
 /** Converts integer fluid batches to tick-based rates at the processing boundary. */
 public final class ProcessingCycleMath {
