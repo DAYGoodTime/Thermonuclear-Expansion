@@ -1,5 +1,6 @@
 package com.lin.thermonuclear.machine;
 
+
 import java.util.*;
 import java.util.stream.Collectors;
 

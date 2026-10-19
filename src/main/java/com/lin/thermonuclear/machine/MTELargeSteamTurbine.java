@@ -28,8 +28,10 @@ import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.recipe.steamturbine.*;
+import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
+import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.WorkingFluids;
+import com.lin.thermonuclear.utils.SteamTurbineMath;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -216,6 +218,11 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         if (!previewConstruction) previewPlayer = null;
     }
 
+    public static double litresPerTick(long litresPerCycle, int cycleTicks) {
+        if (litresPerCycle <= 0 || cycleTicks <= 0) return 0;
+        return litresPerCycle / (double) cycleTicks;
+    }
+
     @Override
     protected Casings casing() {
         return CASING;
@@ -327,8 +334,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         double effectiveEUPerLitre = currentFuel.euPerLitre();
         effectiveSteamLimitLitresPerCycle = SteamTurbineMath
             .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
-        double fullLoadSteamLitresPerTick = ProcessingCycleMath
-            .litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
+        double fullLoadSteamLitresPerTick = litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
         fullLoadEUt = SteamTurbineMath.generationEUt(fullLoadSteamLitresPerTick, effectiveEUPerLitre);
         long steamLitresPerCycle = Math
             .min(effectiveSteamLimitLitresPerCycle, available(currentFuel.getWorkingFluid()));
@@ -346,8 +352,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             % GTValues.STEAM_PER_WATER);
         commitOutput(() -> condensationRemainderLitres = remainingSteamLitres);
         // Integer batches stay at the fluid transaction boundary; all operating rates use ticks.
-        inputLitresPerTick = ProcessingCycleMath.litresPerTick(steamLitresPerCycle, CYCLE_TICKS);
-        outputLitresPerTick = ProcessingCycleMath.litresPerTick(waterLitresPerCycle, CYCLE_TICKS);
+        inputLitresPerTick = litresPerTick(steamLitresPerCycle, CYCLE_TICKS);
+        outputLitresPerTick = litresPerTick(waterLitresPerCycle, CYCLE_TICKS);
         operatingEUt = SteamTurbineMath.generationEUt(inputLitresPerTick, effectiveEUPerLitre);
         return true;
     }
