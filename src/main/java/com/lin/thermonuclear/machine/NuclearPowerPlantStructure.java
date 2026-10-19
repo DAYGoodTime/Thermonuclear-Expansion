@@ -21,7 +21,7 @@ final class NuclearPowerPlantStructure {
     private static final String CAP = "              FFFFFFFFF      ";
     private static final String CORE_BASE = "          F  FFFFFFFFFFF  F  ";
     private static final String CORE_WATER = "         F   FGGGGGGGGGF   F ";
-    private static final String CORE_FLOOR = "         F   TFFFFFFFFFT   F ";
+    private static final String CORE_FLOOR = "         F   FFFFFFFFFFF   F ";
 
     private NuclearPowerPlantStructure() {}
 
@@ -41,8 +41,8 @@ final class NuclearPowerPlantStructure {
         for (int z : new int[] { 5, 15 }) {
             Arrays.fill(shape[z], 17, 23, CORE_BASE);
         }
-        shape[5][22] = "          F  TTCTTTTTCTT  F  ";
-        shape[15][22] = "          F  TTTTTTTTPTT  F  ";
+        shape[5][22] = "          F  FFCFFFFFCFF  F  ";
+        shape[15][22] = "          F  FFFFFFFFPFF  F  ";
         for (int z = 6; z <= 14; z++) {
             // The export's glass roof E is now source water, identical to G.
             Arrays.fill(shape[z], 17, 22, CORE_WATER);
@@ -75,10 +75,6 @@ final class NuclearPowerPlantStructure {
             set(shape, x, 21, 9, 'S');
             set(shape, x, 20, 11, 'S');
         }
-        for (int y = 21; y <= 22; y++) set(shape, 9, y, 9, 'T');
-        set(shape, 9, 22, 10, 'T');
-        for (int y = 20; y <= 22; y++) set(shape, 9, y, 11, 'T');
-        for (int x = 9; x <= 13; x++) set(shape, x, 23, 11, 'T');
         // Tiered outlet support is required; its central tungstensteel connection hole is ignored by A itself.
         for (int z = 15; z <= 19; z++) set(shape, 21, 23, z, 'P');
         set(shape, 21, 22, 15, 'P');

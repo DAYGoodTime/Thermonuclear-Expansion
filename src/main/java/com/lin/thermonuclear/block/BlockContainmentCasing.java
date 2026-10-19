@@ -4,9 +4,11 @@ import net.minecraft.block.Block;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
+import net.minecraft.world.World;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import gregtech.api.GregTechAPI;
 import gregtech.api.enums.ItemList;
 
 public final class BlockContainmentCasing extends BlockMachineComponent {
@@ -19,6 +21,23 @@ public final class BlockContainmentCasing extends BlockMachineComponent {
 
     public BlockContainmentCasing() {
         super("containment_casing");
+        GregTechAPI.registerMachineBlock(this, -1);
+    }
+
+    @Override
+    public void onBlockAdded(World world, int x, int y, int z) {
+        super.onBlockAdded(world, x, y, z);
+        if (GregTechAPI.isMachineBlock(this, world.getBlockMetadata(x, y, z))) {
+            GregTechAPI.causeMachineUpdate(world, x, y, z);
+        }
+    }
+
+    @Override
+    public void breakBlock(World world, int x, int y, int z, Block block, int metadata) {
+        super.breakBlock(world, x, y, z, block, metadata);
+        if (GregTechAPI.isMachineBlock(this, metadata)) {
+            GregTechAPI.causeMachineUpdate(world, x, y, z);
+        }
     }
 
     @Override

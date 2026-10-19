@@ -154,11 +154,11 @@ public final class RecipeLoader {
     private static void registerContainmentCasingRecipe() {
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTOreDictUnificator.get(OrePrefixes.frameGt, Materials.Steel, 1),
-                GTOreDictUnificator.get(OrePrefixes.plateDense, Materials.Lead, 9))
-            .itemOutputs(new ItemStack(BlockLoader.containmentCasing, 1, 0))
-            .fluidInputs(Materials.Concrete.getMolten(INGOTS))
-            .duration(10 * SECONDS)
+                GTOreDictUnificator.get(OrePrefixes.frameGt, Materials.Steel, 9),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 12))
+            .itemOutputs(new ItemStack(BlockLoader.containmentCasing, 9, 0))
+            .fluidInputs(Materials.Concrete.getMolten(INGOTS * 9 * 2))
+            .duration(30 * SECONDS)
             .eut(4)
             .addTo(RecipeMaps.chemicalBathRecipes);
     }

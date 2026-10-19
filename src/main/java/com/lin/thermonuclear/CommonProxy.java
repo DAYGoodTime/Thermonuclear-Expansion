@@ -6,8 +6,8 @@ import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.loader.RecipeLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
-import com.lin.thermonuclear.recipe.HeatExchangeRecipes;
 import com.lin.thermonuclear.recipe.SteamTurbineRecipes;
+import com.lin.thermonuclear.recipe.HeatExchangeRecipes;
 import com.lin.thermonuclear.registry.ModFluids;
 import com.lin.thermonuclear.registry.WorkingFluids;
 

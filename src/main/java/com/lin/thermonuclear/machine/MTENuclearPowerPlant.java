@@ -18,7 +18,6 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.gtnewhorizon.structurelib.alignment.constructable.ChannelDataAccessor;
 import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
@@ -591,11 +590,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     public void construct(ItemStack stack, boolean hintsOnly) {
         constructing = true;
         try {
-            if (previewConstruction) {
-                // The fixed three-module NEI example requires titanium; do not mutate the caller's trigger.
-                stack = stack.copy();
-                ChannelDataAccessor.setChannelData(stack, "pipe", 2);
-            }
+            // Preserve the selected pipe channel in NEI too; the first tier is steel.
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
             // Only the explicit NEI callback enables BCE construction. Real-world additions are hints only.
             boolean preview = previewConstruction;
@@ -690,8 +685,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
             .addCasing("52", StatCollector.translateToLocal("thermonuclear.structure.nuclear.fuel_rods"), true)
-            .addCasing("1832", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
-            .addCasing("170", StatCollector.translateToLocal("thermonuclear.structure.nuclear.steel_casings"), false)
+            .addCasing("1880", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
+            .addCasing("122", StatCollector.translateToLocal("thermonuclear.structure.nuclear.steel_casings"), false)
             .addCasing("353", StatCollector.translateToLocal("thermonuclear.structure.nuclear.water"), false)
             .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipe_casings"), false)
             .addCasing("7", StatCollector.translateToLocal("thermonuclear.structure.nuclear.outlet"), false)
