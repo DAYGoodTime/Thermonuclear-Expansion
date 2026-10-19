@@ -46,7 +46,6 @@ import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.ItemList;
@@ -80,8 +79,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final int OFFSET_Y = NuclearPowerPlantStructure.OFFSET_Y;
     private static final int OFFSET_Z = NuclearPowerPlantStructure.OFFSET_Z;
     private static final Casings CASING = Casings.HeatProofMachineCasing;
-    private static final int CONCRETE_META = 13;
-    private static final int CONCRETE_TEXTURE = 221;
+    // The containment casing currently reuses GT's reinforced-concrete texture.
+    private static final int CONTAINMENT_TEXTURE = 221;
     private static final String[][] SHAPE = NuclearPowerPlantStructure.createShape();
     private static final List<int[]> COOLANT_OFFSETS = structureOffsets('A');
     private static final List<int[]> WATER_OFFSETS = structureOffsets('G');
@@ -127,7 +126,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     -1,
                     (machine, tier) -> machine.fuelRodTier = tier,
                     machine -> machine.fuelRodTier)))
-        .addElement('F', StructureUtility.ofBlock(GregTechAPI.sBlockReinforced, CONCRETE_META))
+        .addElement('F', StructureUtility.ofBlock(BlockLoader.containmentCasing, 0))
         .addElement('G', GTStructureUtility.ofAnyWater())
         .addElement(
             'B',
@@ -144,9 +143,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     .adder(MTENuclearPowerPlant::addServiceHatch)
                     .hatchItemFilter(machine -> stack -> isServiceHatchCandidate(ItemMachines.getMetaTileEntity(stack)))
                     .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
-                    .casingIndex(CONCRETE_TEXTURE)
+                    .casingIndex(CONTAINMENT_TEXTURE)
                     .hint(1)
-                    .buildAndChain(GregTechAPI.sBlockReinforced, CONCRETE_META)))
+                    .buildAndChain(BlockLoader.containmentCasing, 0)))
         .addElement(
             'A',
             StructureUtility.ofChain(
@@ -156,7 +155,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     .hatchItemFilterAnd(
                         machine -> stack -> !(ItemMachines.getMetaTileEntity(stack) instanceof IDualInputHatch)
                             && machine.isCoolantConstructionCandidate(stack))
-                    .casingIndex(CONCRETE_TEXTURE)
+                    .casingIndex(CONTAINMENT_TEXTURE)
                     .hint(2)
                     .exclusive()
                     .build(),
@@ -269,8 +268,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 Block expected;
                 int meta;
                 if (block.material == 'F') {
-                    expected = GregTechAPI.sBlockReinforced;
-                    meta = CONCRETE_META;
+                    expected = BlockLoader.containmentCasing;
+                    meta = 0;
                 } else {
                     Casings casing = block.material == 'K' ? Casings.RobustTungstenSteelMachineCasing
                         : Casings.TungstensteelPipeCasing;
@@ -340,7 +339,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     || machine.previewPlayer == null
                     || world instanceof WorldServer
                     || !world.isAirBlock(x, y, z)) return false;
-                // Fixed minimum legal fuel IO + dynamo; all remaining service slots keep concrete fallback.
+                // Fixed minimum legal fuel IO + dynamo; remaining service slots use containment casings.
                 ItemList[] hatches = { ItemList.Hatch_Input_Bus_ULV, ItemList.Hatch_Output_Bus_ULV,
                     ItemList.Hatch_Dynamo_ULV };
                 for (int i = 0; i < hatches.length; i++) {
@@ -349,7 +348,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     if (p[0] == x && p[1] == y && p[2] == z)
                         return machine.placePreviewHatch(hatches[i].get(1), world, x, y, z);
                 }
-                return world.setBlock(x, y, z, GregTechAPI.sBlockReinforced, CONCRETE_META, 2);
+                return world.setBlock(x, y, z, BlockLoader.containmentCasing, 0, 2);
             }
         };
     }
@@ -369,7 +368,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             0)) return false;
         if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
             tile.setFrontFacing(getExtendedFacing().getRelativeForwardInWorld());
-            if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONCRETE_TEXTURE);
+            if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONTAINMENT_TEXTURE);
         }
         return true;
     }
@@ -415,7 +414,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     tile.setFrontFacing(
                         machine.getExtendedFacing()
                             .getRelativeForwardInWorld());
-                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONCRETE_TEXTURE);
+                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONTAINMENT_TEXTURE);
                 }
                 return true;
             }
