@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.machine;
+package com.lin.thermonuclear.machine.nuclear;
 
 public enum NuclearOperatingMode {
 

@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.machine;
+package com.lin.thermonuclear.machine.base;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
+import com.lin.thermonuclear.utils.StartupProgress;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;

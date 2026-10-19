@@ -48,7 +48,7 @@ public class CommonProxy {
         for (DefaultHeatExchangeRules rule : DefaultHeatExchangeRules.values()) {
             HeatExchangeRules.register(rule);
         }
-        HeatExchangeRules.freeze();
+        HeatExchangeRules.resolve();
         SteamTurbineFuels.addFuels(DefaultSteamTurbineFuels.values());
         RecipeLoader.register();
     }

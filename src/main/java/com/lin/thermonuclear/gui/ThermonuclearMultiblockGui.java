@@ -9,7 +9,7 @@ import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widgets.ListWidget;
-import com.lin.thermonuclear.machine.ThermonuclearMultiblockBase;
+import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 

@@ -6,7 +6,7 @@ import com.cleanroommc.modularui.value.sync.InteractionSyncHandler;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
-import com.lin.thermonuclear.machine.MTENuclearPowerPlant;
+import com.lin.thermonuclear.machine.nuclear.MTENuclearPowerPlant;
 
 import gregtech.api.modularui2.GTGuiTextures;
 

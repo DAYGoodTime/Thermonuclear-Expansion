@@ -4,7 +4,7 @@ import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.machine.MTEHeatExchangeStation;
 import com.lin.thermonuclear.machine.MTELargeSteamTurbine;
-import com.lin.thermonuclear.machine.MTENuclearPowerPlant;
+import com.lin.thermonuclear.machine.nuclear.MTENuclearPowerPlant;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.registry.ModItems;

@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.machine;
+package com.lin.thermonuclear.machine.nuclear;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.lin.thermonuclear.utils.StartupProgress;
+import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -36,15 +38,10 @@ import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.machine.NuclearModuleStructure.Position;
-import com.lin.thermonuclear.machine.NuclearModuleStructure.RequiredBlock;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.RequiredBlock;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
-import com.lin.thermonuclear.machine.nuclear.BreederPool;
-import com.lin.thermonuclear.machine.nuclear.FuelBatch;
-import com.lin.thermonuclear.machine.nuclear.NuclearCoolingMath;
-import com.lin.thermonuclear.machine.nuclear.NuclearEfficiencyPolicy;
-import com.lin.thermonuclear.machine.nuclear.NuclearMeltdownTimer;
 import com.lin.thermonuclear.registry.DefaultCoolants;
 import com.lin.thermonuclear.registry.WorkingFluids;
 

@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.machine;
+package com.lin.thermonuclear.machine.nuclear;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.LongSupplier;
 
-import com.lin.thermonuclear.machine.NuclearModuleStructure.Position;
-import com.lin.thermonuclear.machine.NuclearModuleStructure.RequiredBlock;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.RequiredBlock;
 
 /** One synchronous, disposable scan. It never calls A's hatch/structure checker. */
 final class NuclearModuleSearch {

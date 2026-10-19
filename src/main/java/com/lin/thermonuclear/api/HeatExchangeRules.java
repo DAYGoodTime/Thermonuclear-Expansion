@@ -10,12 +10,10 @@ import com.lin.thermonuclear.Thermonuclear;
 public final class HeatExchangeRules {
 
     private static final List<HeatExchangeRule> rules = new ArrayList<>();
-    private static boolean frozen;
 
     private HeatExchangeRules() {}
 
     public static void register(HeatExchangeRule rule) {
-        if (frozen) throw new IllegalStateException("Heat exchange registration is closed");
         Objects.requireNonNull(rule, "rule");
         Objects.requireNonNull(rule.coolant(), "coolant");
         Objects.requireNonNull(rule.steam(), "steam");
@@ -41,8 +39,7 @@ public final class HeatExchangeRules {
         rules.add(rule);
     }
 
-    public static void freeze() {
-        if (frozen) return;
+    public static void resolve() {
         List<HeatExchangeRule> available = new ArrayList<>();
         for (HeatExchangeRule rule : rules) {
             CoolantType coolant = rule.coolant();
@@ -62,11 +59,9 @@ public final class HeatExchangeRules {
         }
         rules.clear();
         rules.addAll(available);
-        frozen = true;
     }
 
     public static List<HeatExchangeRule> getAllRules() {
-        if (!frozen) throw new IllegalStateException("Heat exchange working fluids have not been resolved");
         return Collections.unmodifiableList(rules);
     }
 

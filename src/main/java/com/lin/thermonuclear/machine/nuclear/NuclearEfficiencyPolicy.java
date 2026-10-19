@@ -1,7 +1,6 @@
 package com.lin.thermonuclear.machine.nuclear;
 
 import com.lin.thermonuclear.Config;
-import com.lin.thermonuclear.machine.NuclearOperatingMode;
 
 @FunctionalInterface
 public interface NuclearEfficiencyPolicy {
