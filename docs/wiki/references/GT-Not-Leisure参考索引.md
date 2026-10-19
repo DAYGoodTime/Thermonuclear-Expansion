@@ -7,9 +7,11 @@
 
 ## 参考项目与使用约定
 
-用户指定只读仓库 `D:\DEV\mcmod\GT-Not-Leisure`（GTNL）。**功能开发前先查相关实现**，覆盖机器、仓口、配方、流体、GUI、同步、NBT 与兼容；纯文档／格式整理不要求查机器实现。它不是本项目源码、子模块或依赖，不自动复制内容、复用 ID／数值、添加依赖或运行其构建。
+用户指定只读仓库 `D:\DEV\mcmod\GT-Not-Leisure`（GTNL）。
 
-本索引是 **2026-09-30 快照**：HEAD `e9f1ebbc7be7d1009829f950a654b61b48ab3c2c`，当时有未提交修改；origin 为 `https://github.com/DAYGoodTime/GT-Not-Leisure.git`，upstream 为 `https://github.com/ABKQPO/GT-Not-Leisure.git`。后续以实际文件为准；目录不可访问须明确报告，索引不等于当次核验。根 `LICENSE.txt` 为 LGPL v3，复制代码／资源前另查文件来源、版权与署名要求。
+*如果本地仓库不存在，则读取远程仓库* : https://github.com/DAYGoodTime/GT-Not-Leisure
+
+**功能开发前先查相关实现**，覆盖机器、仓口、配方、流体、GUI、同步、NBT 与兼容；纯文档／格式整理不要求查机器实现。它不是本项目源码、子模块或依赖，不自动复制内容、复用 ID／数值、添加依赖或运行其构建。
 
 ## 大项目的按需检索流程
 

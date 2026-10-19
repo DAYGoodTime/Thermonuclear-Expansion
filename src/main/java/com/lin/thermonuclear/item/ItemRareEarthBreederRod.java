@@ -7,7 +7,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 
-import com.lin.thermonuclear.nuclear.RareEarthBreedingRoute;
+import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
 
 /** Each route has distinct working/completed items; vanilla damage stores breeding progress only. */
 public final class ItemRareEarthBreederRod extends ItemBreederRod {

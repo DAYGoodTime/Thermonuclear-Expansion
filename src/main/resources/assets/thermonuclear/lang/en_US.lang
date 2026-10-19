@@ -112,15 +112,15 @@ thermonuclear.tooltip.nuclear.formula.pulses=Pulses per cell: §6P = 1 + floor(C
 thermonuclear.tooltip.nuclear.formula.limits=round applies per cell; limited remaining lifetime scales output by actual fuel use; dynamo capacity limits wired output
 thermonuclear.tooltip.support_any=§aSupports Multi-Amp Dynamos and Laser Hatches§7
 thermonuclear.tooltip.heat_exchange.exchange.title=§bSteam production§7
-thermonuclear.tooltip.heat_exchange.exchange.formula=Steam (L) = hot coolant (L) x K; K: yield for the coolant and target steam
-thermonuclear.tooltip.heat_exchange.coefficient.ic2=IC2 hot coolant: ordinary steam K = §6%s§7; superheated steam K = §6%s§7
-thermonuclear.tooltip.heat_exchange.coefficient.super=Hot super coolant: supercritical steam only, K = §6%s§7 (includes §6%s§7 times the base multiplier)
+thermonuclear.tooltip.heat_exchange.exchange.formula=Steam (L) = hot coolant (L) x K; K: yield of the coolant's unique conversion path
+thermonuclear.tooltip.heat_exchange.coefficient.ic2=IC2 hot coolant: superheated steam only, K = §6%s§7
+thermonuclear.tooltip.heat_exchange.coefficient.super=Hot super coolant: supercritical steam only, K = §6%s§7
 thermonuclear.tooltip.heat_exchange.coefficient.nak_composite=Hot NaK composite coolant: ultra-supercritical steam only, K = §6%s§7
 thermonuclear.tooltip.heat_exchange.features=§bExchange mechanics and controls§7
 thermonuclear.tooltip.heat_exchange.coolant_return=Returns matching cold coolant at §61:1§7; yields from different hot fluids are not pooled
 thermonuclear.tooltip.heat_exchange.water=Consumes §61 L§7 distilled water per §6%s L§7 steam; prepaid water credit and fractional steam carry across batches
 thermonuclear.tooltip.heat_exchange.limits=Each cycle processes one matching hot fluid; throughput is limited by hot fluid, distilled water and both output paths
-thermonuclear.tooltip.heat_exchange.mode_switch=Stop and disable work to change target steam in GUI; only accepts the matching hot fluid listed above
+thermonuclear.tooltip.heat_exchange.automatic=Input hot coolant automatically selects its unique steam output; no steam mode switching required
 thermonuclear.tooltip.steam_turbine.generation.title=§bSteam power generation§7
 thermonuclear.tooltip.steam_turbine.generation.formula=Generation (EU/t) = Q x E x R
 thermonuclear.tooltip.steam_turbine.energy.0=E (EU/L): ordinary steam §6%s§7; superheated steam §6%s§7
@@ -248,7 +248,6 @@ thermonuclear.gui.condensation=Condensation remainder
 thermonuclear.gui.switch_mode=Switch mode after turning the machine OFF; retains working fuel and lifetime
 thermonuclear.gui.eject_fuel.0=While OFF, eject working fuel rods to output busses; rods that do not fit remain inside
 thermonuclear.gui.eject_fuel.1=Fractional fuel wear is rounded up to one cycle for ejected rods; breeder rods are not ejected
-thermonuclear.gui.switch_steam=Turn machine OFF, then cycle ordinary, superheated, supercritical, or ultra-supercritical steam
 thermonuclear.status.running=Running
 thermonuclear.status.processing_failed=Unable to extract or output items through hatches
 thermonuclear.status.stopped=Turned off

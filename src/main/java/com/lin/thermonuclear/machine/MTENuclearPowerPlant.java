@@ -29,6 +29,7 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.FuelRodAdapter;
 import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.block.BlockFuelRod;
@@ -39,13 +40,12 @@ import com.lin.thermonuclear.machine.NuclearModuleStructure.Position;
 import com.lin.thermonuclear.machine.NuclearModuleStructure.RequiredBlock;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
-import com.lin.thermonuclear.nuclear.BreederPool;
-import com.lin.thermonuclear.nuclear.FuelBatch;
-import com.lin.thermonuclear.nuclear.NuclearCoolingMath;
-import com.lin.thermonuclear.nuclear.NuclearEfficiencyPolicy;
-import com.lin.thermonuclear.nuclear.NuclearMeltdownTimer;
-import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipe;
-import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeSteam;
+import com.lin.thermonuclear.machine.nuclear.BreederPool;
+import com.lin.thermonuclear.machine.nuclear.FuelBatch;
+import com.lin.thermonuclear.machine.nuclear.NuclearCoolingMath;
+import com.lin.thermonuclear.machine.nuclear.NuclearEfficiencyPolicy;
+import com.lin.thermonuclear.machine.nuclear.NuclearMeltdownTimer;
+import com.lin.thermonuclear.registry.DefaultCoolants;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
@@ -735,15 +735,15 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     private enum CoolingFluid {
 
-        IC2(HeatExchangeRecipe.IC2_COOLANT),
-        SUPER(HeatExchangeRecipe.SUPER_COOLANT),
-        NAK_COMPOSITE(HeatExchangeRecipe.NAK_COMPOSITE_COOLANT),
+        IC2(DefaultCoolants.IC2),
+        SUPER(DefaultCoolants.SUPER),
+        NAK_COMPOSITE(DefaultCoolants.NAK_COMPOSITE),
         DISTILLED(null);
 
-        private final HeatExchangeRecipe recipe;
+        private final CoolantType coolant;
 
-        CoolingFluid(HeatExchangeRecipe recipe) {
-            this.recipe = recipe;
+        CoolingFluid(CoolantType coolant) {
+            this.coolant = coolant;
         }
     }
 
@@ -1001,9 +1001,9 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         selectCoolingFluid();
         if (selectedCoolingFluid == null || !availableCoolingFluid(selectedCoolingFluid)) return true;
         boolean distilled = selectedCoolingFluid == CoolingFluid.DISTILLED;
-        HeatExchangeRecipe coolant = selectedCoolingFluid.recipe;
+        CoolantType coolant = selectedCoolingFluid.coolant;
         Fluid input = distilled ? WorkingFluids.distilledWater : coolant.cold();
-        Fluid output = distilled ? HeatExchangeSteam.ORDINARY.fluid() : coolant.hot();
+        Fluid output = distilled ? WorkingFluids.steam : coolant.hot();
         if (output == null) return fail("fluids_missing");
         double litresPerHeat = distilled ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
             : coolant.coolantPerHeat();
@@ -1088,7 +1088,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private boolean selectCoolingFluid() {
         if (selectedCoolingFluid != null) return availableCoolingFluid(selectedCoolingFluid);
         for (CoolingFluid candidate : CoolingFluid.values()) {
-            HeatExchangeRecipe coolant = candidate.recipe;
+            CoolantType coolant = candidate.coolant;
             if (coolant != null && coolant.hot() != null && coolant.cold() != null && available(coolant.cold()) > 0) {
                 selectedCoolingFluid = candidate;
                 return true;
@@ -1102,7 +1102,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private boolean availableCoolingFluid(CoolingFluid fluid) {
-        Fluid input = fluid == CoolingFluid.DISTILLED ? WorkingFluids.distilledWater : fluid.recipe.cold();
+        Fluid input = fluid == CoolingFluid.DISTILLED ? WorkingFluids.distilledWater : fluid.coolant.cold();
         return input != null && available(input) > 0;
     }
 
@@ -1350,11 +1350,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                     "coolant",
                     selectedCoolingFluid == null ? "thermonuclear.recipe.none"
                         : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
-                            : selectedCoolingFluid.recipe.translationKey());
+                            : selectedCoolingFluid.coolant.nameKey());
                 boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
                 if (selectedCoolingFluid != null) {
                     double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
-                        : selectedCoolingFluid.recipe.coolantPerHeat();
+                        : selectedCoolingFluid.coolant.coolantPerHeat();
                     info.put(water ? "water_limit" : "heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
                     info.put(water ? "water_input" : "coolant_input", decimalPerCycle(inputLitresPerTick));
                     info.put(water ? "steam_output" : "hot_output", decimalPerCycle(outputLitresPerTick));

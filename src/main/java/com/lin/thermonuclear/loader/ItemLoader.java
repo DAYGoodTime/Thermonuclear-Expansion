@@ -4,7 +4,7 @@ import java.util.Map;
 
 import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.item.ItemWirelessUpgradeChip;
-import com.lin.thermonuclear.nuclear.RareEarthBreedingRoute;
+import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
 
 public final class ItemLoader {
 

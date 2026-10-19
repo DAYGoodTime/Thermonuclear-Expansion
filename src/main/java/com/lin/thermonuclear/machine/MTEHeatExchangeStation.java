@@ -1,6 +1,7 @@
 package com.lin.thermonuclear.machine;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,17 +13,21 @@ import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.lin.thermonuclear.api.CoolantType;
+import com.lin.thermonuclear.api.HeatExchangeRule;
+import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.gui.HeatExchangeStationGui;
+import com.lin.thermonuclear.recipe.heatexchange.DefaultHeatExchangeRules;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeBatch;
-import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipe;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
-import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeSteam;
+import com.lin.thermonuclear.registry.SteamType;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
@@ -258,19 +263,15 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             .addInfo(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.tooltip.heat_exchange.coefficient.ic2",
-                    decimal(HeatExchangeRecipe.IC2_COOLANT.steamPerHotCoolant(HeatExchangeSteam.ORDINARY)),
-                    decimal(HeatExchangeRecipe.IC2_COOLANT.steamPerHotCoolant(HeatExchangeSteam.SUPERHEATED))))
+                    decimal(DefaultHeatExchangeRules.IC2_COOLANT.steamPerHotCoolant())))
             .addInfo(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.tooltip.heat_exchange.coefficient.super",
-                    decimal(HeatExchangeRecipe.SUPER_COOLANT.steamPerHotCoolant(HeatExchangeSteam.SUPERCRITICAL)),
-                    decimal(HeatExchangeRecipe.SUPER_COOLANT.steamEfficiency())))
+                    decimal(DefaultHeatExchangeRules.SUPER_COOLANT.steamPerHotCoolant())))
             .addInfo(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.tooltip.heat_exchange.coefficient.nak_composite",
-                    decimal(
-                        HeatExchangeRecipe.NAK_COMPOSITE_COOLANT
-                            .steamPerHotCoolant(HeatExchangeSteam.ULTRA_SUPERCRITICAL))))
+                    decimal(DefaultHeatExchangeRules.NAK_COMPOSITE_COOLANT.steamPerHotCoolant())))
             .addSeparator()
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.features"))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.coolant_return"))
@@ -279,7 +280,7 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
                     "thermonuclear.tooltip.heat_exchange.water",
                     HeatExchangeBatch.STEAM_PER_WATER))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.limits"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.mode_switch"))
+            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.automatic"))
             .beginStructureBlock(WIDTH, HEIGHT, LENGTH, true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.controller"))
             .addCasing("253", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.casings"), false)
@@ -296,9 +297,8 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         return new HeatExchangeStationGui(this);
     }
 
-    private HeatExchangeRecipe selected;
-    private HeatExchangeSteam selectedSteam = HeatExchangeSteam.ORDINARY;
-    private final double[] steamRemainders = new double[HeatExchangeSteam.values().length];
+    private HeatExchangeRule selected;
+    private final Map<String, Double> steamRemainders = new HashMap<>();
     private int waterCredit;
     private double waterRate;
 
@@ -317,54 +317,36 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     @Override
     protected boolean processCycle() {
-        if (!supportsSteam(selectedSteam)) return fail("steam_unsupported");
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
-        HeatExchangeRecipe recipe = null;
-        // Selection is per cycle. Never pool the heat or consume the second hot fluid.
-        if (selected != null && selected.hot() != null
-            && selected.cold() != null
-            && selected.supportsSteam(selectedSteam)
-            && available(selected.hot(), hotInputs) >= 1) recipe = selected;
-        if (recipe == null) {
-            for (HeatExchangeRecipe candidate : HeatExchangeRecipe.values()) {
-                if (candidate.hot() != null && candidate.cold() != null
-                    && candidate.supportsSteam(selectedSteam)
-                    && available(candidate.hot(), hotInputs) >= 1) {
-                    recipe = candidate;
-                    break;
-                }
-            }
-        }
-        if (recipe == null) {
-            selected = null;
-            return fail("hot_fluid");
-        }
-        selected = recipe;
-        if (selectedSteam.fluid() == null) return fail("fluids_missing");
+        selected = selectRecipe();
+        if (selected == null) return fail("hot_fluid");
+        HeatExchangeRule recipe = selected;
+        CoolantType coolant = recipe.coolant();
+        SteamType steamType = recipe.steam();
         long waterAvailable = available(WorkingFluids.distilledWater, coldInputs);
-        HeatExchangeBatch minimum = exchangeBatch(1);
+        HeatExchangeBatch minimum = exchangeBatch(recipe, 1);
         if (minimum == null) return fail("output_full");
         if (minimum.water() > waterAvailable) return fail("water");
-        int hotLimit = (int) Math.min(available(recipe.hot(), hotInputs), Integer.MAX_VALUE);
+        int hotLimit = (int) Math.min(available(coolant.hot(), hotInputs), Integer.MAX_VALUE);
         int hot = acceptedHot(recipe, hotLimit, waterAvailable);
         if (hot == 0) return fail("output_full");
-        HeatExchangeBatch batch = exchangeBatch(hot);
+        HeatExchangeBatch batch = exchangeBatch(recipe, hot);
         int water = batch.water();
         int steam = batch.steam();
-        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(recipe.cold(), hot));
+        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(coolant.cold(), hot));
         FluidEjectionHelper steamOutput = steam > 0
-            ? prepareOutputs(hotOutputs, new FluidStack(selectedSteam.fluid(), steam))
+            ? prepareOutputs(hotOutputs, new FluidStack(steamType.fluid(), steam))
             : null;
         if (coldOutput == null || (steam > 0 && steamOutput == null)) return fail("output_full");
         // All capacity reservations and both input checks precede any real mutation.
-        consume(recipe.hot(), hot, hotInputs);
+        consume(coolant.hot(), hot, hotInputs);
         if (water > 0) consume(WorkingFluids.distilledWater, water, coldInputs);
         commitOutput(coldOutput::commit);
         if (steam > 0) commitOutput(steamOutput::commit);
-        final int steamIndex = selectedSteam.ordinal();
+        final String steamId = steamType.id();
         commitOutput(() -> {
             waterCredit = batch.waterCredit();
-            steamRemainders[steamIndex] = batch.steamRemainder();
+            steamRemainders.put(steamId, batch.steamRemainder());
         });
         inputLitresPerTick = hot / (double) CYCLE_TICKS;
         waterRate = water / (double) CYCLE_TICKS;
@@ -372,25 +354,41 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         return true;
     }
 
-    private HeatExchangeBatch exchangeBatch(int hot) {
-        return HeatExchangeBatch.forHot(
-            hot,
-            selected.steamPerHotCoolant(selectedSteam),
-            steamRemainders[selectedSteam.ordinal()],
-            waterCredit);
+    private HeatExchangeRule selectRecipe() {
+        // Keep the previous hot fluid while available; never pool different fluids within one cycle.
+        if (selected != null && hasHotFluid(selected)) return selected;
+        for (HeatExchangeRule rule : HeatExchangeRules.getAllRules()) {
+            if (hasHotFluid(rule)) return rule;
+        }
+        return null;
     }
 
-    private int acceptedHot(HeatExchangeRecipe recipe, int limit, long waterAvailable) {
+    private boolean hasHotFluid(HeatExchangeRule rule) {
+        CoolantType coolant = rule.coolant();
+        return available(coolant.hot(), hotInputs) >= 1;
+    }
+
+    private HeatExchangeBatch exchangeBatch(HeatExchangeRule recipe, int hot) {
+        SteamType steam = recipe.steam();
+        return HeatExchangeBatch
+            .forHot(hot, recipe.steamPerHotCoolant(), steamRemainders.getOrDefault(steam.id(), 0.0), waterCredit);
+    }
+
+    private int acceptedHot(HeatExchangeRule recipe, int limit, long waterAvailable) {
+        CoolantType coolant = recipe.coolant();
+        Fluid coldFluid = coolant.cold();
+        Fluid steamFluid = recipe.steam()
+            .fluid();
         int lower = 0;
         int upper = limit;
         while (lower < upper) {
             int hot = lower + (int) (((long) upper - lower + 1) / 2);
-            HeatExchangeBatch batch = exchangeBatch(hot);
+            HeatExchangeBatch batch = exchangeBatch(recipe, hot);
             // Each probe has independent reservations. Only the final batch is committed.
             boolean fits = batch != null && batch.water() <= waterAvailable
-                && prepareOutputs(coldOutputs, new FluidStack(recipe.cold(), hot)) != null
+                && prepareOutputs(coldOutputs, new FluidStack(coldFluid, hot)) != null
                 && (batch.steam() == 0
-                    || prepareOutputs(hotOutputs, new FluidStack(selectedSteam.fluid(), batch.steam())) != null);
+                    || prepareOutputs(hotOutputs, new FluidStack(steamFluid, batch.steam())) != null);
             if (fits) lower = hot;
             else upper = hot - 1;
         }
@@ -401,7 +399,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setString("tnExchangeRecipe", selected == null ? "" : selected.id());
-        nbt.setString("tnExchangeSteam", selectedSteam.id());
         saveExchangeCredit(nbt);
         nbt.setDouble("tnExchangeWaterRate", waterRate);
     }
@@ -414,8 +411,8 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     private void saveExchangeCredit(NBTTagCompound nbt) {
         nbt.setInteger("tnExchangeWaterCredit", waterCredit);
-        for (HeatExchangeSteam steam : HeatExchangeSteam.values()) {
-            nbt.setDouble("tnExchangeSteamRemainder_" + steam.id(), steamRemainders[steam.ordinal()]);
+        for (SteamType steam : SteamType.values()) {
+            nbt.setDouble("tnExchangeSteamRemainder_" + steam.id(), steamRemainders.getOrDefault(steam.id(), 0.0));
         }
     }
 
@@ -426,18 +423,14 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         waterCredit = savedCredit >= 0 && savedCredit < HeatExchangeBatch.STEAM_PER_WATER ? savedCredit : 0;
         double savedRate = nbt.getDouble("tnExchangeWaterRate");
         waterRate = Double.isFinite(savedRate) && savedRate >= 0 ? savedRate : 0;
-        selected = null;
-        for (HeatExchangeRecipe recipe : HeatExchangeRecipe.values()) {
-            if (recipe.id()
-                .equals(nbt.getString("tnExchangeRecipe"))) selected = recipe;
-        }
-        selectedSteam = HeatExchangeSteam.ORDINARY;
-        for (HeatExchangeSteam steam : HeatExchangeSteam.values()) {
-            if (steam.id()
-                .equals(nbt.getString("tnExchangeSteam"))) selectedSteam = steam;
+        selected = HeatExchangeRules.find(nbt.getString("tnExchangeRecipe"));
+        steamRemainders.clear();
+        // Old steam modes no longer select a path. Keep each steam's credit without converting ordinary to superheated.
+        for (SteamType steam : SteamType.values()) {
             double remainder = nbt.getDouble("tnExchangeSteamRemainder_" + steam.id());
-            steamRemainders[steam.ordinal()] = Double.isFinite(remainder) && remainder >= 0 && remainder < 1 ? remainder
-                : 0;
+            if (Double.isFinite(remainder) && remainder >= 0 && remainder < 1) {
+                steamRemainders.put(steam.id(), remainder);
+            }
         }
     }
 
@@ -480,10 +473,18 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
-        info.put("steam_type", selectedSteam.translationKey());
-        info.put("recipe", selected == null ? "thermonuclear.recipe.none" : selected.translationKey());
+        info.put(
+            "steam_type",
+            selected == null ? "thermonuclear.recipe.none"
+                : selected.steam()
+                    .translationKey());
+        info.put(
+            "recipe",
+            selected == null ? "thermonuclear.recipe.none"
+                : selected.coolant()
+                    .nameKey());
         if (selected != null) {
-            info.put("steam_multiplier", decimal(selected.steamPerHotCoolant(selectedSteam)) + " L/L");
+            info.put("steam_multiplier", decimal(selected.steamPerHotCoolant()) + " L/L");
         }
         info.put("hot_input", decimalPerCycle(inputLitresPerTick));
         info.put("water_input", decimalPerCycle(inputLitresPerTick > 0 ? waterRate : 0));
@@ -493,21 +494,4 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         return info;
     }
 
-    public boolean requestSteamChange() {
-        IGregTechTileEntity tile = getBaseMetaTileEntity();
-        if (tile == null || !tile.isServerSide() || tile.isAllowedToWork() || running) return false;
-        do {
-            selectedSteam = HeatExchangeSteam.values()[(selectedSteam.ordinal() + 1)
-                % HeatExchangeSteam.values().length];
-        } while (!supportsSteam(selectedSteam));
-        markDirty();
-        return true;
-    }
-
-    private boolean supportsSteam(HeatExchangeSteam steam) {
-        for (HeatExchangeRecipe recipe : HeatExchangeRecipe.values()) {
-            if (recipe.supportsSteam(steam)) return true;
-        }
-        return false;
-    }
 }

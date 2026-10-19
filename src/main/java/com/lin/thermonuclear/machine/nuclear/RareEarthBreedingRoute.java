@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.nuclear;
+package com.lin.thermonuclear.machine.nuclear;
 
 import gregtech.api.enums.Materials;
 

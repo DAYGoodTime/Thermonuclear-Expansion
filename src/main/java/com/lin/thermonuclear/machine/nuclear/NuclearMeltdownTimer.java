@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.nuclear;
+package com.lin.thermonuclear.machine.nuclear;
 
 public final class NuclearMeltdownTimer {
 

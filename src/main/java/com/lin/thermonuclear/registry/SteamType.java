@@ -1,10 +1,8 @@
-package com.lin.thermonuclear.recipe.heatexchange;
+package com.lin.thermonuclear.registry;
 
 import net.minecraftforge.fluids.Fluid;
 
-import com.lin.thermonuclear.registry.WorkingFluids;
-
-public enum HeatExchangeSteam {
+public enum SteamType {
 
     ORDINARY("ordinary"),
     SUPERHEATED("superheated"),
@@ -13,7 +11,7 @@ public enum HeatExchangeSteam {
 
     private final String id;
 
-    HeatExchangeSteam(String id) {
+    SteamType(String id) {
         this.id = id;
     }
 
@@ -23,15 +21,6 @@ public enum HeatExchangeSteam {
 
     public String translationKey() {
         return "thermonuclear.steam." + id;
-    }
-
-    public double steamPerHotCoolant() {
-        return switch (this) {
-            case ORDINARY -> 40;
-            case SUPERHEATED -> 20;
-            case SUPERCRITICAL -> 10;
-            case ULTRA_SUPERCRITICAL -> 100;
-        };
     }
 
     public Fluid fluid() {
