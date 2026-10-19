@@ -1,13 +1,14 @@
 package com.lin.thermonuclear;
 
 import com.lin.thermonuclear.api.FuelRodAdapters;
+import com.lin.thermonuclear.api.SteamTurbineFuels;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.loader.RecipeLoader;
 import com.lin.thermonuclear.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
-import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
+import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.registry.ModFluids;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
@@ -44,7 +45,7 @@ public class CommonProxy {
         // BW/GT material loaders have finished before resolving their registered fluid instances.
         WorkingFluids.resolve();
         HeatExchangeRecipes.register();
-        SteamTurbineRecipes.register();
+        SteamTurbineFuels.addFuels(DefaultSteamTurbineFuels.values());
         RecipeLoader.register();
     }
 

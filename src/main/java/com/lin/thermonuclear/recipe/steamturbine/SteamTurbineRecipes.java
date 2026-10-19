@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.util.StatCollector;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.lin.thermonuclear.api.ModRecipeLoader;
+import com.lin.thermonuclear.api.SteamTurbineFuel;
+import com.lin.thermonuclear.api.SteamTurbineFuels;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.nei.NEIFluidDisplays;
 
@@ -16,12 +20,13 @@ import gregtech.api.recipe.RecipeMapBuilder;
 import gregtech.api.recipe.RecipeMetadataKey;
 import gregtech.api.recipe.metadata.SimpleRecipeMetadataKey;
 
-public final class SteamTurbineRecipes {
+public class SteamTurbineRecipes implements ModRecipeLoader {
 
     public static final int DISPLAY_LITRES = 1000;
     public static final RecipeMetadataKey<Integer> REQUIRE_SHAFT_TIER = SimpleRecipeMetadataKey
         .create(Integer.class, "require_shaft_tier");
-    public static final RecipeMap<RecipeMapBackend> DISPLAY = RecipeMapBuilder.of("thermonuclear.recipe.steam_turbine")
+    public static final RecipeMap<RecipeMapBackend> SteamTurbineDisplayMap = RecipeMapBuilder
+        .of("thermonuclear.recipe.steam_turbine")
         .maxIO(0, 0, 1, 0)
         .minInputs(0, 1)
         .dontUseProgressBar()
@@ -42,24 +47,20 @@ public final class SteamTurbineRecipes {
         })
         .build();
 
-    private static boolean registered;
-
-    private SteamTurbineRecipes() {}
-
-    public static void register() {
-        if (registered) return;
-        registered = true;
-        for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
-            if (fuel.fluid() == null) continue;
+    @Override
+    public void loadRecipes() {
+        for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
+            Fluid fuelFluid = fuel.getWorkingFluid();
+            if (fuelFluid == null) continue;
             // This map is documentation only; the turbine's transactional cycle performs the conversion.
             GTValues.RA.stdBuilder()
-                .fluidInputs(new FluidStack(fuel.fluid(), DISPLAY_LITRES))
+                .fluidInputs(new FluidStack(fuelFluid, DISPLAY_LITRES))
                 .eut(0)
                 .duration(20)
-                .specialValue(fuel.displayEnergy(DISPLAY_LITRES))
-                .metadata(REQUIRE_SHAFT_TIER, fuel.supportsShaftTier())
+                .specialValue((int) (fuel.euPerLitre() * DISPLAY_LITRES))
+                .metadata(REQUIRE_SHAFT_TIER, fuel.requireShaftTier())
                 .fake()
-                .addTo(DISPLAY);
+                .addTo(SteamTurbineDisplayMap);
         }
     }
 }

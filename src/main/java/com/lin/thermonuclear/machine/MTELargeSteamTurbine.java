@@ -22,14 +22,13 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.api.SteamTurbineFuel;
+import com.lin.thermonuclear.api.SteamTurbineFuels;
 import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.recipe.steamturbine.ProcessingCycleMath;
-import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineFuel;
-import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineMath;
-import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
+import com.lin.thermonuclear.recipe.steamturbine.*;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.relauncher.Side;
@@ -238,13 +237,13 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             .addInfo(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.tooltip.steam_turbine.energy.0",
-                    decimal(SteamTurbineFuel.ORDINARY.euPerLitre()),
-                    decimal(SteamTurbineFuel.SUPERHEATED.euPerLitre())))
+                    decimal(DefaultSteamTurbineFuels.STEAM.euPerLitre()),
+                    decimal(DefaultSteamTurbineFuels.OVER_HEAT_STEAM.euPerLitre())))
             .addInfo(
                 StatCollector.translateToLocalFormatted(
                     "thermonuclear.tooltip.steam_turbine.energy.1",
-                    decimal(SteamTurbineFuel.SUPERCRITICAL.euPerLitre()),
-                    decimal(SteamTurbineFuel.ULTRA_SUPERCRITICAL.euPerLitre())))
+                    decimal(DefaultSteamTurbineFuels.SUPERCRITICAL_STEAM.euPerLitre()),
+                    decimal(DefaultSteamTurbineFuels.ULTRA_SUPERCRITICAL_STEAM.euPerLitre())))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.shaft_limits"))
             .addSeparator()
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.features"))
@@ -314,9 +313,9 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
         boolean unsupportedSteam = false;
-        for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
-            if (fuel.fluid() != null && available(fuel.fluid()) > 0) {
-                if (!fuel.supportsShaftTier(shaftTier)) {
+        for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
+            if (fuel.getWorkingFluid() != null && available(fuel.getWorkingFluid()) > 0) {
+                if (!fuel.supportShaftTier(shaftTier)) {
                     unsupportedSteam = true;
                     continue;
                 }
@@ -331,7 +330,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         double fullLoadSteamLitresPerTick = ProcessingCycleMath
             .litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
         fullLoadEUt = SteamTurbineMath.generationEUt(fullLoadSteamLitresPerTick, effectiveEUPerLitre);
-        long steamLitresPerCycle = Math.min(effectiveSteamLimitLitresPerCycle, available(currentFuel.fluid()));
+        long steamLitresPerCycle = Math
+            .min(effectiveSteamLimitLitresPerCycle, available(currentFuel.getWorkingFluid()));
         if (steamLitresPerCycle <= 0) return fail("steam");
         int waterLitresPerCycle = (int) ((steamLitresPerCycle + condensationRemainderLitres)
             / GTValues.STEAM_PER_WATER);
@@ -340,7 +340,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             new FluidStack(WorkingFluids.distilledWater, Math.max(1, waterLitresPerCycle)));
         if (outputs == null) return fail("output_full");
         if (waterLitresPerCycle == 0) outputs = null;
-        consume(currentFuel.fluid(), steamLitresPerCycle);
+        consume(currentFuel.getWorkingFluid(), steamLitresPerCycle);
         if (outputs != null) commitOutput(outputs::commit);
         final int remainingSteamLitres = (int) ((steamLitresPerCycle + condensationRemainderLitres)
             % GTValues.STEAM_PER_WATER);
@@ -355,7 +355,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     @Override
     public boolean onRunningTick(ItemStack stack) {
         // A structure downgrade must not resume prepaid ultra-supercritical generation on low-pressure shafts.
-        if (currentFuel != null && !currentFuel.supportsShaftTier(shaftTier)) {
+        if (currentFuel != null && !currentFuel.supportShaftTier(shaftTier)) {
             stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.shaft_steam_unsupported"));
             return fail("shaft_steam_unsupported");
         }
@@ -368,7 +368,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
         nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
         nbt.setLong("tnTurbineCycleLimit", effectiveSteamLimitLitresPerCycle);
-        if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.name());
+        if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.nameKey());
         else nbt.removeTag("tnTurbineFuel");
         nbt.removeTag("tnRotorIdentity");
     }
@@ -384,8 +384,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             GTValues.STEAM_PER_WATER,
             condensationRemainderLitres);
         currentFuel = null;
-        for (SteamTurbineFuel fuel : SteamTurbineFuel.values()) {
-            if (fuel.name()
+        for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
+            if (fuel.nameKey()
                 .equals(nbt.getString("tnTurbineFuel"))) currentFuel = fuel;
         }
     }
@@ -414,7 +414,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
 
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return SteamTurbineRecipes.DISPLAY;
+        return SteamTurbineRecipes.SteamTurbineDisplayMap;
     }
 
     @Override
