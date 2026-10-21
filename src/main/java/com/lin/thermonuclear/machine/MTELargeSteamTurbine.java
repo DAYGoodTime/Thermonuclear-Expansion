@@ -64,7 +64,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     private static final Casings CASING = Casings.SolidSteelMachineCasing;
     private static final IStructureDefinition<MTELargeSteamTurbine> STRUCTURE = StructureDefinition
         .<MTELargeSteamTurbine>builder()
-        .addShape(PIECE, SteamTurbineStructure.createShape())
+        .addShape(PIECE, SteamTurbineStructure.SHAPE)
         .addElement('A', fluidHatch(false, 1))
         .addElement('B', fluidHatch(true, 2))
         .addElement(

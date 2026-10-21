@@ -86,7 +86,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private static final Casings CASING = Casings.HeatProofMachineCasing;
     // The containment casing currently reuses GT's reinforced-concrete texture.
     private static final int CONTAINMENT_TEXTURE = 221;
-    private static final String[][] SHAPE = NuclearPowerPlantStructure.createShape();
+    private static final String[][] SHAPE = NuclearPowerPlantStructure.SHAPE;
     private static final List<int[]> COOLANT_OFFSETS = structureOffsets('A');
     private static final List<int[]> WATER_OFFSETS = structureOffsets('G');
     private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
