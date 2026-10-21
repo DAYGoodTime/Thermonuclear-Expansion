@@ -37,6 +37,7 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -49,6 +50,7 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
+import gregtech.common.tileentities.machines.MTEHatchInputME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
@@ -401,11 +403,16 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected long available(Fluid fluid) {
+        return availableFromStacks(fluid, cycleFluids);
+    }
+
+    private long availableFromStacks(Fluid fluid, List<FluidStack> fluids) {
         if (fluid == null) return 0;
+        FluidStack requested = new FluidStack(fluid, 1);
         long amount = 0;
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (FluidStack stack : cycleFluids) {
-            if (stack != null && stack.getFluid() == fluid && seen.add(stack)) {
+        for (FluidStack stack : fluids) {
+            if (stack != null && stack.isFluidEqual(requested) && seen.add(stack)) {
                 amount = saturatingAdd(amount, Math.max(0, stack.amount));
             }
         }
@@ -413,13 +420,30 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected long available(Fluid fluid, List<MTEHatch> hatches) {
-        if (fluid == null) return 0;
-        long amount = 0;
+        return availableFromStacks(fluid, hatchFluids(hatches));
+    }
+
+    private List<FluidStack> hatchFluids(List<MTEHatch> hatches) {
+        List<FluidStack> fluids = new ArrayList<>();
+        List<FluidStack> meFluids = new ArrayList<>();
         for (MTEHatch hatch : hatches) {
-            FluidStack stack = hatch.getDrainableStack();
-            if (stack != null && stack.getFluid() == fluid) amount = saturatingAdd(amount, Math.max(0, stack.amount));
+            if (hatch == null || !hatch.isValid()) continue;
+            if (hatch instanceof MTEHatchInputME meHatch) {
+                for (FluidStack stack : meHatch.getStoredFluids()) {
+                    // ME hatches can expose the same network stock; retain one original transaction stack.
+                    if (stack != null && meFluids.stream()
+                        .noneMatch(stack::isFluidEqual)) {
+                        meFluids.add(stack);
+                        fluids.add(stack);
+                    }
+                }
+            } else if (hatch instanceof MTEHatchMultiInput multiInputHatch) {
+                fluids.addAll(Arrays.asList(multiInputHatch.getStoredFluid()));
+            } else {
+                fluids.add(hatch.getDrainableStack());
+            }
         }
-        return amount;
+        return fluids;
     }
 
     protected void consume(Fluid fluid, int amount) {
@@ -427,10 +451,15 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected void consume(Fluid fluid, long amount) {
+        consumeFromStacks(fluid, amount, cycleFluids);
+    }
+
+    private void consumeFromStacks(Fluid fluid, long amount, List<FluidStack> fluids) {
         if (amount < 0) throw new IllegalArgumentException("Negative fluid consumption");
+        FluidStack requested = fluid == null ? null : new FluidStack(fluid, 1);
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (FluidStack stack : cycleFluids) {
-            if (stack == null || stack.getFluid() != fluid || !seen.add(stack)) continue;
+        for (FluidStack stack : fluids) {
+            if (stack == null || !stack.isFluidEqual(requested) || !seen.add(stack)) continue;
             int used = (int) Math.min(amount, Math.max(0, stack.amount));
             stack.amount -= used;
             amount -= used;
@@ -440,16 +469,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     protected void consume(Fluid fluid, int amount, List<MTEHatch> hatches) {
-        for (MTEHatch hatch : hatches) {
-            FluidStack stack = hatch.getDrainableStack();
-            if (stack != null && stack.getFluid() == fluid) {
-                int used = Math.min(amount, Math.max(0, stack.amount));
-                stack.amount -= used;
-                amount -= used;
-                if (amount == 0) return;
-            }
-        }
-        if (amount > 0) throw new IllegalStateException("Cycle input changed during recipe processing");
+        consumeFromStacks(fluid, amount, hatchFluids(hatches));
     }
 
     protected FluidEjectionHelper prepareOutputs(FluidStack... outputs) {
