@@ -211,14 +211,14 @@ thermonuclear.structure.nuclear.world_bounds=Required main structure blocks exce
 thermonuclear.tooltip.nuclear.expansion.0=§bConnected module expansion§7: independent structure level, currently no effect on capabilities
 thermonuclear.tooltip.nuclear.expansion.1=Main structure steel / titanium / tungstensteel pipes allow §61§7 / §63§7 / §65§7 expansion modules, excluding the main structure; level = 1 + connected complete modules
 thermonuclear.tooltip.nuclear.expansion.2=Both the back and right sides of the main structure accept modules simultaneously; complete modules touch wall-to-wall in the same horizontal facing and expand in all four horizontal directions, without connecting pipes or shared blocks
-thermonuclear.tooltip.nuclear.expansion.3=NEI extra: §61§7 main only; §62§7 main + one back module; §63§7 two consecutive back modules. Examples never auto-build world expansions. Count changes while enabled or prepaid require a manual restart
+thermonuclear.tooltip.nuclear.expansion.3=Lowercase channel extra: §61§7 main only; §62§7 main + one back module; §63§7 two consecutive back modules. Right-click the blueprint in air to configure hints and auto-build examples; actual module connections remain flexible. Count changes while enabled or prepaid require a manual restart
 thermonuclear.structure.nuclear.outlet=Main structure steel / titanium / tungstensteel pipe supports (same main pipe tier, not external connection ports)
 thermonuclear.structure.nuclear.frames=Steel frames
 thermonuclear.structure.nuclear.steel_casings=Solid steel machine casings
 thermonuclear.structure.nuclear.module=Each §620x24x20§f module: 1695 containment casings, 15 pipes matching the main pipe tier, and 52 rods matching the main fuel_rod tier; valid axial metadata required, no mixed tiers
 thermonuclear.structure.nuclear.expansion_hint.0=The main back and right sides accept modules simultaneously; keep both complete walls touching, with no shared blocks, wall openings or external connecting pipes
 thermonuclear.structure.nuclear.expansion_hint.1=All modules share the main horizontal facing; expand through complete matching-tier neighbours in all four horizontal directions, with 20-block origin spacing; isolated or mismatched modules neither count nor relay connections
-thermonuclear.structure.nuclear.expansion_hint.2=NEI extra=1: main only; extra=2: one back module; extra=3: two consecutive back modules. Main and modules share pipe/fuel_rod channels; world construction builds only the main and hints the first back module
+thermonuclear.structure.nuclear.expansion_hint.2=NEI, world hints and auto-build use lowercase extra=1: main only; extra=2: one back module; extra=3: two consecutive back modules. Main and modules share pipe/fuel_rod channels; these examples do not restrict actual module connections
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_timeout=Expansion structure check error: timeout; this scan's level was not committed
 GT5U.gui.text.shutdown_reason.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required

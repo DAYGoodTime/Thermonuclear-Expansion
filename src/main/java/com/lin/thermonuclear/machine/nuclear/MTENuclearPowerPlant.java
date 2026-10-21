@@ -613,13 +613,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         constructing = true;
         try {
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
-            // Extra is preview-only. Real-world construction still builds only the main structure,
-            // with one back-module hologram; it never places expansion blocks automatically.
-            List<Position> examples = previewConstruction
-                ? NuclearModuleGeometry.preview(ChannelDataAccessor.getChannelData(stack, "extra"))
-                : java.util.Collections.singletonList(NuclearModuleGeometry.BACK);
+            // The channel selects a convenient example layout, not the allowed module connections.
+            List<Position> examples = NuclearModuleGeometry.preview(ChannelDataAccessor.getChannelData(stack, "extra"));
             for (Position origin : examples) {
-                buildModule(stack, previewConstruction ? hintsOnly : true, origin);
+                buildModule(stack, hintsOnly, origin);
             }
         } finally {
             constructing = false;
