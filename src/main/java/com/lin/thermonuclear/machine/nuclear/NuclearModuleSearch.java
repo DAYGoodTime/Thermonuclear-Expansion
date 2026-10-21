@@ -6,9 +6,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.LongSupplier;
 
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleGeometry.Bounds;
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleGeometry.Position;
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.RequiredBlock;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Bounds;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
 
 /** Disposable BFS: only a complete, loaded, matching body may become a connecting node. */
 final class NuclearModuleSearch {
@@ -19,7 +18,8 @@ final class NuclearModuleSearch {
 
         boolean loaded(Position position);
 
-        boolean matches(RequiredBlock block);
+        // Invoke beforeRead for every visited element, including unloaded rejections, to enforce the scan deadline.
+        boolean matches(Position origin, Runnable beforeRead, Runnable onUnloaded);
     }
 
     static final class Result {
@@ -56,13 +56,13 @@ final class NuclearModuleSearch {
             if (moduleLimit == 0) return result;
             ArrayDeque<Position> queue = new ArrayDeque<>();
             // Seed both entrances before expanding either branch; the global budget still wins immediately.
-            for (Position root : NuclearModuleGeometry.roots()) {
+            for (Position root : NuclearModuleStructure.roots()) {
                 if (body(root)) accept(root, queue);
                 if (result.capped) return result;
             }
             while (!queue.isEmpty()) {
                 deadline();
-                for (Position to : NuclearModuleGeometry.neighbours(queue.removeFirst())) {
+                for (Position to : NuclearModuleStructure.neighbours(queue.removeFirst())) {
                     result.edges++;
                     if (body(to)) accept(to, queue);
                     if (result.capped) return result;
@@ -90,10 +90,10 @@ final class NuclearModuleSearch {
     private boolean body(Position origin) {
         deadline();
         if (!visited.add(origin)) return false;
-        Bounds bounds = NuclearModuleGeometry.bounds(origin);
-        if (bounds.intersects(NuclearModuleGeometry.MAIN)) return false;
+        Bounds bounds = NuclearModuleStructure.bounds(origin);
+        if (bounds.intersects(NuclearModuleStructure.MAIN)) return false;
         for (Position valid : result.valid) {
-            if (bounds.intersects(NuclearModuleGeometry.bounds(valid))) return false;
+            if (bounds.intersects(NuclearModuleStructure.bounds(valid))) return false;
         }
         result.candidates++;
         // Preflight the entire bounding box, including ignored air, without loading chunks.
@@ -108,14 +108,12 @@ final class NuclearModuleSearch {
                 }
             }
         }
-        for (RequiredBlock block : NuclearModuleStructure.blocks()) {
+        boolean matched = reader.matches(origin, () -> {
             deadline();
-            Position local = block.position;
             result.reads++;
-            if (!reader.matches(new RequiredBlock(origin.add(local.x, local.y, local.z), block.material))) return false;
-        }
+        }, () -> result.unloaded++);
         deadline();
-        return true;
+        return matched;
     }
 
     private void deadline() {

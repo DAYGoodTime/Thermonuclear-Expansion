@@ -7,7 +7,7 @@
 | [项目知识库](wiki/development/项目知识库.md) | 项目现状、技术基线、代码入口、TNItemList 统一物品引用与未定事项；从这里开始 |
 | [仓库开发上下文](../AGENTS.md) | 编码约束与文档维护规则 |
 | [机器 Tooltip 编写规范](wiki/development/机器Tooltip编写规范.md) | 外壳最大数量、提示方块仓口、独立模式公式、数值着色与绿色支持提示置底；核电站为当前范例 |
-| [核电站模块结构](wiki/development/核电站模块结构.md) | 贴墙双入口、共享几何、独立等级匹配、NEI extra 三级预览及独立验证边界 |
+| [核电站模块结构](wiki/development/核电站模块结构.md) | 贴墙双入口、统一模板与几何、StructureLib 匹配、NEI extra 三级预览及游戏验收边界 |
 | [Gradle 开发指南](wiki/development/Gradle开发指南.md) | 构建、格式化、依赖核验与排障 |
 | [Mixin 开发指南](wiki/development/Mixin开发指南.md) | early / late 加载入口与注入流程；当前无实际注入 |
 | [超超临界蒸汽](wiki/fluids/超超临界蒸汽.md) | 独立流体注册与 NEI 展示；热复合冷却液可产出，高压轴涡轮支持消耗，原有两种热冷却液禁止生成 |

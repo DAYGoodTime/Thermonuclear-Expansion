@@ -30,6 +30,7 @@ import com.gtnewhorizon.structurelib.alignment.enumerable.Flip;
 import com.gtnewhorizon.structurelib.alignment.enumerable.Rotation;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
+import com.gtnewhorizon.structurelib.structure.IStructureWalker;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
@@ -43,8 +44,7 @@ import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleGeometry.Position;
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.RequiredBlock;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
 import com.lin.thermonuclear.registry.DefaultCoolants;
 import com.lin.thermonuclear.registry.WorkingFluids;
 import com.lin.thermonuclear.utils.StartupProgress;
@@ -269,38 +269,61 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private void scanExpansion(IGregTechTileEntity tile, List<StructureError> errors) {
-        // Capture both independent main tiers. The scanner never invokes tier setters or hatch adders.
-        final int mainPipeTier = pipeTier;
-        final int mainFuelTier = fuelRodTier;
+        // Only after the main check: tiered P/D now compare without invoking setters. Never reset per module.
+        if (pipeTier <= 0 || fuelRodTier <= 0) throw new IllegalStateException("Main structure tiers not established");
         expansionScan = new NuclearModuleSearch(new NuclearModuleSearch.Reader() {
 
             @Override
             public boolean loaded(Position position) {
                 int[] p = worldPosition(position);
-                return p[1] >= 0 && p[1] < tile.getWorld()
-                    .getHeight()
-                    && tile.getWorld()
-                        .getChunkProvider()
-                        .chunkExists(p[0] >> 4, p[2] >> 4);
+                return modulePositionLoaded(tile.getWorld(), p[0], p[1], p[2]);
             }
 
             @Override
-            public boolean matches(RequiredBlock block) {
-                int[] p = worldPosition(block.position);
-                Block actual = tile.getWorld()
-                    .getBlock(p[0], p[1], p[2]);
-                int meta = tile.getWorld()
-                    .getBlockMetadata(p[0], p[1], p[2]);
-                return switch (block.material) {
-                    case 'F' -> actual == BlockLoader.containmentCasing && meta == 0;
-                    case 'P' -> Integer.valueOf(mainPipeTier)
-                        .equals(pipeBlockTier(actual, meta));
-                    case 'D' -> Integer.valueOf(mainFuelTier)
-                        .equals(fuelBlockTier(actual, meta));
-                    default -> false;
-                };
+            public boolean matches(Position origin, Runnable beforeRead, Runnable onUnloaded) {
+                // iterate() returns void, including on early rejection: retain the outcome explicitly.
+                class ModuleWalker implements IStructureWalker<MTENuclearPowerPlant> {
+
+                    boolean matched = true;
+
+                    @Override
+                    public boolean visit(IStructureElement<MTENuclearPowerPlant> element, World world, int x, int y,
+                        int z, int a, int b, int c) {
+                        beforeRead.run();
+                        if (!modulePositionLoaded(world, x, y, z)) {
+                            onUnloaded.run();
+                            matched = false;
+                            return false;
+                        }
+                        matched = element.check(MTENuclearPowerPlant.this, world, x, y, z);
+                        return matched;
+                    }
+
+                    @Override
+                    public boolean blockNotLoaded(IStructureElement<MTENuclearPowerPlant> element, World world, int x,
+                        int y, int z, int a, int b, int c) {
+                        beforeRead.run();
+                        onUnloaded.run();
+                        matched = false;
+                        return false;
+                    }
+                }
+                ModuleWalker walker = new ModuleWalker();
+                // Do not use GT checkPiece(): optional candidates must not update main bounds or publish errors.
+                STRUCTURE.iterate(
+                    NuclearModuleStructure.MODULE,
+                    tile.getWorld(),
+                    getExtendedFacing(),
+                    tile.getXCoord(),
+                    tile.getYCoord(),
+                    tile.getZCoord(),
+                    -origin.x,
+                    -origin.y,
+                    -origin.z,
+                    walker);
+                return walker.matched;
             }
-        }, System::nanoTime, NuclearModuleStructure.moduleLimit(mainPipeTier)).scan();
+        }, System::nanoTime, NuclearModuleStructure.moduleLimit(pipeTier)).scan();
         if (expansionScan.timedOut) {
             expansionState = "expansion_timeout";
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.expansion_timeout"));
@@ -317,6 +340,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         expansionState = expansionScan.capped ? "expansion_capped" : "expansion_valid";
         if (changedWhileEnabled) stopExpansion("expansion_changed");
         markDirty();
+    }
+
+    private static boolean modulePositionLoaded(World world, int x, int y, int z) {
+        return y >= 0 && y < world.getHeight()
+            && world.getChunkProvider()
+                .chunkExists(x >> 4, z >> 4);
     }
 
     private void stopExpansion(String reason) {
@@ -613,7 +642,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         try {
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
             // The channel selects a convenient example layout, not the allowed module connections.
-            List<Position> examples = NuclearModuleGeometry.preview(ChannelDataAccessor.getChannelData(stack, "extra"));
+            List<Position> examples = NuclearModuleStructure
+                .preview(ChannelDataAccessor.getChannelData(stack, "extra"));
             for (Position origin : examples) {
                 buildModule(stack, hintsOnly, origin);
             }
@@ -1238,9 +1268,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         int[] worldOffset = new int[3];
         List<int[]> rods = new ArrayList<>(FUEL_ROD_OFFSETS);
         for (Position origin : validatedModules) {
-            for (RequiredBlock block : NuclearModuleStructure.blocks()) {
-                if (block.material != 'D') continue;
-                Position local = block.position;
+            for (Position local : NuclearModuleStructure.fuelRods()) {
                 rods.add(new int[] { origin.x + local.x, origin.y + local.y, origin.z + local.z });
             }
         }
