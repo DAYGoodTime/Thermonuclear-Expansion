@@ -11,37 +11,15 @@ Offsets:
 -1, 23, 0
 
 Dimensions (Width, Height, Length)
-20, 24, 21
+20, 24, 20
+
+The Normal Scan body contains 20 slices, not the original header's 21; no slice was added.
 
 Normal Scan:
 
 //spotless:off
 new String[][]{
-    {"                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    ",
-    "                    "
-},{
+    {
     "                    ",
     "                    ",
     "                    ",

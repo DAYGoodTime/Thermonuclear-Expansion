@@ -2,7 +2,7 @@ package com.lin.thermonuclear.machine.nuclear;
 
 import java.util.Arrays;
 
-/** Controller-relative geometry; the BCE export adds one padding column and row, not a new core anchor. */
+/** Controller-relative geometry; scanner offsets do not replace the real controller anchor. */
 final class NuclearPowerPlantStructure {
 
     static final int WIDTH = 29;
@@ -16,8 +16,6 @@ final class NuclearPowerPlantStructure {
     private static final int CENTRE = 18;
     private static final String EMPTY = "                             ";
     private static final String FULL_FLOOR = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-    private static final String FRONT_FLOOR = "      FFFFFFFFFFFFFFFFFFFFFFF";
-    private static final String BACK_FLOOR = "        FFFFFFFFFFFFFFFFFFFFF";
     private static final String CAP = "              FFFFFFFFF      ";
     private static final String CORE_BASE = "          F  FFFFFFFFFFF  F  ";
     private static final String CORE_WATER = "         F   FGGGGGGGGGF   F ";
@@ -27,16 +25,21 @@ final class NuclearPowerPlantStructure {
 
     static String[][] createShape() {
         String[][] shape = new String[LENGTH][];
-        shape[0] = layer("               F     F       ", "              FAF   FAF      ", FRONT_FLOOR);
-        shape[1] = solidCapLayer(FRONT_FLOOR);
+        shape[0] = layer("               F     F       ", "              FAF   FAF      ", floor(13, 23));
+        shape[1] = solidCapLayer(floor(12, 24));
         shape[1][22] = "              FCFFFFFCF      ";
-        shape[1][23] = "      FFFFFFFFFCFFFFFCFFFFFFF";
+        shape[1][23] = "            FFFCFFFFFCFFF    ";
         for (int z = 2; z <= 18; z++) {
             int top = Math.max(0, Math.max(9 - z, z - 11));
             int capRadius = Math.min(4, top + 1);
             int wallRadius = Math.min(9, Math.min(z + 3, 23 - z));
-            shape[z] = dome(top, capRadius, wallRadius, z < 6 ? FRONT_FLOOR : z <= 14 ? FULL_FLOOR : BACK_FLOOR);
-            if (z <= 5) shape[z][23] = "      FFFFFFFFFCFFFFFCFFFFFFF";
+            String floor = z <= 3 ? floor(13 - z, 23 + z)
+                : z <= 5 ? floor(9, 28) : z <= 14 ? FULL_FLOOR : floor(z - 7, 43 - z);
+            shape[z] = dome(top, capRadius, wallRadius, floor);
+            if (z <= 5) {
+                set(shape, 15, 23, z, 'C');
+                set(shape, 21, 23, z, 'C');
+            }
         }
         for (int z : new int[] { 5, 15 }) {
             Arrays.fill(shape[z], 17, 23, CORE_BASE);
@@ -62,8 +65,8 @@ final class NuclearPowerPlantStructure {
         }
         // H is the real controller; the offset header belongs to the scanner outside the build.
         shape[OFFSET_Z][OFFSET_Y] = " T~BBBBBTF   FGGGGGGGGGF   F ";
-        shape[19] = solidCapLayer(BACK_FLOOR);
-        shape[20] = layer(BACK_FLOOR);
+        shape[19] = solidCapLayer(floor(12, 24));
+        shape[20] = layer(floor(13, 23));
         // The annex uses solid steel casings, with two real steel-frame rows inside.
         for (int z = 8; z <= 12; z++) {
             for (int y = 19; y <= 21; y++) set(shape, 1, y, z, 'T');
@@ -75,13 +78,10 @@ final class NuclearPowerPlantStructure {
             set(shape, x, 21, 9, 'S');
             set(shape, x, 20, 11, 'S');
         }
-        // Tiered outlet support is required; its central tungstensteel connection hole is ignored by A itself.
+        // Preserve the main structure's tiered pipe supports; no external connection or shared wall is required.
         for (int z = 15; z <= 19; z++) set(shape, 21, 23, z, 'P');
         set(shape, 21, 22, 15, 'P');
         set(shape, 21, 22, 19, 'P');
-        set(shape, 21, 21, 20, 'F');
-        set(shape, 20, 22, 20, 'F');
-        set(shape, 22, 22, 20, 'F');
         for (String[] slice : shape) {
             for (String row : slice) {
                 if (row.length() != WIDTH) throw new IllegalStateException("Invalid nuclear structure row width");
@@ -94,6 +94,12 @@ final class NuclearPowerPlantStructure {
         char[] row = shape[z][y].toCharArray();
         row[x] = value;
         shape[z][y] = new String(row);
+    }
+
+    private static String floor(int left, int right) {
+        char[] row = EMPTY.toCharArray();
+        Arrays.fill(row, left, right + 1, 'F');
+        return new String(row);
     }
 
     private static String[] layer(String... bottomRows) {

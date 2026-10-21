@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -29,6 +28,7 @@ import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
+import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.WorkingFluids;

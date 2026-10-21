@@ -1,6 +1,7 @@
 thermonuclear.machine.nuclear.name=Nuclear Power Plant
 thermonuclear.machine.heat_exchange.name=Heat Exchange Station
 thermonuclear.machine.steam_turbine.name=Large Steam Turbine
+thermonuclear.machine.debug_structure.name=Debug Structure Builder
 item.thermonuclear.wireless_upgrade_chip.name=Wireless Upgrade Chip
 thermonuclear.tooltip.wireless_chip.0=Right-click a Nuclear Power Plant or Large Steam Turbine controller; consumes 1 chip to permanently unlock wireless output
 thermonuclear.tooltip.wireless_chip.1=Without dynamos, generation goes directly to the controller owner's GT wireless energy network
@@ -88,28 +89,27 @@ thermonuclear.turbine.fuel.supercritical=Supercritical steam
 thermonuclear.turbine.fuel.ultrasupercritical=Ultra-supercritical steam
 fluid.thermonuclear.ultrasupercriticalsteam=Ultra-Supercritical Steam
 thermonuclear.tooltip.prototype=Development prototype; values subject to change
-thermonuclear.tooltip.mod=Thermonuclear Expansion [thermonuclear]
+thermonuclear.tooltip.mod=Thermonuclear Expansion [TNC]
 thermonuclear.tooltip.breeding.0=§bOptional breeding§7: paired breeder input/output buses enable breeder rod material conversion
 thermonuclear.tooltip.breeding.1=Separate breeder pool uses the fuel rod tier limit without using fuel parallel, including pending products
-thermonuclear.tooltip.breeding.2=Every breeder rod gains whole-reactor pulses x §64§7 progress per cycle, without division or hull heat bonuses
+thermonuclear.tooltip.breeding.2=Every breeder rod gains §6P§7 progress per cycle; P= pulses x §64§7
 thermonuclear.tooltip.nuclear.0=Fuel rod block tiers §61-4§7 allow max parallel: §68 / 32 / 128 / 512§7
 thermonuclear.tooltip.nuclear.1=Parallel setting controls the number of fuel rods in newly loaded batches
 thermonuclear.tooltip.nuclear.2=Consumes shortest remaining lifetime first
 thermonuclear.tooltip.nuclear.meltdown=Exceeding heat capacity does not immediately stop the reactor; after §610 continuous seconds§7, core water evaporates and fuel rod blocks melt into lava
-thermonuclear.tooltip.nuclear.3=Consumes fuel to produce power; requires a dynamo hatch unless wireless output is unlocked
+thermonuclear.tooltip.nuclear.3=Consumes fuel to produce power
 thermonuclear.tooltip.nuclear.direct.title=§bDirect generation mode§7
 thermonuclear.tooltip.nuclear.direct.formula.0=Generation (EU/t) = §6E x C x P x N x S x M x eta§7
 thermonuclear.tooltip.nuclear.direct.formula.1=E: base fuel energy per pulse; M: IC2 nuclear multiplier x configured direct multiplier; eta: configured direct efficiency
 thermonuclear.tooltip.nuclear.heat.title=§bHeat supply mode§7
 thermonuclear.tooltip.nuclear.heat.formula.0=Heat (heat/t) = §6C x round[P x (P + 1) / 2 x H] x N x S x M x eta x R / 20§7
 thermonuclear.tooltip.nuclear.heat.formula.1=H: base fuel heat; M: configured heat multiplier; eta: configured heat efficiency; R: average startup multiplier this cycle
-thermonuclear.tooltip.nuclear.heat_mode=Consumes fuel to accumulate hull heat; cooling fluids carry it out as hot fluids; no direct power generation
+thermonuclear.tooltip.nuclear.heat_mode=Consumes fuel to accumulate hull heat; cooling fluids carry it out as hot fluids;
 thermonuclear.tooltip.nuclear.cooling=Supports IC2 coolant, super coolant and NaK composite coolant; distilled water cooling produces ordinary steam
 thermonuclear.tooltip.nuclear.features=§bFeatures and support§7
 thermonuclear.tooltip.nuclear.heat_capacity=Fuel rod block tiers §61-4§7 allow heat capacity: §650000 / 100000 / 1000000 / 2147483647§7
 thermonuclear.tooltip.nuclear.formula.variables=C: cells per fuel rod; N: rods in the current batch; S: configured fuel cycles per second
 thermonuclear.tooltip.nuclear.formula.pulses=Pulses per cell: §6P = 1 + floor(C / 2) + reflector pulses§7; configured reflector pulses apply above §64§7 rods per batch, otherwise §60§7
-thermonuclear.tooltip.nuclear.formula.limits=round applies per cell; limited remaining lifetime scales output by actual fuel use; dynamo capacity limits wired output
 thermonuclear.tooltip.support_any=§aSupports Multi-Amp Dynamos and Laser Hatches§7
 thermonuclear.tooltip.heat_exchange.exchange.title=§bSteam production§7
 thermonuclear.tooltip.heat_exchange.exchange.formula=Steam (L) = hot coolant (L) x K; K: yield of the coolant's unique conversion path
@@ -144,7 +144,7 @@ thermonuclear.structure.nuclear.services.location=Hint block §61§7 (replaces c
 thermonuclear.structure.nuclear.breeder.location=Hint block §61§7 (replaces containment casing; input/output must be paired)
 thermonuclear.structure.nuclear.fuel_rods=Matching fuel rod blocks (tiers §61-4§f)
 thermonuclear.structure.nuclear.water=Water source blocks
-thermonuclear.structure.nuclear.pipe_casings=Main structure steel / titanium / tungstensteel pipe casings (same tier throughout, including outlet)
+thermonuclear.structure.nuclear.pipe_casings=Main structure steel / titanium / tungstensteel pipe casings (same tier throughout, including pipe supports)
 thermonuclear.structure.nuclear.coolant_io=Exactly 1 fluid input hatch and 1 fluid output hatch (no casing fallback)
 thermonuclear.structure.nuclear.coolant_io.location=Hint block §62§7 (dedicated fluid ports; no casing fallback)
 thermonuclear.structure.heat_exchange.controller=Bottom front centre, one layer above the floor, facing outwards
@@ -164,6 +164,12 @@ thermonuclear.structure.turbine.casing_hint=Solid steel machine casing
 thermonuclear.structure.turbine.output.location=Hint block §61§7 (dedicated outlet port; no casing fallback)
 thermonuclear.structure.turbine.input.location=Hint block §62§7 (dedicated inlet port; no casing fallback)
 thermonuclear.structure.turbine.dynamo.location=Hint block §63§7 (replaces solid steel casing; fluid hatches not allowed)
+thermonuclear.tooltip.debug_structure.0=Debug-only controller: builds draft structures through hologram hints or blueprint auto-place; never processes recipes
+thermonuclear.tooltip.debug_structure.1=Accepts no hatches; forms as soon as the skeleton matches. Current draft: dev/nuc-child.txt
+thermonuclear.structure.debug_structure.controller=Bottom centre of the front base row, facing outwards
+thermonuclear.structure.debug_structure.casings=Containment casing (exact count; the controller slot is excluded)
+thermonuclear.structure.debug_structure.pipes=Steel pipe casing
+thermonuclear.structure.debug_structure.fuel_rods=Tier 1 fuel rod block (vertical axis)
 thermonuclear.gui.status=Status
 thermonuclear.gui.severity.normal=[RUN]
 thermonuclear.gui.severity.idle=[IDLE]
@@ -204,15 +210,15 @@ thermonuclear.structure.nuclear.expansion_timeout=Expansion structure check erro
 thermonuclear.structure.nuclear.world_bounds=Required main structure blocks exceed world height bounds
 thermonuclear.tooltip.nuclear.expansion.0=§bConnected module expansion§7: independent structure level, currently no effect on capabilities
 thermonuclear.tooltip.nuclear.expansion.1=Main structure steel / titanium / tungstensteel pipes allow §61§7 / §63§7 / §65§7 expansion modules, excluding the main structure; level = 1 + connected complete modules
-thermonuclear.tooltip.nuclear.expansion.2=Layout is only an example; expand through any of the four ports. Connections are exactly §65§7 blocks, including both endpoint holes
-thermonuclear.tooltip.nuclear.expansion.3=NEI shows the titanium-pipe level-four A+B+C+E example; world hints show only A+B. Level changes while enabled require a manual restart
-thermonuclear.structure.nuclear.outlet=Main structure outlet steel / titanium / tungstensteel pipe casings (same tier as main structure pipes)
+thermonuclear.tooltip.nuclear.expansion.2=Both the back and right sides of the main structure accept modules simultaneously; complete modules touch wall-to-wall in the same horizontal facing and expand in all four horizontal directions, without connecting pipes or shared blocks
+thermonuclear.tooltip.nuclear.expansion.3=NEI extra: §61§7 main only; §62§7 main + one back module; §63§7 two consecutive back modules. Examples never auto-build world expansions. Count changes while enabled or prepaid require a manual restart
+thermonuclear.structure.nuclear.outlet=Main structure steel / titanium / tungstensteel pipe supports (same main pipe tier, not external connection ports)
 thermonuclear.structure.nuclear.frames=Steel frames
 thermonuclear.structure.nuclear.steel_casings=Solid steel machine casings
-thermonuclear.structure.nuclear.module=Each module: 25 containment casing floor blocks and 12 robust tungstensteel machine casings; each connection: 5 tungstensteel pipe casings (including endpoint holes)
-thermonuclear.structure.nuclear.expansion_hint.0=Expandable structure: world hints show only main structure A, first module B and its entrance connection; build further modules manually
-thermonuclear.structure.nuclear.expansion_hint.1=Follow the first module template at the same height, connecting through its four side ports; adjacent module centres are 8 blocks apart, with exactly 5 pipe blocks per connection (including endpoint holes)
-thermonuclear.structure.nuclear.expansion_hint.2=Connect only through the fixed entrance and complete tungstensteel pipe connections; modules must not overlap required main structure blocks
+thermonuclear.structure.nuclear.module=Each §620x24x20§f module: 1695 containment casings, 15 pipes matching the main pipe tier, and 52 rods matching the main fuel_rod tier; valid axial metadata required, no mixed tiers
+thermonuclear.structure.nuclear.expansion_hint.0=The main back and right sides accept modules simultaneously; keep both complete walls touching, with no shared blocks, wall openings or external connecting pipes
+thermonuclear.structure.nuclear.expansion_hint.1=All modules share the main horizontal facing; expand through complete matching-tier neighbours in all four horizontal directions, with 20-block origin spacing; isolated or mismatched modules neither count nor relay connections
+thermonuclear.structure.nuclear.expansion_hint.2=NEI extra=1: main only; extra=2: one back module; extra=3: two consecutive back modules. Main and modules share pipe/fuel_rod channels; world construction builds only the main and hints the first back module
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_timeout=Expansion structure check error: timeout; this scan's level was not committed
 GT5U.gui.text.shutdown_reason.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required

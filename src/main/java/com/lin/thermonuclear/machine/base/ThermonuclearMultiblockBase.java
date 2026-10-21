@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
-import com.lin.thermonuclear.utils.StartupProgress;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -28,6 +27,7 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.loader.ItemLoader;
+import com.lin.thermonuclear.utils.StartupProgress;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.Textures;

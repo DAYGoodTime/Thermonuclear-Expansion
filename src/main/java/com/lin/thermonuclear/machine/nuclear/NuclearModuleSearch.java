@@ -1,17 +1,16 @@
 package com.lin.thermonuclear.machine.nuclear;
 
 import java.util.ArrayDeque;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.LongSupplier;
 
-import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleGeometry.Bounds;
+import com.lin.thermonuclear.machine.nuclear.NuclearModuleGeometry.Position;
 import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.RequiredBlock;
 
-/** One synchronous, disposable scan. It never calls A's hatch/structure checker. */
+/** Disposable BFS: only a complete, loaded, matching body may become a connecting node. */
 final class NuclearModuleSearch {
 
     static final long TIMEOUT_NANOS = 10_000_000_000L;
@@ -33,22 +32,20 @@ final class NuclearModuleSearch {
         long elapsedNanos;
         boolean timedOut;
         boolean capped;
+        final Set<Position> valid = new LinkedHashSet<>();
     }
 
     private final Reader reader;
     private final LongSupplier clock;
     private final int moduleLimit;
-    private final Set<Position> occupied;
-    private final Map<Position, Boolean> bodies = new HashMap<>();
-    private final Set<Position> valid = new HashSet<>();
+    private final Set<Position> visited = new HashSet<>();
     private final Result result = new Result();
     private long started;
 
-    NuclearModuleSearch(Reader reader, Set<Position> mainBlocks, LongSupplier clock, int moduleLimit) {
+    NuclearModuleSearch(Reader reader, LongSupplier clock, int moduleLimit) {
         if (moduleLimit < 0 || moduleLimit > NuclearModuleStructure.MAX_MODULES)
             throw new IllegalArgumentException("Invalid module limit: " + moduleLimit);
         this.reader = reader;
-        this.occupied = new HashSet<>(mainBlocks);
         this.clock = clock;
         this.moduleLimit = moduleLimit;
     }
@@ -57,87 +54,65 @@ final class NuclearModuleSearch {
         started = clock.getAsLong();
         try {
             if (moduleLimit == 0) return result;
-            result.edges++;
-            if (!check(NuclearModuleStructure.entrance()) || !body(NuclearModuleStructure.FIRST)) return result;
             ArrayDeque<Position> queue = new ArrayDeque<>();
-            accept(NuclearModuleStructure.FIRST, queue);
-            if (valid.size() == moduleLimit) {
-                result.capped = true;
-                return result;
+            // Seed both entrances before expanding either branch; the global budget still wins immediately.
+            for (Position root : NuclearModuleGeometry.roots()) {
+                if (body(root)) accept(root, queue);
+                if (result.capped) return result;
             }
-            Set<Set<Position>> edges = new HashSet<>();
             while (!queue.isEmpty()) {
                 deadline();
-                Position from = queue.removeFirst();
-                for (int[] direction : NuclearModuleStructure.DIRECTIONS) {
-                    deadline();
-                    Position to = from.add(direction[0] * 8, 0, direction[1] * 8);
-                    Set<Position> edge = new HashSet<>();
-                    edge.add(from);
-                    edge.add(to);
-                    if (!edges.add(edge)) continue;
+                for (Position to : NuclearModuleGeometry.neighbours(queue.removeFirst())) {
                     result.edges++;
-                    // A is never a second root or a module; module occupancy rejects its required blocks.
-                    if (!check(NuclearModuleStructure.connection(from, direction[0], direction[1]))) continue;
-                    if (valid.contains(to) || !body(to)) continue;
-                    accept(to, queue);
-                    deadline();
-                    if (valid.size() == moduleLimit) {
-                        result.capped = true;
-                        return result;
-                    }
+                    if (body(to)) accept(to, queue);
+                    if (result.capped) return result;
                 }
             }
             return result;
         } catch (Timeout ignored) {
             result.timedOut = true;
-            // A timeout carries diagnostics, never a partially usable level.
             result.modules = 0;
+            result.valid.clear();
             return result;
         } finally {
             result.elapsedNanos = clock.getAsLong() - started;
         }
     }
 
-    private void accept(Position centre, ArrayDeque<Position> queue) {
-        valid.add(centre);
-        for (RequiredBlock block : NuclearModuleStructure.blocks(centre)) occupied.add(block.position);
-        queue.addLast(centre);
-        result.modules = valid.size();
-    }
-
-    private boolean body(Position centre) {
+    private void accept(Position origin, ArrayDeque<Position> queue) {
         deadline();
-        Boolean cached = bodies.get(centre);
-        if (cached != null) return cached;
-        result.candidates++;
-        List<RequiredBlock> blocks = NuclearModuleStructure.blocks(centre);
-        boolean complete = true;
-        for (RequiredBlock block : blocks) {
-            deadline();
-            if (occupied.contains(block.position)) {
-                complete = false;
-                break;
-            }
-        }
-        complete = complete && check(blocks);
-        bodies.put(centre, complete);
-        return complete;
+        result.valid.add(origin);
+        queue.addLast(origin);
+        result.modules = result.valid.size();
+        result.capped = result.modules == moduleLimit;
     }
 
-    private boolean check(List<RequiredBlock> blocks) {
-        // Check every required chunk before the first world block read in this batch.
-        for (RequiredBlock block : blocks) {
-            deadline();
-            if (!reader.loaded(block.position)) {
-                result.unloaded++;
-                return false;
+    private boolean body(Position origin) {
+        deadline();
+        if (!visited.add(origin)) return false;
+        Bounds bounds = NuclearModuleGeometry.bounds(origin);
+        if (bounds.intersects(NuclearModuleGeometry.MAIN)) return false;
+        for (Position valid : result.valid) {
+            if (bounds.intersects(NuclearModuleGeometry.bounds(valid))) return false;
+        }
+        result.candidates++;
+        // Preflight the entire bounding box, including ignored air, without loading chunks.
+        for (int z = bounds.min.z; z <= bounds.max.z; z++) {
+            for (int x = bounds.min.x; x <= bounds.max.x; x++) {
+                for (int y : new int[] { bounds.min.y, bounds.max.y }) {
+                    deadline();
+                    if (!reader.loaded(new Position(x, y, z))) {
+                        result.unloaded++;
+                        return false;
+                    }
+                }
             }
         }
-        for (RequiredBlock block : blocks) {
+        for (RequiredBlock block : NuclearModuleStructure.blocks()) {
             deadline();
+            Position local = block.position;
             result.reads++;
-            if (!reader.matches(block)) return false;
+            if (!reader.matches(new RequiredBlock(origin.add(local.x, local.y, local.z), block.material))) return false;
         }
         deadline();
         return true;
