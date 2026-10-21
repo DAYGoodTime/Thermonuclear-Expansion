@@ -197,8 +197,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             "fuel_rod",
             StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered(
                 MTENuclearPowerPlant::fuelBlockTier,
-                BlockLoader.fuelRods()
-                    .stream()
+                Arrays.stream(BlockLoader.fuelRods())
                     .map(block -> Pair.<Block, Integer>of(block, BlockMachineComponent.AXIS_Y))
                     .collect(Collectors.toList()),
                 -1,

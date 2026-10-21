@@ -1,7 +1,5 @@
 package com.lin.thermonuclear.block;
 
-import java.util.Map;
-
 public final class BlockTurbineShaft extends BlockTieredMachineComponent {
 
     private BlockTurbineShaft(int tier) {
@@ -23,7 +21,7 @@ public final class BlockTurbineShaft extends BlockTieredMachineComponent {
         };
     }
 
-    public static Map<Integer, BlockTurbineShaft> registerTiers() {
-        return registerTiers(BlockTurbineShaft::new, 1, 2);
+    public static BlockTurbineShaft[] registerTiers() {
+        return registerTiers(BlockTurbineShaft::new, new BlockTurbineShaft[2]);
     }
 }

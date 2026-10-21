@@ -1,8 +1,5 @@
 package com.lin.thermonuclear.block;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.function.IntFunction;
 
 public abstract class BlockTieredMachineComponent extends BlockMachineComponent {
@@ -20,19 +17,15 @@ public abstract class BlockTieredMachineComponent extends BlockMachineComponent 
         return tier;
     }
 
-    protected static <T extends BlockTieredMachineComponent> Map<Integer, T> registerTiers(IntFunction<T> factory,
-        int... tiers) {
-        Map<Integer, T> blocks = new LinkedHashMap<>();
-        for (int tier : tiers) {
-            T block = factory.apply(tier);
-            if (block.tier() != tier || blocks.putIfAbsent(tier, block) != null) {
-                throw new IllegalArgumentException("Invalid or duplicate component tier: " + tier);
+    protected static <T extends BlockTieredMachineComponent> T[] registerTiers(IntFunction<T> factory, T[] array) {
+        for (int i = 0; i < array.length; i++) {
+            T block = factory.apply(i + 1);
+            if (block.tier() != i + 1) {
+                throw new IllegalArgumentException("Invalid component tier: " + block.tier());
             }
-        }
-        // Keep separate registry names: metadata is already reserved for the saved placement axis.
-        for (T block : blocks.values()) {
             block.register();
+            array[i] = block;
         }
-        return Collections.unmodifiableMap(blocks);
+        return array;
     }
 }

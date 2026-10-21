@@ -1,5 +1,6 @@
 package com.lin.thermonuclear.machine;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -99,8 +100,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             if (meta != axisMetadata) return null;
             return block instanceof BlockTurbineShaft shaft ? shaft.tier() : null;
         },
-            BlockLoader.turbineShafts()
-                .stream()
+            Arrays.stream(BlockLoader.turbineShafts())
                 .map(block -> Pair.<Block, Integer>of(block, axisMetadata))
                 .collect(Collectors.toList()),
             0,

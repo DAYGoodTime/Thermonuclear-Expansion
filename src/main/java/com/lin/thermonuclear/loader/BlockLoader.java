@@ -1,8 +1,5 @@
 package com.lin.thermonuclear.loader;
 
-import java.util.Collection;
-import java.util.Map;
-
 import com.lin.thermonuclear.block.BlockContainmentCasing;
 import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockTurbineBlade;
@@ -10,8 +7,8 @@ import com.lin.thermonuclear.block.BlockTurbineShaft;
 
 public final class BlockLoader {
 
-    private static Map<Integer, BlockTurbineShaft> turbineShafts;
-    private static Map<Integer, BlockFuelRod> fuelRods;
+    private static BlockTurbineShaft[] turbineShafts;
+    private static BlockFuelRod[] fuelRods;
     public static BlockTurbineBlade turbineBlade;
     public static BlockContainmentCasing containmentCasing;
 
@@ -27,22 +24,28 @@ public final class BlockLoader {
     }
 
     public static BlockTurbineShaft turbineShaft(int tier) {
-        BlockTurbineShaft block = turbineShafts.get(tier);
+        if (tier < 1 || tier > turbineShafts.length) {
+            throw new IllegalArgumentException("Unknown turbine shaft tier: " + tier);
+        }
+        BlockTurbineShaft block = turbineShafts[tier - 1];
         if (block == null) throw new IllegalArgumentException("Unknown turbine shaft tier: " + tier);
         return block;
     }
 
-    public static Collection<BlockTurbineShaft> turbineShafts() {
-        return turbineShafts.values();
+    public static BlockTurbineShaft[] turbineShafts() {
+        return turbineShafts.clone();
     }
 
     public static BlockFuelRod fuelRod(int tier) {
-        BlockFuelRod block = fuelRods.get(tier);
+        if (tier < 1 || tier > fuelRods.length) {
+            throw new IllegalArgumentException("Unknown fuel rod tier: " + tier);
+        }
+        BlockFuelRod block = fuelRods[tier - 1];
         if (block == null) throw new IllegalArgumentException("Unknown fuel rod tier: " + tier);
         return block;
     }
 
-    public static Collection<BlockFuelRod> fuelRods() {
-        return fuelRods.values();
+    public static BlockFuelRod[] fuelRods() {
+        return fuelRods.clone();
     }
 }

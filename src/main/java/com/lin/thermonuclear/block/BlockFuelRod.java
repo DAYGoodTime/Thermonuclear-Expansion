@@ -1,7 +1,5 @@
 package com.lin.thermonuclear.block;
 
-import java.util.Map;
-
 public final class BlockFuelRod extends BlockTieredMachineComponent {
 
     private BlockFuelRod(int tier) {
@@ -16,9 +14,9 @@ public final class BlockFuelRod extends BlockTieredMachineComponent {
 
     public static int heatCapacity(int tier) {
         return switch (tier) {
-            case 1 -> 50000;
-            case 2 -> 100000;
-            case 3 -> 1000000;
+            case 1 -> 100000;
+            case 2 -> 1000000;
+            case 3 -> 100_000_000;
             case 4 -> Integer.MAX_VALUE;
             default -> 0;
         };
@@ -34,7 +32,7 @@ public final class BlockFuelRod extends BlockTieredMachineComponent {
         };
     }
 
-    public static Map<Integer, BlockFuelRod> registerTiers() {
-        return registerTiers(BlockFuelRod::new, 1, 2, 3, 4);
+    public static BlockFuelRod[] registerTiers() {
+        return registerTiers(BlockFuelRod::new, new BlockFuelRod[4]);
     }
 }
