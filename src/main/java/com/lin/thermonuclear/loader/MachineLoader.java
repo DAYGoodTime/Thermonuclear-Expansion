@@ -1,14 +1,12 @@
 package com.lin.thermonuclear.loader;
 
-import net.minecraft.item.ItemStack;
-
 import com.lin.thermonuclear.machine.MTEDebugStructureBuilder;
 import com.lin.thermonuclear.machine.MTEHeatExchangeStation;
 import com.lin.thermonuclear.machine.MTELargeSteamTurbine;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.machine.nuclear.MTENuclearPowerPlant;
-import com.lin.thermonuclear.registry.ModItems;
+import com.lin.thermonuclear.registry.TNItemList;
 
 import gregtech.api.GregTechAPI;
 
@@ -22,12 +20,6 @@ public final class MachineLoader {
     public static final int BREEDER_OUTPUT_ID = 32104;
     // Debug-only template host; shares the approved incrementing range.
     public static final int DEBUG_STRUCTURE_ID = 32105;
-    public static ItemStack nuclearPowerPlant;
-    public static ItemStack heatExchangeStation;
-    public static ItemStack largeSteamTurbine;
-    public static ItemStack breederInputBus;
-    public static ItemStack breederOutputBus;
-    public static ItemStack debugStructureBuilder;
 
     private MachineLoader() {}
 
@@ -43,25 +35,33 @@ public final class MachineLoader {
                         + ". No automatic reassignment is permitted.");
             }
         }
-        nuclearPowerPlant = ModItems.register(
-            new MTENuclearPowerPlant(NUCLEAR_ID, "thermonuclear.nuclear_power_plant", "Nuclear Power Plant")
-                .getStackForm(1));
-        heatExchangeStation = ModItems.register(
-            new MTEHeatExchangeStation(HEAT_EXCHANGE_ID, "thermonuclear.heat_exchange_station", "Heat Exchange Station")
-                .getStackForm(1));
-        largeSteamTurbine = ModItems.register(
-            new MTELargeSteamTurbine(STEAM_TURBINE_ID, "thermonuclear.large_steam_turbine", "Large Steam Turbine")
-                .getStackForm(1));
-        breederInputBus = ModItems.register(
-            new MTEBreederInputBus(BREEDER_INPUT_ID, "thermonuclear.breeder_input", "Breeder Input Bus")
-                .getStackForm(1));
-        breederOutputBus = ModItems.register(
-            new MTEBreederOutputBus(BREEDER_OUTPUT_ID, "thermonuclear.breeder_output", "Breeder Output Bus")
-                .getStackForm(1));
-        debugStructureBuilder = ModItems.register(
-            new MTEDebugStructureBuilder(
-                DEBUG_STRUCTURE_ID,
-                "thermonuclear.debug_structure_builder",
-                "Debug Structure Builder").getStackForm(1));
+        TNItemList.NuclearPowerPlant.set(
+            ItemLoader.register(
+                new MTENuclearPowerPlant(NUCLEAR_ID, "thermonuclear.nuclear_power_plant", "Nuclear Power Plant")
+                    .getStackForm(1)));
+        TNItemList.HeatExchangeStation.set(
+            ItemLoader.register(
+                new MTEHeatExchangeStation(
+                    HEAT_EXCHANGE_ID,
+                    "thermonuclear.heat_exchange_station",
+                    "Heat Exchange Station").getStackForm(1)));
+        TNItemList.LargeSteamTurbine.set(
+            ItemLoader.register(
+                new MTELargeSteamTurbine(STEAM_TURBINE_ID, "thermonuclear.large_steam_turbine", "Large Steam Turbine")
+                    .getStackForm(1)));
+        TNItemList.BreederInputBus.set(
+            ItemLoader.register(
+                new MTEBreederInputBus(BREEDER_INPUT_ID, "thermonuclear.breeder_input", "Breeder Input Bus")
+                    .getStackForm(1)));
+        TNItemList.BreederOutputBus.set(
+            ItemLoader.register(
+                new MTEBreederOutputBus(BREEDER_OUTPUT_ID, "thermonuclear.breeder_output", "Breeder Output Bus")
+                    .getStackForm(1)));
+        TNItemList.DebugStructureBuilder.set(
+            ItemLoader.register(
+                new MTEDebugStructureBuilder(
+                    DEBUG_STRUCTURE_ID,
+                    "thermonuclear.debug_structure_builder",
+                    "Debug Structure Builder").getStackForm(1)));
     }
 }

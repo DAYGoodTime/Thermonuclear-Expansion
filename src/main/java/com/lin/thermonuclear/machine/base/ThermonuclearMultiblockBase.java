@@ -26,7 +26,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
-import com.lin.thermonuclear.loader.ItemLoader;
+import com.lin.thermonuclear.registry.TNItemList;
 import com.lin.thermonuclear.utils.StartupProgress;
 
 import gregtech.api.casing.Casings;
@@ -107,7 +107,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public boolean onRightclick(IGregTechTileEntity tile, EntityPlayer player) {
         ItemStack held = player.getHeldItem();
-        if (!usesDynamo() || held == null || held.stackSize <= 0 || held.getItem() != ItemLoader.wirelessUpgradeChip) {
+        if (!usesDynamo() || held == null
+            || held.stackSize <= 0
+            || held.getItem() != TNItemList.WirelessUpgradeChip.getItem()) {
             return super.onRightclick(tile, player);
         }
         if (!tile.isServerSide()) return true;

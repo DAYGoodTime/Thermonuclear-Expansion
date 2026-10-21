@@ -6,8 +6,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
-import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
+import com.lin.thermonuclear.registry.TNItemList;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
@@ -27,8 +27,10 @@ public class NuclearRecipes implements ModRecipeLoader {
             if (inputDust == null || outputDust == null) {
                 throw new IllegalStateException("Missing elemental dust for " + route.itemName(false));
             }
-            ItemStack workingRod = new ItemStack(ItemLoader.rareEarthRod(route, false));
-            ItemStack completedRod = new ItemStack(ItemLoader.rareEarthRod(route, true));
+            ItemStack workingRod = TNItemList.rareEarthRod(route, false)
+                .get(1);
+            ItemStack completedRod = TNItemList.rareEarthRod(route, true)
+                .get(1);
 
             GTValues.RA.stdBuilder()
                 .itemInputs(ItemList.IC2_Fuel_Rod_Empty.get(1), inputDust)

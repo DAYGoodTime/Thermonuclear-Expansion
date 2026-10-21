@@ -18,7 +18,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.lin.thermonuclear.Thermonuclear;
-import com.lin.thermonuclear.registry.ModItems;
+import com.lin.thermonuclear.loader.ItemLoader;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
@@ -66,7 +66,7 @@ public abstract class BlockMachineComponent extends Block {
 
     public final void register() {
         GameRegistry.registerBlock(this, ItemBlockMachineComponent.class, registryName);
-        ModItems.register(new ItemStack(this));
+        ItemLoader.register(new ItemStack(this));
     }
 
     protected final void addInfo(String translationKey, Object... arguments) {

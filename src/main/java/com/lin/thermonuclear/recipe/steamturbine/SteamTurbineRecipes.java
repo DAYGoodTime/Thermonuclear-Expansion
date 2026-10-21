@@ -10,8 +10,8 @@ import net.minecraftforge.fluids.FluidStack;
 import com.lin.thermonuclear.api.ModRecipeLoader;
 import com.lin.thermonuclear.api.SteamTurbineFuel;
 import com.lin.thermonuclear.api.SteamTurbineFuels;
-import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.nei.NEIFluidDisplays;
+import com.lin.thermonuclear.registry.TNItemList;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.recipe.RecipeMap;
@@ -32,7 +32,7 @@ public class SteamTurbineRecipes implements ModRecipeLoader {
         .dontUseProgressBar()
         .frontend(SteamTurbineRecipeFrontend::new)
         .neiFluidInputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidInputs))
-        .neiHandlerInfo(builder -> builder.setDisplayStack(MachineLoader.largeSteamTurbine))
+        .neiHandlerInfo(builder -> builder.setDisplayStack(TNItemList.LargeSteamTurbine.get(1)))
         .neiSpecialInfoFormatter(info -> {
             List<String> lines = new ArrayList<>();
             lines.add(

@@ -9,7 +9,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.Thermonuclear;
-import com.lin.thermonuclear.registry.ModItems;
+import com.lin.thermonuclear.loader.ItemLoader;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.GregTechAPI;
@@ -27,7 +27,7 @@ public abstract class ItemBase extends Item {
 
     public final void register() {
         GameRegistry.registerItem(this, registryName);
-        ModItems.register(new ItemStack(this));
+        ItemLoader.register(new ItemStack(this));
     }
 
     protected static <K, T extends ItemBase> Map<K, T> registerVariants(K[] variants, Function<K, T> factory) {
