@@ -681,7 +681,16 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     public static String formatInfo(String key, String value) {
         if (value == null || value.isEmpty()) return "";
-        String label = StatCollector.translateToLocal("thermonuclear.gui." + key);
+        String labelKey = "thermonuclear.gui." + key;
+        String label = StatCollector.translateToLocal(labelKey);
+        int separator = labelKey.lastIndexOf('_');
+        if (!StatCollector.canTranslate(labelKey) && separator >= 0) {
+            String index = labelKey.substring(separator + 1);
+            String template = labelKey.substring(0, separator);
+            if (index.matches("[0-9]+") && StatCollector.canTranslate(template)) {
+                label = StatCollector.translateToLocalFormatted(template, index);
+            }
+        }
         String text = value.startsWith("thermonuclear.") ? StatCollector.translateToLocal(value) : value;
         if (key.equals("status")) {
             String state = value.substring("thermonuclear.status.".length());

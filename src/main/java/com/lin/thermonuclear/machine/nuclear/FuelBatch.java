@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.item.ItemStack;
@@ -18,11 +19,16 @@ public final class FuelBatch {
     private FuelBatch() {}
 
     public static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods) {
+        return prepare(inputs, adapters, maxRods, new IdentityHashMap<>());
+    }
+
+    static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods,
+        Map<ItemStack, Integer> reserved) {
         if (maxRods <= 0 || maxRods > MAX_RODS) throw new IllegalArgumentException("Invalid fuel batch limit");
         ItemStack selected = null;
         int lowestLifetime = Integer.MAX_VALUE;
         for (ItemStack stack : inputs) {
-            if (stack == null || stack.stackSize <= 0) continue;
+            if (stack == null || stack.stackSize <= reserved.getOrDefault(stack, 0)) continue;
             FuelRodAdapter adapter = findAdapter(stack, adapters);
             if (adapter == null) continue;
             int lifetime = adapter.remainingCycles(stack);
@@ -40,10 +46,13 @@ public final class FuelBatch {
         Set<ItemStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : inputs) {
             if (stack == null || stack.stackSize <= 0 || !sameType(batch, stack) || !seen.add(stack)) continue;
-            int amount = Math.min(maxRods - batch.stackSize, stack.stackSize);
+            int available = stack.stackSize - reserved.getOrDefault(stack, 0);
+            if (available <= 0) continue;
+            int amount = Math.min(maxRods - batch.stackSize, available);
             sources.add(stack);
             amounts.add(amount);
             batch.stackSize += amount;
+            reserved.put(stack, reserved.getOrDefault(stack, 0) + amount);
             if (batch.stackSize == maxRods) break;
         }
         return new Plan(batch, sources, amounts);
@@ -70,17 +79,29 @@ public final class FuelBatch {
         }
 
         public void consumeInputs() {
-            if (consumed) throw new IllegalStateException("Fuel inputs already consumed");
-            for (int i = 0; i < sources.size(); i++) {
-                if (sources.get(i).stackSize < amounts.get(i)) {
+            consumeInputs(Collections.singletonList(this));
+        }
+
+        static void consumeInputs(List<Plan> plans) {
+            Map<ItemStack, Integer> totals = new IdentityHashMap<>();
+            for (Plan plan : plans) {
+                if (plan.consumed) throw new IllegalStateException("Fuel inputs already consumed");
+                for (int i = 0; i < plan.sources.size(); i++) {
+                    ItemStack source = plan.sources.get(i);
+                    totals.put(source, totals.getOrDefault(source, 0) + plan.amounts.get(i));
+                }
+            }
+            // Validate the combined reservation before changing any input, including sources shared by batches.
+            for (Map.Entry<ItemStack, Integer> entry : totals.entrySet()) {
+                if (entry.getKey().stackSize < entry.getValue()) {
                     throw new IllegalStateException("Fuel input changed during recipe processing");
                 }
             }
             // Mutate GT recipe references, not physical slots: ME and DEBUG use virtual stacks.
-            for (int i = 0; i < sources.size(); i++) {
-                sources.get(i).stackSize -= amounts.get(i);
+            for (Map.Entry<ItemStack, Integer> entry : totals.entrySet()) {
+                entry.getKey().stackSize -= entry.getValue();
             }
-            consumed = true;
+            for (Plan plan : plans) plan.consumed = true;
         }
     }
 
