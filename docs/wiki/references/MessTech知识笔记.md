@@ -1,8 +1,13 @@
 # MessTech Knowledge Dump
 
+> 来源: MessTech 实现笔记原文 | 状态: 只读参考，保留原语言与写法 | 原路径: `docs/knowledge.md`
+
+**参考来源原文。** 本文件来自 MessTech 的实现会话笔记，不是本项目实现说明；其中的版本、类名与数值均为参考侧材料，使用前按[迁入资料使用说明](迁入资料使用说明.md) 核对。GT5U 部分见[GT5U 框架笔记](GT5U框架笔记.md)。
+
 This file is a **context-preservation knowledge base**. It collects everything important from the
 current and previous work sessions so that work can continue even if earlier conversation context is
-compressed/removed. See also `repo-readme.md` (own-code notes) and `GT5U-NOTES.md` (GT5U notes).
+compressed/removed. See also `repo-readme.md` (own-code notes) and the GT5U notes in
+[`GT5U框架笔记.md`](GT5U框架笔记.md).
 
 ---
 
@@ -492,7 +497,7 @@ MTMultiMachineBase<T>
 - Structure `F` accepts Data Access hatch.
 - Independent Assembly Line recipe map `MTRecipeMaps.assFactoryAssemblyLineRecipes` holds **only fake NEI
   pages**, one per `RecipeAssemblyLine` definition (alternatives kept, so NEI cycles them in one slot); it has
-  no runnable recipes on purpose. See `docs/GT5U-NOTES.md` § 11.6.
+  no runnable recipes on purpose. See [GT5U 框架笔记](GT5U框架笔记.md) § 11.6.
 - `MTAssemblyLineMatcher` resolves an authorised definition against the current input buses on every recipe
   check: every bus is read as one unordered pool (wildcard-damage alias included, NBT ignored), and each slot
   takes the alternative that leaves the most parallels, so the ingredients may sit in any bus in any order and

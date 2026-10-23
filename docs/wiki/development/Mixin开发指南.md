@@ -36,7 +36,7 @@ GTNH convention 自动提供 UniMixins 与注解处理器，不另加一套依�
 
 ## 参考与验证边界
 
-已采用 GTNL 的 early / late 分离与空引导模式，未复制功能注入、ASM 补丁、注册／配置体系或 Java 17/21 分支。既有参考路径：`src/main/java/com/science/gtnl/` 下的 `asm/GTNLEarlyCoreMod.java`、`mixins/LateMixinLoader.java`、`mixins/Mixins.java`，以及 `src/main/resources/mixins.sciencenotleisure{,.early,.late}.json`。
+已采用 GTNL 的 early / late 分离与空引导模式，未复制功能注入、ASM 补丁、注册／配置体系或 Java 17/21 分支。参考入口与文件清单见 [GTNL 参考索引](../references/GT-Not-Leisure参考索引.md#兼容与注入)。
 
 既有 API 核验对应 UniMixins `0.3.1` sources 中的 `IEarlyMixinLoader`、`ILateMixinLoader`、`LateMixin`，生成行为对应 convention `2.0.34` sources 中的 `MixinModule`、`ToolchainModule`、`GenerateMixinAssetsTask`；外部说明见 [UniMixins 文档](https://github.com/LegacyModdingMC/UniMixins/blob/master/module-gtnhmixins/README.original.md)。
 

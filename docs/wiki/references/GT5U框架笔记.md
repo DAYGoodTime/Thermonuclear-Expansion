@@ -1,5 +1,9 @@
 # GT5-Unofficial / GTNH Multiblock knowledge notes (for writing new machines)
 
+> 来源: 本项目实现 `MTDTPF` 时整理的 GT5U 笔记 | 状态: 参考材料，保留原语言与写法 | 原路径: `docs/GT5U-NOTES.md`
+>
+> 笔记中的版本与路径快照可能已过期；GT5U 行为以本项目当前解析的依赖为准，使用前按[迁入资料使用说明](迁入资料使用说明.md) 核对。MessTech 部分见[MessTech 知识笔记](MessTech知识笔记.md)。
+
 > What was learned while implementing `MTDTPF`, distilled so future machines can be written
 > (and debugged) without re-reading the whole monorepo.
 
@@ -512,7 +516,7 @@ GTAuthors.buildAuthorsWithFormatSupplier(AuthorDynamic.author()))`.
 
 ## 17. Beamline / particle hatch API (GT5U 5.09.54.133)
 
-Used as the reference for MessTech's wireless beamline hatches (`docs/knowledge.md`).
+Used as the reference for MessTech's wireless beamline hatches (see [MessTech 知识笔记](MessTech知识笔记.md)).
 
 * Classes: `gtnhlanth.common.hatch.MTEHatchBeamlineConnector` (abstract, extends `MTEHatch`, holds the public
   `BeamLinePacket dataPacket`, ticks `moveAround` at `tectech.util.CommonValues.MOVE_AT` = `tick % 20 == 4`,
