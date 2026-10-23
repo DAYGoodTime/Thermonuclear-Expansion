@@ -103,10 +103,6 @@ public abstract class BlockMachineComponent extends Block {
         }
     }
 
-    public static boolean isAxisMetadata(int metadata) {
-        return metadata == AXIS_Y || metadata == AXIS_X || metadata == AXIS_Z;
-    }
-
     public static int axisMetadata(ForgeDirection direction) {
         if (direction.offsetX != 0) return AXIS_X;
         if (direction.offsetZ != 0) return AXIS_Z;

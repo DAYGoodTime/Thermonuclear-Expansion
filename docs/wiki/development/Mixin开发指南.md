@@ -6,7 +6,7 @@
 
 ## 当前范围与依赖
 
-当前只有加载入口与三份空 JSON，没有 `@Mixin` 类、静态或动态注入，也无 ASM 补丁。`gradle.properties` 设置 `usesMixins = true`、`mixinsPackage = mixins`、`usesMixinDebug = false`，`mixinPlugin` / `separateMixinSourceSet` 为空。换热与涡轮的 NEI 流体防护使用 GT 显示 getter，不依赖 Mixin，范围见[项目知识库](项目知识库.md#验证与知识维护)。
+当前只有 early 加载入口与三份空 JSON，没有 `@Mixin` 类、late 加载器、静态或动态注入，也无 ASM 补丁。组件扳手交互使用原生 Forge 接口，不显示选面网格。`gradle.properties` 设置 `usesMixins = true`、`mixinsPackage = mixins`、`usesMixinDebug = false`，`mixinPlugin` / `separateMixinSourceSet` 为空。换热与涡轮的 NEI 流体防护使用 GT 显示 getter，不依赖 Mixin。
 
 GTNH convention 自动提供 UniMixins 与注解处理器，不另加一套依赖。已有核验记录为 UniMixins `0.3.1`、处理器 `0.8.7`，本次未重新解析；依赖核验命令见 [Gradle 指南](Gradle开发指南.md)。JSON 使用 `minVersion = 0.8.5-GTNH`、`compatibilityLevel = JAVA_8`；early / late 的 `injectors.defaultRequire = 1` 约束未来注入点匹配，不表示已有注入。
 
@@ -19,7 +19,7 @@ GTNH convention 自动提供 UniMixins 与注解处理器，不另加一套依�
 | `mixins.thermonuclear.json` | manifest 的 `MixinConfigs` 引导配置；不填 `package`，不收录实际注入 |
 | `asm/ThermonuclearCorePlugin.java` | `IFMLLoadingPlugin` / `IEarlyMixinLoader`，提供 early JSON，无 ASM transformer 或访问转换器 |
 | `mixins.thermonuclear.early.json` | 包 `com.lin.thermonuclear.mixins.early`；面向 Minecraft、Forge 及早期可见的 CoreMod 类 |
-| `mixins/LateMixinLoader.java` | `@LateMixin` / `ILateMixinLoader`，由 UniMixins 发现，不由 `CommonProxy` 调用 |
+| `mixins/LateMixinLoader.java`（预留，当前不存在） | 添加 late 注入时实现 `@LateMixin` / `ILateMixinLoader`，由 UniMixins 发现，不由 `CommonProxy` 调用 |
 | `mixins.thermonuclear.late.json` | 包 `com.lin.thermonuclear.mixins.late`；面向普通模组类 |
 
 `coreModClass = asm.ThermonuclearCorePlugin` 由 convention 拼接根包，生成 `FMLCorePlugin: com.lin.thermonuclear.asm.ThermonuclearCorePlugin`，并配置 `FMLCorePluginContainsFMLMod`、`ForceLoadAsMod` 和 MixinTweaker，不重复手写 manifest。普通加载器留在 `mixins` 根包，实际注入使用 `.early` / `.late` 子包，不能将整个根包设为注入包。
@@ -32,7 +32,7 @@ GTNH convention 自动提供 UniMixins 与注解处理器，不另加一套依�
 4. 可选模组或配置开关由加载器选择注入，early 使用 `loadedCoreMods`，late 使用 `loadedMods`。
 5. 按 [Gradle 指南](Gradle开发指南.md#常用命令) 格式化、编译和打包，再在真实客户端与专用服务器核验加载和注入点；编译成功不证明运行时正确。
 
-三份 JSON 共用 `mixins.thermonuclear.refmap.json`，由注解处理器生成，不手写。目前无注入输入，生成结果须在获得构建许可后核验，不伪造空文件掩盖 `mixins.srg does not exist` 提示。
+三份 JSON 共用 `mixins.thermonuclear.refmap.json`，由注解处理器生成，不手写。目前无注入输入，旧构建目录中的映射不代表当前存在注入，不伪造空文件掩盖 `mixins.srg does not exist` 提示。
 
 ## 参考与验证边界
 

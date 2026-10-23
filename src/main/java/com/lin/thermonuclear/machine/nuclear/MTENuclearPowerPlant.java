@@ -178,7 +178,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private static Integer fuelBlockTier(Block block, int meta) {
-        if (!BlockMachineComponent.isAxisMetadata(meta)) return null;
+        if (meta != BlockMachineComponent.AXIS_Y) return null;
         return block instanceof BlockFuelRod rod ? rod.tier() : null;
     }
 
