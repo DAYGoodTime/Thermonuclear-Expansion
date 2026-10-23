@@ -1,7 +1,6 @@
 # Gradle 开发指南
 
 > 创建日期: 2026-09-30 12:28
-> 最后更新: 2026-10-07
 > 作者: DAYGood_Time
 > 状态: 长期维护
 
@@ -51,6 +50,7 @@ JDK 25 是构建运行环境，Jabel 保持 Java 8 字节码目标，不等于�
 | 编译成功，`reobfJar` 报 `DependencyDeobfuscationTransform` | 检查运行时 classpath 的本地 JAR 是否存在、有效且兼容；保持存在性判断 |
 | `mixins.srg does not exist` | 当前没有 `@Mixin` 输入，不伪造 refmap 或空映射；加载配置与注入步骤见 [Mixin 指南](Mixin开发指南.md) |
 | 配置缓存重新计算 | 文件、Git 状态或动态插件版本缓存变化会触发重算，本身不等于构建失败 |
+| `runServer` 报 `Minecraft EULA not accepted!` | 首次运行 `run/server` 需确认联机模式与 EULA；可在启动时向标准输入依次传入 `y`，或预先放置 `eula.txt`（`eula=true`），不通过修改构建脚本绕过 |
 
 插件更新提示、Spotless 的 `indentWithSpaces` 弃用与 Eclipse JDT 版本提示不等于构建失败；以任务结果和退出码判断，不因提示自动升级构建配置。历次故障与验证经过不在正文重复累积。
 

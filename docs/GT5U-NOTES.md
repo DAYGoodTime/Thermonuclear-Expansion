@@ -10,7 +10,7 @@ first** when verifying API behaviour instead of guessing:
 
 | Path | Contents / use |
 |---|---|
-| `tmp/GT5-Unofficial-beta3/` | **GT5U 5.09.54.133 源码快照**（上一版基线）；查 `gregtech.api.*` / `gregtech.common.*` 仍首选这里，但它**已不是当前编译依赖**——依赖由 `dependencies.gradle` 的 `gtnhVersion`（2.9.0-RC-1）manifest 解析，目前是 5.09.54.183，版本敏感的 API 请对照解析出来的 jar，差异清单见 `tmp/Compare.md` |
+| `tmp/GT5-Unofficial-beta3/` | **GT5U 5.09.54.133 源码快照**（早期基线）；查 `gregtech.api.*` / `gregtech.common.*` 仍可从这里入手，但它**已不是当前编译依赖**——依赖由 `dependencies.gradle` 的 `gtnhVersion`（2.9.0-RC-2）manifest 解析，目前是 5.09.54.205，版本敏感的 API 请对照解析出来的 jar |
 | `tmp/GT5-Unofficial-master/` | GT5U master-branch snapshot, **noticeably older than the beta3 checkout (5.09.54.133)**; historical/diff reference only — always verify against `tmp/GT5-Unofficial-beta3/` |
 | `tmp/ic2-decompiled/`, `tmp/ic2-src/` | Decompiled IC2 source incl. `ic2.core.*` internals (`ItemReactorUranium`, `ItemReactorHeatStorage`, `TileEntityNuclearReactorElectric`, ...) |
 | `build/rfg/minecraft-src/java/` | **Forge + Minecraft 1.7.10 decompiled source** (`net.minecraft.*` such as `RenderItem`, `ItemRenderer`, `FontRenderer`, plus `cpw.mods.fml.*`) |
@@ -110,29 +110,7 @@ on any failure; leave the list empty for success. Do NOT set `mMachine` yourself
   hatches at the letter position and falls back to a plain casing. Used for D (input/output
   bus/hatch + energy hatch compartments).
 
-## 5. Blocks used by MTDTPF (registry names → meta → tier)
-
-| Letter | Meaning                          | Block                          | meta | tier |
-|--------|----------------------------------|--------------------------------|------|------|
-| A      | reactor coil                     | `Loaders.compactFusionCoil`    | 0..4 | 1..5 |
-| B (1)  | LuV machine casing ("gt.blockcasings") | `GregTechAPI.sBlockCasings1` | 6    | 1    |
-| B (2)  | Fusion Machine Casing ("gt.blockcasings4") | `GregTechAPI.sBlockCasings4` | 6 | 2 |
-| B (3)  | Fusion Machine Casing Mk-II      | `GregTechAPI.sBlockCasings4`   | 8    | 3    |
-| B (4)  | Fusion Machine Casing Mk-III     | `ModBlocks.blockCasings3Misc` (GT++) | 12 | 4 |
-| B (5)  | Fusion Machine Casing Mk-IV      | `ModBlocks.blockCasings6Misc` (GT++) | 0 | 5 |
-| C      | solenoid superconductor coil ("gt.blockcasings.cyclotron_coils") | `GregTechAPI.sSolenoidCoilCasings` | 5 (ZPM) | static |
-| D      | hatch compartments, fill casing ("gt.blockcasings8") | `GregTechAPI.sBlockCasings8` | 7 | fill |
-
-These mirror `MTELargeFusionComputer1..5` (goodgenerator) — see
-`goodgenerator/blocks/tileEntity/MTELargeFusionComputer{1..5}.java`:
-coil meta 0/1/2/3/4 ↔ casing LuV / Fusion / Fusion-MkII / Fusion-MkIII / Fusion-MkIV
-and voltage tiers LuV(6)/ZPM(7)/UV(8)/UHV(9)/UEV(10).
-
-Registry-name helpers: `BlockCasings1` = "gt.blockcasings", `BlockCasings4` = "gt.blockcasings4",
-`BlockCasings8` = "gt.blockcasings8", `BlockCyclotronCoils` = "gt.blockcasings.cyclotron_coils".
-`GregTechAPI.sSolenoidCoilCasings` is the cyclotron-coil block field.
-
-## 6. Tier enforcement pattern (LevelTier)
+## 5. Tier enforcement pattern (LevelTier)
 
 * Keep a `LevelTier` enum containing, per tier: `tier` (1..5), `voltageTier` (GT voltage index),
   the A (coil) block+meta and B (casing) block+meta. Add an `INVALID` entry with tier -1.
@@ -161,7 +139,7 @@ All "at least" checks return `false` when the machine is `INVALID` (unformed). T
 `validateRecipe()` already uses `getLevelTier().isValid()` + `voltageTier`; reuse
 `isTierAtLeast(...)` anywhere you need tier-gated logic (e.g. max parallel, overclock choice).
 
-## 7. Recipes: using the Large-Fusion pool with a tier cap
+## 6. Recipes: using the Large-Fusion pool with a tier cap
 
 * `getRecipeMap()` → `RecipeMaps.fusionRecipes` (same pool as MTELargeFusionComputer).
 * Override `createProcessingLogic()`: keep the base `process()` behavior
@@ -177,7 +155,7 @@ All "at least" checks return `false` when the machine is `INVALID` (unformed). T
   below"), **without** the startup-energy (`FUSION_THRESHOLD`) system.
 * `GTValues.V[v]` holds the EU/t per voltage tier; `GTValues.VN[v]` holds short names ("LuV"...).
 
-## 8. Structure errors & localization
+## 7. Structure errors & localization
 
 * Use `StructureErrors.of("your.key", TranslatableText.literal(...))` to build a localized error.
 * Add the keys to **your own** lang files (`assets/<modid>/lang/en_US.lang`, `zh_CN.lang`).
@@ -195,7 +173,7 @@ All "at least" checks return `false` when the machine is `INVALID` (unformed). T
   `StructureErrors.of("your.missing_key")` / `StructureErrors.of("your.too_many_key")` and check
   `list.isEmpty()` / `list.size() > 1` in `checkMachine(..., List<StructureError> errors)`.
 
-## 9. Construct / survival construct offsets
+## 8. Construct / survival construct offsets
 
 `construct` → `buildPiece(piece, stack, hintsOnly, h, v, d)`.
 `survivalConstruct` → `survivalBuildPiece(piece, stack, h, v, d, elementBudget, env, false, true)`
@@ -205,7 +183,7 @@ Import trap: `ISurvivalBuildEnvironment` lives in
 `com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment` — it is **NOT** in
 `alignment.constructable` (that package only holds `ISurvivalConstructable`).
 
-## 10. Textures & GUI (MTDTPF example)
+## 9. Textures & GUI (MTDTPF example)
 
 * **Textures** — `getTexture(...)`: the *front* face (`side == facing`) uses the Large Fusion
   Computer Mk-V look (`Textures.BlockIcons.MACHINE_CASING_FUSION_GLASS` + a GT++ screen overlay from
@@ -230,7 +208,7 @@ Import trap: `ISurvivalBuildEnvironment` lives in
 * Sync-able fields on the MTE should be persisted in `saveNBTData/loadNBTData` (see the
   `convergence` / `catalystTypeForRecipesWithoutCatalyst` pair in MTDTPF).
 
-## 10.5 Waila (tooltip) data
+## 9.5 Waila (tooltip) data
 
 Waila lines are split across two callbacks:
 
@@ -243,34 +221,7 @@ The `hasKey` gate is the "should I add this line" check (see `MTEPlasmaForge.get
 same pattern to show perfect-overclock state with the existing `machine.dtpf.perfectoverclock*` lang keys,
 mirroring its own `getInfoData()` (yellow = on, green = off).
 
-## 10.6 Runtime efficiency scaling (DTPF-style)
-
-MTDTPF uses a DTPF-like `running_time` ramp (unlike DTPF's 8h target, this machine uses **3600s**):
-
-```
-p        = min(running_time / 72000, 1)          // 72000 ticks = 3600s
-EU(p)    = p >= 1 ? 0.5 : 1.0                    // no reduction until 3600s, then halved (step, not linear)
-time(p)  = p >= 1 ? 0.5 : 1.0                    // same step behaviour
-P        = (1 + machineTier - recipeTier) * 64   // parallel, min 1; machineTier/recipeTier are MKI..MKV (1..5)
-```
-
-Implementation notes (all verified against GT source):
-* Parallel is **tier-difference based**, not runtime based: `validateRecipe()` sets
-  `maxParallel = max(1, (1 + current.tier - recipeTier) * 64)` where
-  `recipeTier = max(1, GTUtility.getTier(recipe.mEUt) - 5)` (LuV=1, ZPM=2, ... UEV=5).
-  `getMaxParallelRecipes()` only returns a tier-based fallback for the GUI. GT's `ParallelHelper` still caps
-  the real parallel by `availableEUt / recipeEUt` and by input counts.
-* `getEuModifier()` returns `EU(p)` — `OverclockCalculator` uses it as the EU/t discount.
-* `getSpeedBonus()` returns `time(p)` — it is the **duration multiplier** (`durationModifier`), not a speed
-  multiplier: `0.5` = half recipe time, `1.0` = normal.
-* `checkProcessing()` adds `mMaxProgresstime` to `running_time` on success; `onPostTick()` decays
-  `running_time` by `EFFICIENCY_DECAY_RATE = 100` per tick when `mMaxProgresstime == 0` (same as MTEPlasmaForge).
-* NBT persists `eRunningTime`; Waila shows `running_time`; item tooltip has four colored, localized lines
-  (yellow "EU/duration ramp", gray "full efficiency after 3600s", gold "parallel formula", aqua "EU|duration halved").
-* Fluid output is DTPF-style: `addOutput(FluidStack)` copies the stack and calls `addOutputPartial`, and
-  `addFluidOutputs(...)` is overridden to route normal completion outputs through that same `addOutput` path.
-
-## 10.7 Wireless mode (direct wireless-network power)
+## 10 Wireless mode (direct wireless-network power)
 
 Reference: `MTETranscendentPlasmaMixer` (`gregtech/common/tileentities/machines/multi/MTETranscendentPlasmaMixer.java`)
 and `WirelessNetworkManager` (`gregtech/common/misc/WirelessNetworkManager.java`).
@@ -348,114 +299,6 @@ and `WirelessNetworkManager` (`gregtech/common/misc/WirelessNetworkManager.java`
   `hasPhysicalSpace()` and `getCheckMode()` checks. If the IDE claims a signature conflict, re-import
   the Gradle project so the IDE picks up the same GT5U API as the compiler (`GTUtility.FluidId` is
   `public abstract static class` in `GTUtility.java`).
-
-## 11.5 Nano Computing Center (`MTComputingCenter`)
-
-MessTech's computation multiblock, based on `CalculateMultiMachineBase`.
-
-* Modes:
-  * Mode 1 = **Nano Computing** (quantum-computer style): racks produce computation, data input is
-    forwarded to output automatically, wireless output is enabled with a wire cutter.
-  * Mode 2 = **Research Station** style: holder hatch (`F`) holds the research item, controller slot
-    holds a Data Stick, computation is produced internally by racks, and the finished Data Stick is
-    output to an OutputBus or left in the controller slot.
-  * Mode 3 = **Scanner** style: same research-style computation/packet-loss logic as the original
-    Research Station scanner, using `RecipeMaps.scannerHandlers` and `RecipeMaps.scannerFakeRecipes`.
-* Structure:
-  * `A` = normal hatches + Uncertainty + Data + WirelessComputationOutput
-  * `D` = `MTHatchRack`
-  * `F` = research holder or air
-* Custom recipe map: `MTRecipeMaps.computingCenterFakeRecipes`.
-  * NEI: `MTMachineLoader` calls `MTRecipeMaps.populateComputingCenterFakeRecipes()` after
-    `MTEHatchRack.run()`. For each recipe copied from the shared rack-component pool it
-    **re-tags the recipe to this map's default `RecipeCategory`** before adding it — GT's NEI handler
-    reads `backend.getRecipesByCategory(defaultCategory)`, not `getAllRecipes()`, so without the
-    re-tag the independent Computing Center list stays empty. Title localized via
-    `mt.recipe.computingcenter`.
-* Rack class: `MTHatchRack` extends GT5U `MTEHatchRack`.
-  * `tickComponents(oc, ov)` is overridden to soften the overclock penalty: the stock
-    `(oc-ov)^2` denominator term is scaled by `PENALTY_FACTOR = 0.8f` (20% softer).
-    Component stats are looked up from the shared QC fake-recipe pool
-    (`QuantumComputerRecipeData`, cached by unique id).
-  * `getDescription()` is overridden so the item tooltip omits the "TecTech: Elemental Matter" line.
-* Research packet-loss / `checkComputationTimeout` (grace/decay/full windows) is ported into
-  `MTComputingCenter.onRunningTick`, with NBT persistence for `ticksUntilPacketLossFail` and
-  `packetLossDecayFrom`.
-* Wireless: `WirelessComputationPacket.uploadData` with a real world tick (obtained by casting the
-  base meta tile entity to `TileEntity`).
-* Heat/overclock:
-  * `machineHeat` is internal storage (max `10,000,000`), saved in NBT.
-  * While heat is present, overclock cannot be disabled, rack components stay locked, and the
-    screwdriver cannot switch modes until the heat is fully dissipated.
-  * Cooling:
-    * **Active**: `consumeCryotheumForHeat()` removes one `10,000` heat batch per `100,000L`
-      Gelid Cryotheum, looping until no full batch remains (or the fluid runs out) — applied
-      both while running and while stopped.
-    * **Passive** (machine stopped only): every second `machineHeat -= max(machineHeat/1000, 20)`
-      (mirrors the stock rack decay).
-  * If heat exceeds max, all rack components are melted and the machine stops with
-    `ExtraShutdownReason.OverHeating`.
-  * Manual shutdown (GUI on/off / redstone) never reaches `stopMachine`, so `onPostTick` clears
-    leftover Waila/GUI values (`eAvailableData`, `mEUt`, and any unfinished research progress)
-    whenever the controller is not active (`resetStoppedDisplay()`).
-  * On controller removal with residual heat, all rack components are burned (`meltAllComponents`).
-  * Lock handling: `setRacksActive(false)` is a no-op while `machineHeat > 0`, and
-    `onPostTick` re-asserts `setRacksActive(true)` whenever heat is present (covers chunk reloads).
-* Animated tooltip:
-  * `AuthorDynamic.registerOn` adds `Add by: <animated MessTech>` below the author line.
-  * The "MessTech" text uses a flowing purple gradient via gtnhlib `AnimatedTooltipHandler.animatedText`.
-
-## 11.6 Assembly Factory (`MTAssFactory`)
-
-* Two recipe pools, switched by screwdriver (also via the built-in mode button):
-  * Mode 0 = **Component Assembly Line**: `GoodGeneratorRecipeMaps.componentAssemblyLineRecipes`,
-    generic `ProcessingLogic` via the base machine; recipe casing tier (`mSpecialValue`) is limited
-    to the current energy hatch tier (`getInputVoltageTier()`).
-  * Mode 1 = **Assembly Line**: reads the authorised recipes from the controller data stick and
-    Data Access hatches, resolves them against the input buses itself (`MTAssemblyLineMatcher`) and hands the
-    winner to the standard `ProcessingLogic` pipeline; only usable when `LevelTier == 2`. No single-recipe
-    locking in this mode (`supportsSingleRecipeLocking()` is false, like GT's own `MTEAssemblyLine`).
-* Structure:
-  * `F` accepts the usual buses/hatches/energy plus **Data Access hatches**.
-  * `I` = tiered Assembly Matrix Blocks (Tier 1 / Tier 2), derived into `LevelTier`.
-* GUI: `MTAssFactoryGui` (standard multi-block GUI; mode button comes from the base machine-mode stack).
-* Independent Assembly Line NEI pool: `MTRecipeMaps.assFactoryAssemblyLineRecipes`, built in
-  `MTRecipeMaps.populateAssFactoryAssemblyLineRecipes()` from `GTRecipe.RecipeAssemblyLine.sAssemblylineRecipes`
-  (the authoritative list a data stick / Data Access hatch resolves against):
-  * one **fake** recipe per definition, keeping the per-slot alternatives, is what NEI draws (one page per
-    Assembly Line recipe). `RecipeMapBackend#filterFindRecipe` rejects fake recipes, so nothing runs straight out of
-    this pool.
-    Its special slot carries the definition's flash drive (`displayDataStick`), the same data stick GT puts into every
-    `assemblylineVisualRecipes` entry, so the page shows the "reads research result" stick. GT fills its own sticks from
-    `RecipeAssemblyLine#reInit()`, which runs at postInit (ore dictionary activation) - before this pool is built at
-    `serverStarted` - and only again on an item remap, so the NBT is written when the stick is made. The sticks are
-    cached in `DISPLAY_DATA_STICKS` per definition because `newDataStickForNEI` appends to the strongly held
-    `RecipeAssemblyLine.dataSticksForNEI` and a populate happens on every world load.
-  * **no runnable recipes**, deliberately. One recipe per alternative combination - the obvious way to make the
-    alternatives matchable - is the cartesian product of a definition's slots, and that product reaches six digits for
-    a single definition (Wetware Mainframe: five ASMD/XSMD slots plus six superconductor wires), so building that table
-    exhausted the heap on `serverStarted`. The machine resolves the definitions on the fly instead, see below.
-  * `RecipeAssemblyLine` is still the only source used: `displayInputSpec` keeps a slot's alternatives in the NEI page
-    as a plain `ItemStack[]`, which `GTRecipe_WithAlt#buildItemInputCache` drops for anything that is not an
-    ore-dictionary slot (`mOreDictIds[i] >= 0`) - fine for a page, since NEI reads `mOreDictAlt` itself.
-* Assembly Line mode requires at least one Data Access hatch; `checkMachine` reports
-  `machine.assfactory.error.need_data_access` / `need_tier2`.
-* Assembly Line mode is **unordered**: `MTAssemblyLineMatcher` reads every input bus as one pool keyed by
-  `GTUtility.ItemId` (exact stack with NBT ignored, plus a wildcard-damage alias), and each slot takes the alternative
-  that leaves the most parallels once the slots before it are paid for. The outcome is a plain
-  `GTRecipe` built with `GTRecipeBuilder.builder()` and handed to `ProcessingLogic#findRecipeMatches`, so parallels,
-  perfect overclock, void protection, debug/phantom and ME buses and the consumption itself stay the shared pipeline.
-* Debug input buses are supported natively: Assembly Line mode delegates consumption to the
-  normal `ProcessingLogic` / `getStoredInputs` path, so phantom/debug-marked items are recognised.
-* **Always reuse existing inventory methods first.** Consuming inputs must go through the machine's
-  existing `depleteInput(ItemStack)` / `depleteInput(FluidStack)` (which properly handles regular,
-  debug/phantom and ME buses/hatches). Do not directly mutate `ItemStack.stackSize` /
-  `FluidStack.amount` or call `setInventorySlotContents` on bus slots from custom processing code.
-* Controller front texture: Advanced Molecular Casing base + Quantum Force Transformer face overlay.
-* Tooltips refer to the energy hatch option as **Multi-Amp Energy (多安能源仓)** (display naming in
-  the lang files uses 多安能源仓 instead of 异域能源仓).
-* Tooltips refer to the energy hatch option as **Multi-Amp Energy (多安能源仓)** (display naming in
-  the lang files uses 多安能源仓 instead of 异域能源仓).
 
 ## 12. Registering a machine + animated authors
 

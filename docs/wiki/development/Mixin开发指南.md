@@ -38,6 +38,6 @@ GTNH convention 自动提供 UniMixins 与注解处理器，不另加一套依�
 
 已采用 GTNL 的 early / late 分离与空引导模式，未复制功能注入、ASM 补丁、注册／配置体系或 Java 17/21 分支。既有参考路径：`src/main/java/com/science/gtnl/` 下的 `asm/GTNLEarlyCoreMod.java`、`mixins/LateMixinLoader.java`、`mixins/Mixins.java`，以及 `src/main/resources/mixins.sciencenotleisure{,.early,.late}.json`。
 
-既有 API 核验对应 UniMixins `0.3.1` sources 中的 `IEarlyMixinLoader`、`ILateMixinLoader`、`LateMixin`，生成行为对应 convention `2.0.33` sources 中的 `MixinModule`、`ToolchainModule`、`GenerateMixinAssetsTask`；外部说明见 [UniMixins 文档](https://github.com/LegacyModdingMC/UniMixins/blob/master/module-gtnhmixins/README.original.md)。
+既有 API 核验对应 UniMixins `0.3.1` sources 中的 `IEarlyMixinLoader`、`ILateMixinLoader`、`LateMixin`，生成行为对应 convention `2.0.34` sources 中的 `MixinModule`、`ToolchainModule`、`GenerateMixinAssetsTask`；外部说明见 [UniMixins 文档](https://github.com/LegacyModdingMC/UniMixins/blob/master/module-gtnhmixins/README.original.md)。
 
 已有静态、编译和打包记录，不代表游戏启动、实际注入或整合包兼容验收。历史命令与结果见[开发验证记录](../../开发验证记录.md#2026-09-30)，初始化前状态见[归档](../archive/development/Mixin初始化前状态.md)，均按需追溯。
