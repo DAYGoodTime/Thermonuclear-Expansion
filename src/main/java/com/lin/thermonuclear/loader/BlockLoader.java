@@ -1,10 +1,10 @@
 package com.lin.thermonuclear.loader;
 
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.block.BlockContainmentCasing;
 import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockTurbineBlade;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
-import com.lin.thermonuclear.api.TNCItemList;
 
 public final class BlockLoader {
 

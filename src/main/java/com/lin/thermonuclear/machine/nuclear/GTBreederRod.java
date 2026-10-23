@@ -2,8 +2,8 @@ package com.lin.thermonuclear.machine.nuclear;
 
 import net.minecraft.item.ItemStack;
 
-import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.api.TNCItemList;
+import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 
 import gregtech.api.enums.ItemList;
 import gregtech.api.items.ItemBreederCell;

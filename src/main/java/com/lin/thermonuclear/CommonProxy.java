@@ -3,6 +3,7 @@ package com.lin.thermonuclear;
 import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.api.SteamTurbineFuels;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
@@ -11,7 +12,7 @@ import com.lin.thermonuclear.machine.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.recipe.heatexchange.DefaultHeatExchangeRules;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.registry.ModFluids;
-import com.lin.thermonuclear.api.TNCItemList;
+import com.lin.thermonuclear.registry.StructureChannels;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -39,6 +40,8 @@ public class CommonProxy {
         FuelRodAdapters.register(new GTFuelRodAdapter());
         MachineLoader.register();
         TNCItemList.validateAllBound();
+        // After block registration so indicator stacks resolve and the channels appear in the projector autocomplete.
+        StructureChannels.register();
     }
 
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)

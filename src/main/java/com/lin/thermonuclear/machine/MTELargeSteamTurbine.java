@@ -32,6 +32,7 @@ import com.lin.thermonuclear.loader.BlockLoader;
 import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
+import com.lin.thermonuclear.registry.StructureChannels;
 import com.lin.thermonuclear.registry.WorkingFluids;
 import com.lin.thermonuclear.utils.SteamTurbineMath;
 
@@ -80,8 +81,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
         .addElement('F', StructureUtility.ofBlock(BlockLoader.turbineBlade, 0))
         .addElement(
             'G',
-            StructureUtility.withChannel(
-                "turbine_shaft",
+            StructureChannels.TURBINE_SHAFT.use(
                 StructureUtility.defer(
                     (MTELargeSteamTurbine machine) -> shaftElement(
                         BlockMachineComponent.axisMetadata(
@@ -288,6 +288,8 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
                 StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.quantity"),
                 StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"),
                 3)
+            .addStructureInfo("")
+            .addSubChannel(StructureChannels.TURBINE_SHAFT)
             .toolTipFinisher();
     }
 

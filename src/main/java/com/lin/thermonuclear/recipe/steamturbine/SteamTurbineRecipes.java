@@ -10,8 +10,8 @@ import net.minecraftforge.fluids.FluidStack;
 import com.lin.thermonuclear.api.ModRecipeLoader;
 import com.lin.thermonuclear.api.SteamTurbineFuel;
 import com.lin.thermonuclear.api.SteamTurbineFuels;
-import com.lin.thermonuclear.nei.NEIFluidDisplays;
 import com.lin.thermonuclear.api.TNCItemList;
+import com.lin.thermonuclear.nei.NEIFluidDisplays;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.recipe.RecipeMap;

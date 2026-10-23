@@ -46,6 +46,7 @@ import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
 import com.lin.thermonuclear.registry.DefaultCoolants;
+import com.lin.thermonuclear.registry.StructureChannels;
 import com.lin.thermonuclear.registry.WorkingFluids;
 import com.lin.thermonuclear.utils.StartupProgress;
 
@@ -101,7 +102,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         // BR6343 discovers named sliders by enumerating all definition elements, not construct() branches.
         // This metadata-only fragment exposes exactly three extra levels; it is never checked or built.
         .addShape("nuclear_preview_levels", new String[][] { { "X" } })
-        .addElement('X', StructureUtility.withChannel("extra", pipeChoices(false)))
+        .addElement('X', StructureChannels.EXTRA.use(pipeChoices(false)))
         .addElement('P', tieredPipe())
         .addElement('S', GTStructureUtility.ofFrame(Materials.Steel))
         .addElement(
@@ -165,7 +166,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private final Set<Long> mainChunks = new HashSet<>();
 
     private static IStructureElement<MTENuclearPowerPlant> tieredPipe() {
-        return StructureUtility.withChannel("pipe", pipeChoices(true));
+        return StructureChannels.REACTOR_PIPE.use(pipeChoices(true));
     }
 
     private static Integer pipeBlockTier(Block block, int meta) {
@@ -193,8 +194,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     private static IStructureElement<MTENuclearPowerPlant> tieredFuelRod() {
-        return StructureUtility.withChannel(
-            "fuel_rod",
+        return StructureChannels.FUEL_ROD.use(
             StructureUtility.<MTENuclearPowerPlant, Integer>ofBlocksTiered(
                 MTENuclearPowerPlant::fuelBlockTier,
                 Arrays.stream(BlockLoader.fuelRods())
@@ -643,7 +643,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
             // The channel selects a convenient example layout, not the allowed module connections.
             List<Position> examples = NuclearModuleStructure
-                .preview(ChannelDataAccessor.getChannelData(stack, "extra"));
+                .preview(ChannelDataAccessor.getChannelData(stack, StructureChannels.EXTRA.get()));
             for (Position origin : examples) {
                 buildModule(stack, hintsOnly, origin);
             }
@@ -753,6 +753,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
                 "0+",
                 StatCollector.translateToLocal("thermonuclear.structure.nuclear.services.location"),
                 1)
+            .addStructureInfo("")
+            .addSubChannel(StructureChannels.REACTOR_PIPE)
+            .addSubChannel(StructureChannels.FUEL_ROD)
+            .addSubChannel(StructureChannels.EXTRA)
             .toolTipFinisher();
     }
 

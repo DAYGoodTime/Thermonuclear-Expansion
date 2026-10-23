@@ -9,9 +9,9 @@ import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.HeatExchangeRule;
 import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.api.ModRecipeLoader;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.nei.NEIFluidDisplays;
 import com.lin.thermonuclear.registry.SteamType;
-import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import gregtech.api.enums.GTValues;

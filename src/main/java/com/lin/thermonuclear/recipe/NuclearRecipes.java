@@ -6,8 +6,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
-import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
 import com.lin.thermonuclear.api.TNCItemList;
+import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;

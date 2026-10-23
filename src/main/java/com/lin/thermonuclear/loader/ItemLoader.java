@@ -7,10 +7,10 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 
 import com.gtnewhorizon.gtnhlib.util.AnimatedTooltipHandler;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.item.ItemWirelessUpgradeChip;
 import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
-import com.lin.thermonuclear.api.TNCItemList;
 
 public final class ItemLoader {
 

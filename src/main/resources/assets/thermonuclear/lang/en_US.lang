@@ -170,6 +170,10 @@ thermonuclear.structure.debug_structure.controller=Bottom centre of the front ba
 thermonuclear.structure.debug_structure.casings=Containment casing (exact count; the controller slot is excluded)
 thermonuclear.structure.debug_structure.pipes=Steel pipe casing
 thermonuclear.structure.debug_structure.fuel_rods=Tier 1 fuel rod block (vertical axis)
+channels.thermonuclear.reactor_pipe=Decides the tier of the reactor's main-structure and module pipe casings. Starts at §6Steel Pipe Casing§r at value 1 and ends at §6Tungstensteel Pipe Casing§r at value 3; the main structure and every module must use one single tier.
+channels.thermonuclear.fuel_rod=Decides the tier of the reactor's fuel rod blocks. Starts at §6Tier 1 Fuel Rod Block§r at value 1 and ends at §6Tier 4 Fuel Rod Block§r at value 4; the main structure and every module must use one single tier.
+channels.thermonuclear.turbine_shaft=Decides the tier of the turbine shaft. Starts at §6Low-Pressure Turbine Shaft§r at value 1 and ends at §6High-Pressure Turbine Shaft§r at value 2.
+channels.thermonuclear.extra=Decides how many expansion modules the hologram and blueprint auto-build show as an example: §61§7 main structure only, §62§7 main structure plus one back module, §63§7 two consecutive back modules. Actual module connections are not restricted.
 thermonuclear.gui.status=Status
 thermonuclear.gui.severity.normal=[RUN]
 thermonuclear.gui.severity.idle=[IDLE]
@@ -218,7 +222,7 @@ thermonuclear.structure.nuclear.steel_casings=Solid steel machine casings
 thermonuclear.structure.nuclear.module=Each §620x24x20§f module: 1695 containment casings, 15 pipes matching the main pipe tier, and 52 rods matching the main fuel_rod tier; valid axial metadata required, no mixed tiers
 thermonuclear.structure.nuclear.expansion_hint.0=The main back and right sides accept modules simultaneously; keep both complete walls touching, with no shared blocks, wall openings or external connecting pipes
 thermonuclear.structure.nuclear.expansion_hint.1=All modules share the main horizontal facing; expand through complete matching-tier neighbours in all four horizontal directions, with 20-block origin spacing; isolated or mismatched modules neither count nor relay connections
-thermonuclear.structure.nuclear.expansion_hint.2=NEI, world hints and auto-build use lowercase extra=1: main only; extra=2: one back module; extra=3: two consecutive back modules. Main and modules share pipe/fuel_rod channels; these examples do not restrict actual module connections
+thermonuclear.structure.nuclear.expansion_hint.2=NEI, world hints and auto-build use lowercase extra=1: main only; extra=2: one back module; extra=3: two consecutive back modules. Main and modules share reactor_pipe/fuel_rod channels; these examples do not restrict actual module connections
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required
 GT5U.gui.text.recipe_result.thermonuclear.status.expansion_timeout=Expansion structure check error: timeout; this scan's level was not committed
 GT5U.gui.text.shutdown_reason.thermonuclear.status.expansion_changed=Expansion level changed; materials and heat retained, manual restart required
