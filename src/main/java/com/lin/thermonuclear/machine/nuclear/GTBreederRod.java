@@ -3,7 +3,7 @@ package com.lin.thermonuclear.machine.nuclear;
 import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 
 import gregtech.api.enums.ItemList;
 import gregtech.api.items.ItemBreederCell;
@@ -28,7 +28,7 @@ public final class GTBreederRod {
         if (!accepts(stack)) throw new IllegalArgumentException("Unsupported breeder rod");
         ItemStack product;
         if (stack.getItem() instanceof ItemRareEarthBreederRod rod) {
-            product = TNItemList.rareEarthRod(rod.route(), true)
+            product = TNCItemList.rareEarthRod(rod.route(), true)
                 .get(1);
         } else {
             product = (isRod(stack, ItemList.RodLithium) ? ItemList.DepletedRodLithium : ItemList.DepletedRodGlowstone)

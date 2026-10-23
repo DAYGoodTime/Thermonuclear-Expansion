@@ -10,7 +10,7 @@ import com.gtnewhorizon.gtnhlib.util.AnimatedTooltipHandler;
 import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.item.ItemWirelessUpgradeChip;
 import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 
 public final class ItemLoader {
 
@@ -19,15 +19,15 @@ public final class ItemLoader {
     public static void register() {
         ItemWirelessUpgradeChip wirelessUpgradeChip = new ItemWirelessUpgradeChip();
         wirelessUpgradeChip.register();
-        TNItemList.WirelessUpgradeChip.set(wirelessUpgradeChip);
+        TNCItemList.WirelessUpgradeChip.set(wirelessUpgradeChip);
         Map<RareEarthBreedingRoute, ItemRareEarthBreederRod> rareEarthBreederRods = ItemRareEarthBreederRod
             .registerVariants(false);
         Map<RareEarthBreedingRoute, ItemRareEarthBreederRod> bredRareEarthRods = ItemRareEarthBreederRod
             .registerVariants(true);
         for (RareEarthBreedingRoute route : RareEarthBreedingRoute.values()) {
-            TNItemList.rareEarthRod(route, false)
+            TNCItemList.rareEarthRod(route, false)
                 .set(rareEarthBreederRods.get(route));
-            TNItemList.rareEarthRod(route, true)
+            TNCItemList.rareEarthRod(route, true)
                 .set(bredRareEarthRods.get(route));
         }
     }

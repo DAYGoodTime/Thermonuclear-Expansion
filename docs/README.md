@@ -4,7 +4,7 @@
 
 | 文档 | 用途 |
 | --- | --- |
-| [项目知识库](wiki/development/项目知识库.md) | 项目现状、技术基线、代码入口、TNItemList 统一物品引用与未定事项；从这里开始 |
+| [项目知识库](wiki/development/项目知识库.md) | 项目现状、技术基线、代码入口、TNCItemList 统一物品引用与未定事项；从这里开始 |
 | [仓库开发上下文](../AGENTS.md) | 编码约束与文档维护规则 |
 | [机器 Tooltip 编写规范](wiki/development/机器Tooltip编写规范.md) | 外壳最大数量、提示方块仓口、独立模式公式、数值着色与绿色支持提示置底；核电站为当前范例 |
 | [核电站模块结构](wiki/development/核电站模块结构.md) | 贴墙双入口、统一模板与几何、StructureLib 匹配、NEI extra 三级预览及游戏验收边界 |
@@ -24,7 +24,7 @@
 
 增殖输入／输出总线均通过 HV 组装机制造：8 个 GT 空燃料棒、1 个 HV 机器外壳（`ItemList.Hull_HV`）、8 个钍板，耗时 100 ticks（5 秒），产出 1 个总线。输入总线使用编程电路 1，输出总线使用编程电路 2，电路不消耗；总线与螺丝刀可在合成台无序合成，双向转换输入／输出类型。
 
-配方入口为 `RecipeLoader.registerBreederBusRecipes()`，沿用 load-complete 注册。组织方式参考 GTNL `common/recipe/gregtech/AssemblerRecipes.java` 的电路区分与 `common/recipe/gtnl/CraftingTableRecipes.java` 的螺丝刀转换；API 按本项目缓存 GT5U `.133` 核对，不迁入参考库 `.183` 的自有配方工具类或工具箱扩展。新增配方尚未编译或游戏验收。
+配方入口为 `RecipeLoader.registerBreederBusRecipes()`，沿用 load-complete 注册。组织方式参考 GTNL `common/recipe/gregtech/AssemblerRecipes.java` 的电路区分与 `common/recipe/gtnl/CraftingTableRecipes.java` 的螺丝刀转换；API 按当前 GT5U `.205` 核对，不迁入参考库的自有配方工具类或工具箱扩展。新增配方尚未编译或游戏验收。
 
 燃料棒方块已有组装机配方，等级决定核电热容量与最大并行，电源面板限制新批次装载。核电站背面、右侧可同时紧贴模块，并经同向完整模块四向扩展，不再使用连接管段；钢／钛／钨钢主结构管道分别允许 1／3／5 个扩展模块（不含主结构），管道不决定燃料批量。所有模块的管道、燃料棒分别匹配主结构对应等级；建造与 NEI 共用 `pipe`／`fuel_rod` 通道。NEI `extra` 提供三级背面示例，不改变世界自动建造范围，详见[核电站模块结构](wiki/development/核电站模块结构.md)。整模组编译和游戏行为待验收。组件方块支持三轴放置，涡轮轴须沿机身长轴，旧竖直轴须重新横放。
 

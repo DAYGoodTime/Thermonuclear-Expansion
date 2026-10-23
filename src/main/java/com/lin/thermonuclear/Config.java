@@ -222,7 +222,7 @@ public class Config {
                         .setToDefault();
                     ConfigFieldParser.loadField(instance, field, configuration, category, key);
                 }
-                // GTNHLib 0.11.51 exposes double ranges as metadata but does not clamp values or reject NaN/infinity.
+                // GTNHLib 0.11.52 exposes double ranges as metadata but does not clamp values or reject NaN/infinity.
                 if (field.getType() == double.class) {
                     double value = field.getDouble(instance);
                     if (!Double.isFinite(value)) value = field.getAnnotation(DefaultDouble.class)

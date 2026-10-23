@@ -11,7 +11,7 @@ import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.api.ModRecipeLoader;
 import com.lin.thermonuclear.nei.NEIFluidDisplays;
 import com.lin.thermonuclear.registry.SteamType;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import gregtech.api.enums.GTValues;
@@ -30,7 +30,7 @@ public final class HeatExchangeRecipes implements ModRecipeLoader {
         .neiFluidInputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidInputs))
         .neiFluidOutputsGetter(recipe -> NEIFluidDisplays.available(recipe.mFluidOutputs))
         .neiHandlerInfo(
-            builder -> builder.setDisplayStack(TNItemList.HeatExchangeStation.get(1))
+            builder -> builder.setDisplayStack(TNCItemList.HeatExchangeStation.get(1))
                 .setHeight(190)
                 .setMultipleWidgetsAllowed(false))
         .neiSpecialInfoFormatter(

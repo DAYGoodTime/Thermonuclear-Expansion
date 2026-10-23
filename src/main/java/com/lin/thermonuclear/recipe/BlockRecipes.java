@@ -4,7 +4,7 @@ import static gregtech.api.util.GTRecipeBuilder.INGOTS;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 
 import goodgenerator.items.GGMaterial;
 import goodgenerator.util.ItemRefer;
@@ -28,9 +28,9 @@ public class BlockRecipes implements ModRecipeLoader {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTModHandler.getIC2Item("nuclearReactor", 32),
-                TNItemList.ContainmentCasing.get(63),
+                TNCItemList.ContainmentCasing.get(63),
                 GTModHandler.getIC2Item("reactorChamber", 64))
-            .itemOutputs(TNItemList.NuclearPowerPlant.get(1))
+            .itemOutputs(TNCItemList.NuclearPowerPlant.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -41,7 +41,7 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.Casing_SolidSteel.get(64),
                 ItemList.Casing_Pipe_Bronze.get(64),
                 GTModHandler.getIC2Item("reactorHeatSwitchDiamond", 6))
-            .itemOutputs(TNItemList.HeatExchangeStation.get(1))
+            .itemOutputs(TNCItemList.HeatExchangeStation.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -51,7 +51,7 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.SteamTurbine.get(64),
                 ItemList.Casing_SolidSteel.get(64),
                 GTOreDictUnificator.get(OrePrefixes.gear, Materials.Steel, 64))
-            .itemOutputs(TNItemList.LargeSteamTurbine.get(1))
+            .itemOutputs(TNCItemList.LargeSteamTurbine.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -60,7 +60,7 @@ public class BlockRecipes implements ModRecipeLoader {
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.rotor, Materials.Steel, 1),
                 GTOreDictUnificator.get(OrePrefixes.pipeTiny, Materials.Steel, 4))
-            .itemOutputs(TNItemList.TurbineBlade.get(1))
+            .itemOutputs(TNCItemList.TurbineBlade.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -71,7 +71,7 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.Casing_Gearbox_Steel.get(1),
                 GGMaterial.incoloy903.get(OrePrefixes.plateDouble, 4))
             .fluidInputs(Materials.Lubricant.getFluid(2000))
-            .itemOutputs(TNItemList.LowPressureTurbineShaft.get(1))
+            .itemOutputs(TNCItemList.LowPressureTurbineShaft.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_HV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -82,7 +82,7 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.Casing_Gearbox_TungstenSteel.get(1),
                 MaterialsAlloy.INCOLOY_MA956.getIngot(4))
             .fluidInputs(Materials.Lubricant.getFluid(2000))
-            .itemOutputs(TNItemList.HighPressureTurbineShaft.get(1))
+            .itemOutputs(TNCItemList.HighPressureTurbineShaft.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_IV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -93,7 +93,7 @@ public class BlockRecipes implements ModRecipeLoader {
                 GGMaterial.zircaloy4.get(OrePrefixes.frameGt, 32),
                 GGMaterial.zircaloy4.get(OrePrefixes.ring, 64),
                 GGMaterial.zircaloy4.get(OrePrefixes.ring, 64))
-            .itemOutputs(TNItemList.FuelRodTier1.get(1))
+            .itemOutputs(TNCItemList.FuelRodTier1.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -104,8 +104,8 @@ public class BlockRecipes implements ModRecipeLoader {
                 GGMaterial.zircaloy4.get(OrePrefixes.frameGt, 64),
                 ItemList.Neutron_Reflector.get(8),
                 ItemList.Electric_Pump_IV.get(8),
-                TNItemList.FuelRodTier1.get(1))
-            .itemOutputs(TNItemList.FuelRodTier2.get(1))
+                TNCItemList.FuelRodTier1.get(1))
+            .itemOutputs(TNCItemList.FuelRodTier2.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -115,8 +115,8 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemRefer.Advanced_Fuel_Rod.get(64),
                 ItemList.Neutron_Reflector.get(16),
                 ItemList.Electric_Pump_LuV.get(8),
-                TNItemList.FuelRodTier2.get(1))
-            .itemOutputs(TNItemList.FuelRodTier3.get(1))
+                TNCItemList.FuelRodTier2.get(1))
+            .itemOutputs(TNCItemList.FuelRodTier3.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -127,8 +127,8 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemRefer.Advanced_Fuel_Rod.get(64),
                 ItemList.Neutron_Reflector.get(32),
                 ItemList.Electric_Pump_ZPM.get(8),
-                TNItemList.FuelRodTier3.get(1))
-            .itemOutputs(TNItemList.FuelRodTier4.get(1))
+                TNCItemList.FuelRodTier3.get(1))
+            .itemOutputs(TNCItemList.FuelRodTier4.get(1))
             .duration(10 * SECONDS)
             .eut(TierEU.RECIPE_LV)
             .addTo(RecipeMaps.assemblerRecipes);
@@ -139,15 +139,15 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.Hull_HV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Thorium, 8))
             .circuit(1)
-            .itemOutputs(TNItemList.BreederInputBus.get(1))
+            .itemOutputs(TNCItemList.BreederInputBus.get(1))
             .duration(100)
             .eut(TierEU.RECIPE_HV)
             .addTo(RecipeMaps.assemblerRecipes);
 
         GTModHandler.addShapelessCraftingRecipe(
-            TNItemList.BreederInputBus.get(1),
+            TNCItemList.BreederInputBus.get(1),
             GTModHandler.RecipeBits.BITS | GTModHandler.RecipeBits.DO_NOT_CHECK_FOR_COLLISIONS,
-            new Object[] { TNItemList.BreederOutputBus.get(1), ToolDictNames.craftingToolScrewdriver });
+            new Object[] { TNCItemList.BreederOutputBus.get(1), ToolDictNames.craftingToolScrewdriver });
         // Breeder Output Bus
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -155,21 +155,21 @@ public class BlockRecipes implements ModRecipeLoader {
                 ItemList.Hull_HV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Thorium, 8))
             .circuit(2)
-            .itemOutputs(TNItemList.BreederOutputBus.get(1))
+            .itemOutputs(TNCItemList.BreederOutputBus.get(1))
             .duration(100)
             .eut(TierEU.RECIPE_HV)
             .addTo(RecipeMaps.assemblerRecipes);
 
         GTModHandler.addShapelessCraftingRecipe(
-            TNItemList.BreederOutputBus.get(1),
+            TNCItemList.BreederOutputBus.get(1),
             GTModHandler.RecipeBits.BITS | GTModHandler.RecipeBits.DO_NOT_CHECK_FOR_COLLISIONS,
-            new Object[] { TNItemList.BreederInputBus.get(1), ToolDictNames.craftingToolScrewdriver });
+            new Object[] { TNCItemList.BreederInputBus.get(1), ToolDictNames.craftingToolScrewdriver });
         // Containment Casing
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.frameGt, Materials.Steel, 9),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 12))
-            .itemOutputs(TNItemList.ContainmentCasing.get(9))
+            .itemOutputs(TNCItemList.ContainmentCasing.get(9))
             .fluidInputs(Materials.Concrete.getMolten(INGOTS * 9 * 2))
             .duration(30 * SECONDS)
             .eut(4)

@@ -11,7 +11,7 @@ import com.lin.thermonuclear.machine.nuclear.GTFuelRodAdapter;
 import com.lin.thermonuclear.recipe.heatexchange.DefaultHeatExchangeRules;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.registry.ModFluids;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -38,7 +38,7 @@ public class CommonProxy {
     public void init(FMLInitializationEvent event) {
         FuelRodAdapters.register(new GTFuelRodAdapter());
         MachineLoader.register();
-        TNItemList.validateAllBound();
+        TNCItemList.validateAllBound();
     }
 
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)

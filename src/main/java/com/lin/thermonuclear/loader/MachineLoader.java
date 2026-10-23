@@ -6,7 +6,7 @@ import com.lin.thermonuclear.machine.MTELargeSteamTurbine;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.machine.nuclear.MTENuclearPowerPlant;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 
 import gregtech.api.GregTechAPI;
 
@@ -35,29 +35,29 @@ public final class MachineLoader {
                         + ". No automatic reassignment is permitted.");
             }
         }
-        TNItemList.NuclearPowerPlant.set(
+        TNCItemList.NuclearPowerPlant.set(
             ItemLoader.register(
                 new MTENuclearPowerPlant(NUCLEAR_ID, "thermonuclear.nuclear_power_plant", "Nuclear Power Plant")
                     .getStackForm(1)));
-        TNItemList.HeatExchangeStation.set(
+        TNCItemList.HeatExchangeStation.set(
             ItemLoader.register(
                 new MTEHeatExchangeStation(
                     HEAT_EXCHANGE_ID,
                     "thermonuclear.heat_exchange_station",
                     "Heat Exchange Station").getStackForm(1)));
-        TNItemList.LargeSteamTurbine.set(
+        TNCItemList.LargeSteamTurbine.set(
             ItemLoader.register(
                 new MTELargeSteamTurbine(STEAM_TURBINE_ID, "thermonuclear.large_steam_turbine", "Large Steam Turbine")
                     .getStackForm(1)));
-        TNItemList.BreederInputBus.set(
+        TNCItemList.BreederInputBus.set(
             ItemLoader.register(
                 new MTEBreederInputBus(BREEDER_INPUT_ID, "thermonuclear.breeder_input", "Breeder Input Bus")
                     .getStackForm(1)));
-        TNItemList.BreederOutputBus.set(
+        TNCItemList.BreederOutputBus.set(
             ItemLoader.register(
                 new MTEBreederOutputBus(BREEDER_OUTPUT_ID, "thermonuclear.breeder_output", "Breeder Output Bus")
                     .getStackForm(1)));
-        TNItemList.DebugStructureBuilder.set(
+        TNCItemList.DebugStructureBuilder.set(
             ItemLoader.register(
                 new MTEDebugStructureBuilder(
                     DEBUG_STRUCTURE_ID,

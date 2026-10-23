@@ -1,4 +1,4 @@
-package com.lin.thermonuclear.registry;
+package com.lin.thermonuclear.api;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -6,7 +6,7 @@ import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
 
-public enum TNItemList {
+public enum TNCItemList {
 
     NuclearPowerPlant,
     HeatExchangeStation,
@@ -62,11 +62,11 @@ public enum TNItemList {
     private final boolean bred;
     private ItemStack template;
 
-    TNItemList() {
+    TNCItemList() {
         this(null, false);
     }
 
-    TNItemList(RareEarthBreedingRoute route, boolean bred) {
+    TNCItemList(RareEarthBreedingRoute route, boolean bred) {
         this.route = route;
         this.bred = bred;
     }
@@ -108,16 +108,16 @@ public enum TNItemList {
         return template.getItem();
     }
 
-    public static TNItemList rareEarthRod(RareEarthBreedingRoute route, boolean bred) {
+    public static TNCItemList rareEarthRod(RareEarthBreedingRoute route, boolean bred) {
         if (route == null) throw new IllegalArgumentException("Breeding route must not be null");
-        for (TNItemList entry : values()) {
+        for (TNCItemList entry : values()) {
             if (entry.route == route && entry.bred == bred) return entry;
         }
         throw new IllegalArgumentException("Unknown rare earth breeding route: " + route);
     }
 
     public static void validateAllBound() {
-        for (TNItemList entry : values()) {
+        for (TNCItemList entry : values()) {
             if (!entry.hasBeenSet()) {
                 throw new IllegalStateException("Thermonuclear item not yet bound: " + entry.name());
             }

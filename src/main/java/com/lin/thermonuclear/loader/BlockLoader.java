@@ -4,7 +4,7 @@ import com.lin.thermonuclear.block.BlockContainmentCasing;
 import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockTurbineBlade;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
-import com.lin.thermonuclear.registry.TNItemList;
+import com.lin.thermonuclear.api.TNCItemList;
 
 public final class BlockLoader {
 
@@ -22,14 +22,14 @@ public final class BlockLoader {
         fuelRods = BlockFuelRod.registerTiers();
         containmentCasing = new BlockContainmentCasing();
         containmentCasing.register();
-        TNItemList.LowPressureTurbineShaft.set(turbineShaft(1));
-        TNItemList.HighPressureTurbineShaft.set(turbineShaft(2));
-        TNItemList.TurbineBlade.set(turbineBlade);
-        TNItemList.FuelRodTier1.set(fuelRod(1));
-        TNItemList.FuelRodTier2.set(fuelRod(2));
-        TNItemList.FuelRodTier3.set(fuelRod(3));
-        TNItemList.FuelRodTier4.set(fuelRod(4));
-        TNItemList.ContainmentCasing.set(containmentCasing);
+        TNCItemList.LowPressureTurbineShaft.set(turbineShaft(1));
+        TNCItemList.HighPressureTurbineShaft.set(turbineShaft(2));
+        TNCItemList.TurbineBlade.set(turbineBlade);
+        TNCItemList.FuelRodTier1.set(fuelRod(1));
+        TNCItemList.FuelRodTier2.set(fuelRod(2));
+        TNCItemList.FuelRodTier3.set(fuelRod(3));
+        TNCItemList.FuelRodTier4.set(fuelRod(4));
+        TNCItemList.ContainmentCasing.set(containmentCasing);
     }
 
     public static BlockTurbineShaft turbineShaft(int tier) {
