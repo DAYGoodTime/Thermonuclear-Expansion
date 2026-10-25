@@ -9,6 +9,7 @@ import com.lin.thermonuclear.loader.ItemLoader;
 import com.lin.thermonuclear.loader.MachineLoader;
 import com.lin.thermonuclear.loader.RecipeLoader;
 import com.lin.thermonuclear.machine.nuclear.GTFuelRodAdapter;
+import com.lin.thermonuclear.machine.nuclear.NaquadahFuelRodAdapter;
 import com.lin.thermonuclear.recipe.heatexchange.DefaultHeatExchangeRules;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.registry.ModFluids;
@@ -38,6 +39,7 @@ public class CommonProxy {
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         FuelRodAdapters.register(new GTFuelRodAdapter());
+        FuelRodAdapters.register(new NaquadahFuelRodAdapter());
         MachineLoader.register();
         TNCItemList.validateAllBound();
         // After block registration so indicator stacks resolve and the channels appear in the projector autocomplete.

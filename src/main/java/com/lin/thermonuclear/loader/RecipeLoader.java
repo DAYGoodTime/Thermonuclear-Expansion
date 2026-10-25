@@ -3,6 +3,7 @@ package com.lin.thermonuclear.loader;
 import com.lin.thermonuclear.api.ModRecipeLoader;
 import com.lin.thermonuclear.recipe.BlockRecipes;
 import com.lin.thermonuclear.recipe.FluidRecipes;
+import com.lin.thermonuclear.recipe.NaquadahFuelRodRecipes;
 import com.lin.thermonuclear.recipe.NuclearRecipes;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
 import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
@@ -13,7 +14,7 @@ public final class RecipeLoader {
 
     public static void register() {
         ModRecipeLoader[] loaders = new ModRecipeLoader[] { new BlockRecipes(), new FluidRecipes(),
-            new NuclearRecipes(), new HeatExchangeRecipes(), new SteamTurbineRecipes() };
+            new NuclearRecipes(), new NaquadahFuelRodRecipes(), new HeatExchangeRecipes(), new SteamTurbineRecipes() };
         // load all recipes
         for (ModRecipeLoader loader : loaders) {
             loader.loadRecipes();
