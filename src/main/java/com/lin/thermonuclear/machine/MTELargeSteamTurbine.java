@@ -230,11 +230,6 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    protected int structureChunkRadius() {
-        return SteamTurbineStructure.CHUNK_RADIUS;
-    }
-
-    @Override
     protected MultiblockTooltipBuilder createTooltip() {
         return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
             .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))

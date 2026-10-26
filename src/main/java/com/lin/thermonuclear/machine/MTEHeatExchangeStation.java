@@ -57,7 +57,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     private static final int WIDTH = 9;
     private static final int HEIGHT = 14;
     private static final int LENGTH = 7;
-    private static final int CHUNK_RADIUS = WIDTH - 1;
     // G is at (4, 12, 1) in the scanner export. It faces the preceding slice, which is the outside.
     private static final int OFFSET_X = 4;
     private static final int OFFSET_Y = 12;
@@ -247,11 +246,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         hotInputs.clear();
         coldOutputs.clear();
         hotOutputs.clear();
-    }
-
-    @Override
-    protected int structureChunkRadius() {
-        return CHUNK_RADIUS;
     }
 
     @Override

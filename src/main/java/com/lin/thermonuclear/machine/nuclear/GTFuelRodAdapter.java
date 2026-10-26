@@ -41,12 +41,14 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
     }
 
     @Override
-    public double heatPerCycle(ItemStack stack) {
+    public long heatPerCycle(ItemStack stack) {
         ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
         int pulses = 1 + rod.numberOfCells / 2
             + (stack.stackSize > 4 ? Config.nuclearPowerPlant.nuclearMaxReflectorCount : 0);
-        // GT rounds heat separately for each cell, as its processChamber does.
-        return (double) rod.numberOfCells * Math.round(pulses * (pulses + 1) / 2 * rod.sHeat);
+        // Round per cell as GT does, but keep the power plant's heat in the long range.
+        long perCell = Math.round(pulses * (pulses + 1) / 2.0 * rod.sHeat);
+        return rod.numberOfCells > 0 && perCell > Long.MAX_VALUE / rod.numberOfCells ? Long.MAX_VALUE
+            : perCell * rod.numberOfCells;
     }
 
     @Override

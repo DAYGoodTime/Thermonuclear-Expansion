@@ -153,20 +153,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected abstract Casings casing();
 
-    protected abstract int structureChunkRadius();
-
-    protected boolean requiredStructureChunksLoaded(IGregTechTileEntity tile) {
-        int radius = structureChunkRadius();
-        return tile.getWorld()
-            .checkChunksExist(
-                tile.getXCoord() - radius,
-                tile.getYCoord() - radius,
-                tile.getZCoord() - radius,
-                tile.getXCoord() + radius,
-                tile.getYCoord() + radius,
-                tile.getZCoord() + radius);
-    }
-
     protected boolean addMachineHatch(IGregTechTileEntity tile, int texture) {
         if (tile == null || tile.getMetaTileEntity() == null) return false;
         if (usesItemBusses() || tile.getMetaTileEntity() instanceof IDualInputHatch) {
@@ -243,12 +229,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         running = false;
         producedEUt = sentEUt = discardedEUt = 0;
         powerLimited = false;
-        // A reload or an unloaded neighbour chunk is not a dismantled shell. Defer checks and processing.
-        if (!requiredStructureChunksLoaded(tile)) {
-            status = "chunk_unloaded";
-            tile.setActive(false);
-            return;
-        }
         super.onPostTick(tile, tick);
         if (mStartUpCheck >= 0) {
             status = "checking";
@@ -388,8 +368,8 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     public boolean onRunningTick(ItemStack stack) {
         if (operatingEUt > 0 && !checkWirelessOwner()) return false;
         running = true;
+        status = "running";
         if (operatingEUt > 0) generate(operatingEUt * startup.next(startupTicks()));
-        status = powerLimited ? "power_discarded" : "running";
         if (startupTicks() > 0) {
             if (cycleAdvancesStartup) startup.advance(startupTicks());
             else startup.decay(decayTicks());
@@ -665,7 +645,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected final Map<String, String> commonInfo() {
         Map<String, String> info = new LinkedHashMap<>();
-        boolean processingFailed = !running && (status.equals("running") || status.equals("power_discarded"))
+        boolean processingFailed = !running && (status.equals("running"))
             && !checkRecipeResult.wasSuccessful();
         info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
         return info;
@@ -697,8 +677,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             String severity = switch (state) {
                 case "running" -> "normal";
                 case "stopped", "stopped_cooling", "stopped_passive" -> "idle";
-                case "checking", "chunk_unloaded" -> "waiting";
-                case "power_discarded" -> "warning";
+                case "checking" -> "waiting";
                 default -> "error";
             };
             EnumChatFormatting color = switch (severity) {

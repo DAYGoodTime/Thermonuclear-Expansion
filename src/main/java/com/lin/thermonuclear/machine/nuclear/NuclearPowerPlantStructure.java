@@ -9,8 +9,6 @@ final class NuclearPowerPlantStructure {
     static final int OFFSET_X = 2;
     static final int OFFSET_Y = 20;
     static final int OFFSET_Z = 7;
-    // ceil(hypot(28 - OFFSET_X, 20 - OFFSET_Z)), including rotated/flipped horizontal facings.
-    static final int CHUNK_RADIUS = 30;
 
     // spotless:off
     // Normal scan order: SHAPE[z][y].charAt(x); '~' is the real controller anchor.

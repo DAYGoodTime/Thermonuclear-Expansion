@@ -7,8 +7,9 @@ public final class NuclearCoolingMath {
 
     private NuclearCoolingMath() {}
 
-    public static int coolingLimit(double heat, double litresPerHeat, long available, double steamPerWater,
-        double steamRemainder) {
+    public static int coolingLimit(long storedHeat, double remainder, double litresPerHeat, long available,
+        double steamPerWater, double steamRemainder) {
+        double heat = storedHeat + remainder;
         double limit = Math.min(Integer.MAX_VALUE, Math.min(available, Math.floor(heat * litresPerHeat)));
         if (steamPerWater > 0) {
             limit = Math.min(limit, Math.floor((Integer.MAX_VALUE - steamRemainder) / steamPerWater));
@@ -17,14 +18,6 @@ public final class NuclearCoolingMath {
         // Multiplication and division can straddle an integer boundary differently.
         if (amount > 0 && amount / litresPerHeat > heat) amount--;
         return amount;
-    }
-
-    public static double remainingHeat(double heat, int amount, double litresPerHeat) {
-        return Math.max(0, heat - amount / litresPerHeat);
-    }
-
-    public static double passiveCooling(double heat, double heatPerSecond, int ticks) {
-        return Math.max(0, heat - heatPerSecond * ticks / 20.0);
     }
 
     public static int acceptedAmount(int limit, IntPredicate accepts) {

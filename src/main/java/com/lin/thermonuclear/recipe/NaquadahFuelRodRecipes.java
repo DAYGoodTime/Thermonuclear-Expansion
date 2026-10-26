@@ -3,7 +3,6 @@ package com.lin.thermonuclear.recipe;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
@@ -45,25 +44,6 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
                 .eut(TierEU.RECIPE_LV)
                 .addTo(RecipeMaps.cannerRecipes);
 
-            // Display only: FuelRodAdapters and the reactor's transactional batch logic perform consumption.
-            GTValues.RA.stdBuilder()
-                .itemInputs(workingRod)
-                .itemOutputs(depletedRod)
-                .setNEIDesc(
-                    StatCollector.translateToLocal("thermonuclear.nei.naquadah_fuel_rod.use"),
-                    StatCollector
-                        .translateToLocalFormatted("thermonuclear.nei.naquadah_fuel_rod.cycles", tier.maxCycles()),
-                    StatCollector
-                        .translateToLocalFormatted("thermonuclear.tooltip.naquadah_fuel_rod.direct", tier.directEUt()),
-                    StatCollector.translateToLocalFormatted(
-                        "thermonuclear.tooltip.naquadah_fuel_rod.heat",
-                        tier.baseHeatPerCycle()),
-                    StatCollector.translateToLocal("thermonuclear.tooltip.naquadah_fuel_rod.use"),
-                    StatCollector.translateToLocal("thermonuclear.tooltip.naquadah_fuel_rod.reflection"))
-                .duration(tier.maxCycles() * SECONDS)
-                .eut(0)
-                .fake()
-                .addTo(RecipeMaps.ic2NuclearFakeRecipes);
         }
     }
 

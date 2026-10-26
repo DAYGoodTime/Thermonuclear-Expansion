@@ -38,8 +38,8 @@ public class CommonProxy {
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
-        FuelRodAdapters.register(new GTFuelRodAdapter());
         FuelRodAdapters.register(new NaquadahFuelRodAdapter());
+        FuelRodAdapters.register(new GTFuelRodAdapter());
         MachineLoader.register();
         TNCItemList.validateAllBound();
         // After block registration so indicator stacks resolve and the channels appear in the projector autocomplete.

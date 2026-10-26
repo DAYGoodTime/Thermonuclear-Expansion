@@ -12,7 +12,7 @@ public final class BlockFuelRod extends BlockTieredMachineComponent {
         addInfo("thermonuclear.tooltip.fuel_rod.0", heatCapacity(tier), maxParallel(tier));
     }
 
-    public static int heatCapacity(int tier) {
+    public static long heatCapacity(int tier) {
         return switch (tier) {
             case 1 -> 100000;
             case 2 -> 1000000;

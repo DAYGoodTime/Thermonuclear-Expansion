@@ -13,7 +13,7 @@ public interface FuelRodAdapter {
 
     double baseEUt(ItemStack stack);
 
-    double heatPerCycle(ItemStack stack);
+    long heatPerCycle(ItemStack stack);
 
     ItemStack depleted(ItemStack stack);
 

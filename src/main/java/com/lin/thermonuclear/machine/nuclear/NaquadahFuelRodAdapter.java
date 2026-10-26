@@ -12,7 +12,7 @@ public final class NaquadahFuelRodAdapter implements FuelRodAdapter {
 
     @Override
     public boolean accepts(ItemStack stack) {
-        return stack != null && stack.getItem() instanceof ItemNaquadahFuelRod rod && !rod.isDepleted();
+        return stack != null && stack.getItem() instanceof ItemNaquadahFuelRod;
     }
 
     @Override
@@ -30,15 +30,16 @@ public final class NaquadahFuelRodAdapter implements FuelRodAdapter {
         return Math.max(
             0,
             rod.tier()
-                .maxCycles() - Math.max(0, stack.getItemDamage()));
+                .maxCycles() - Math.max(0, rod.getDamageOfStack(stack)));
     }
 
     @Override
     public void consumeCycles(ItemStack stack, int cycles) {
         if (cycles < 0) throw new IllegalArgumentException("Cannot consume negative fuel cycles");
         ItemNaquadahFuelRod rod = (ItemNaquadahFuelRod) stack.getItem();
-        long used = (long) Math.max(0, stack.getItemDamage()) + cycles;
-        stack.setItemDamage(
+        long used = (long) Math.max(0, rod.getDamageOfStack(stack)) + cycles;
+        rod.setDamageForStack(
+            stack,
             (int) Math.min(
                 rod.tier()
                     .maxCycles(),
@@ -53,10 +54,10 @@ public final class NaquadahFuelRodAdapter implements FuelRodAdapter {
     }
 
     @Override
-    public double heatPerCycle(ItemStack stack) {
+    public long heatPerCycle(ItemStack stack) {
         int pulses = pulses(stack);
         return ((ItemNaquadahFuelRod) stack.getItem()).tier()
-            .baseHeatPerCycle() * (double) pulses * (pulses + 1) / 2;
+            .baseHeatPerCycle() * pulses * (pulses + 1) / 2;
     }
 
     @Override

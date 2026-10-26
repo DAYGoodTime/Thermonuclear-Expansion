@@ -5,8 +5,8 @@ public final class NuclearMeltdownTimer {
     public static final int DELAY_TICKS = 200;
     private int elapsedTicks;
 
-    public boolean advance(double heat, int capacity) {
-        if (capacity <= 0 || heat <= capacity) {
+    public boolean advance(long heat, double remainder, long capacity) {
+        if (capacity <= 0 || heat < capacity || (heat == capacity && remainder == 0)) {
             reset();
             return false;
         }

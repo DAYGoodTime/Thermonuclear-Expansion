@@ -9,8 +9,6 @@ final class SteamTurbineStructure {
     static final int OFFSET_X = 7;
     static final int OFFSET_Y = 13;
     static final int OFFSET_Z = 1;
-    // ceil(hypot(7, 26 - OFFSET_Z)): covers the rectangle under any horizontal facing.
-    static final int CHUNK_RADIUS = 26;
 
     // Normal scan order: SHAPE[z][y].charAt(x); '~' is the real controller anchor.
     static final String[][] SHAPE = { { // z = 0
