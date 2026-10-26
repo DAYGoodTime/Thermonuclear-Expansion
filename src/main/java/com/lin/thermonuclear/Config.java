@@ -20,10 +20,7 @@ import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigFieldParser;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
-/**
- * Loads annotated defaults before machine registration. Keep defaults in annotations only so development resets and
- * normal configuration loading cannot drift apart.
- */
+
 @com.gtnewhorizon.gtnhlib.config.Config(modid = Thermonuclear.MODID, category = "")
 @Comment("原型测试配置，不代表最终 GTNH 平衡。修改后需要重启游戏或服务器。")
 @RequiresMcRestart
@@ -61,7 +58,7 @@ public class Config {
 
     public static class NuclearPowerPlant {
 
-        @Comment("核电站直接发电效率，无量纲；最终输出还受直发倍率影响。")
+        @Comment("核电站直接发电模式基准效率")
         @DefaultDouble(1)
         @RangeDouble(min = 0.001, max = 1)
         public double nuclearDirectEfficiency;
@@ -109,17 +106,17 @@ public class Config {
         @RangeDouble(min = 0.001, max = 1000)
         public double nakCompositeCoolantPerHeat;
 
-        @Comment("燃料代表堆栈数量大于 4 时追加的反射脉冲数，不是结构中反射板的数量。")
+        @Comment("燃料代表堆栈数量大于4时追加的反射脉冲数")
         @DefaultInt(4)
         @RangeInt(min = 0, max = 6)
         public int nuclearMaxReflectorCount;
 
-        @Comment("核电站直接发电基准倍率，无量纲；另乘 IC2 核能配置与直发效率。")
+        @Comment("核电站直接发电模式基准倍率")
         @DefaultDouble(2)
         @RangeDouble(min = 0.001, max = 100)
         public double nuclearDirectOutputMultiplier;
 
-        @Comment("核电站理论燃料热值的供热倍率，无量纲；另乘供热效率。")
+        @Comment("核电站供热模式输出热量基准倍率")
         @DefaultDouble(50)
         @RangeDouble(min = 0.001, max = 100)
         public double nuclearHeatOutputMultiplier;
@@ -134,12 +131,12 @@ public class Config {
         @RangeDouble(min = 0.001, max = 1000000)
         public double nuclearSteamPerDistilledWater;
 
-        @Comment("核电站供热启动进度从 0 升至 1 所需的 tick 数；20 tick = 1 秒，直发不使用启动倍率。")
+        @Comment("核电站供热模式预热需求时长,单位tick")
         @DefaultInt(1200)
         @RangeInt(min = 1, max = 720000)
         public int nuclearStartupTicks;
 
-        @Comment("核电站停机进度从 1 降至 0 所需的 tick 数；与热缓存散热独立。")
+        @Comment("核电站供热模式停机冷却所需时长,单位tick")
         @DefaultInt(600)
         @RangeInt(min = 1, max = 720000)
         public int nuclearDecayTicks;

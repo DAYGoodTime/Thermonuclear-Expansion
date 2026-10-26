@@ -1,4 +1,5 @@
 thermonuclear.machine.nuclear.name=Nuclear Power Plant
+thermonuclear.machine.nuclear.name.type=Nuclear Power Plant
 thermonuclear.machine.heat_exchange.name=Heat Exchange Station
 thermonuclear.machine.steam_turbine.name=Large Steam Turbine
 thermonuclear.machine.debug_structure.name=Debug Structure Builder

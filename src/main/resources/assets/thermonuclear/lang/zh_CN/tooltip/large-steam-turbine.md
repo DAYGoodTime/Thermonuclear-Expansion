@@ -9,7 +9,6 @@ E（EU/L）：超临界蒸汽 {gold:{var:supercritical_energy}}；超超临界�
 {gray:{hr}}
 {aqua:发电机制与操作}
 预热时间: {gold:{var:startup_ticks} tick}，停机 {gold:{var:decay_ticks} tick} 后涡轮效率归0
-有线输出受动力仓上限限制；溢出电力丢弃，不减少耗汽；无线输出不受动力仓限制
 每 {gold:{var:steam_per_water} L} 蒸汽回收 {gold:1 L} 蒸馏水，不足整升的余量跨批保留；输出堵塞时停机
 GUI 可设置每 {gold:{var:cycle_ticks} tick} 周期耗汽上限，下周期生效；设为 {gold:0} 时停止耗汽
 {gray:{hr}}

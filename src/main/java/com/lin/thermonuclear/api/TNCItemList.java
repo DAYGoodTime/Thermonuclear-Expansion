@@ -4,7 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.lin.thermonuclear.machine.nuclear.RareEarthBreedingRoute;
+import com.lin.thermonuclear.common.nuclear.breeding.RareEarthBreedingRoute;
 
 public enum TNCItemList {
 

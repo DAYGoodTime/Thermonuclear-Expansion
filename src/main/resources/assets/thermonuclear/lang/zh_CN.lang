@@ -1,4 +1,5 @@
-thermonuclear.machine.nuclear.name="华龙一号“
+thermonuclear.machine.nuclear.name="华龙一号"
+thermonuclear.machine.nuclear.name.type=核反应堆 | 热力反应堆
 thermonuclear.machine.heat_exchange.name=热交换站
 thermonuclear.machine.steam_turbine.name=大型蒸汽涡轮机
 thermonuclear.machine.debug_structure.name=调试结构构建机
