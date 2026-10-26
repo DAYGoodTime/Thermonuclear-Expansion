@@ -3,16 +3,16 @@ package com.lin.thermonuclear.machine.nuclear;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -21,6 +21,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.structurelib.alignment.IAlignmentLimits;
 import com.gtnewhorizon.structurelib.alignment.constructable.ChannelDataAccessor;
 import com.gtnewhorizon.structurelib.alignment.enumerable.Flip;
@@ -32,13 +33,15 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.Thermonuclear;
 import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.FuelRodAdapter;
 import com.lin.thermonuclear.block.BlockFuelRod;
 import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
+import com.lin.thermonuclear.machine.base.CycleContext;
+import com.lin.thermonuclear.machine.base.TNCCycleMachineBase;
 import com.lin.thermonuclear.machine.hatch.MTEBreederInputBus;
 import com.lin.thermonuclear.machine.hatch.MTEBreederOutputBus;
 import com.lin.thermonuclear.machine.nuclear.NuclearModuleStructure.Position;
@@ -69,7 +72,7 @@ import ic2.core.init.MainConfig;
 import ic2.core.util.ConfigUtil;
 import tectech.thing.metaTileEntity.hatch.MTEHatchDynamoMulti;
 
-public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant> {
+public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPowerPlant> {
 
     private static final String PIECE = "nuclear_power_plant";
     private static final int OFFSET_X = NuclearPowerPlantStructure.OFFSET_X;
@@ -135,12 +138,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private int pipeTier = -1;
     private final List<MTEBreederInputBus> breederInputs = new ArrayList<>();
     private final List<MTEBreederOutputBus> breederOutputs = new ArrayList<>();
-    private int expansionLevel = 1;
-    private boolean expansionKnown;
-    private boolean expansionValidated;
-    private String expansionState = "checking";
-    private NuclearModuleSearch.Result expansionScan;
-    private Set<Position> validatedModules = java.util.Collections.emptySet();
+    private final NuclearExpansionState expansion = new NuclearExpansionState();
     private boolean needsWaterFill;
 
     private static IStructureElement<MTENuclearPowerPlant> tieredPipe() {
@@ -203,7 +201,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private void scanExpansion(IGregTechTileEntity tile, List<StructureError> errors) {
         // Only after the main check: tiered P/D now compare without invoking setters. Never reset per module.
         if (pipeTier <= 0 || fuelRodTier <= 0) throw new IllegalStateException("Main structure tiers not established");
-        expansionScan = new NuclearModuleSearch(new NuclearModuleSearch.Reader() {
+        NuclearModuleSearch.Result expansionScan = new NuclearModuleSearch(new NuclearModuleSearch.Reader() {
 
             @Override
             public boolean loaded(Position position) {
@@ -257,19 +255,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             }
         }, System::nanoTime, NuclearModuleStructure.moduleLimit(pipeTier)).scan();
         if (expansionScan.timedOut) {
-            expansionState = "expansion_timeout";
+            expansion.timeOut();
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.expansion_timeout"));
             stopExpansion("expansion_timeout");
             return;
         }
-        int next = 1 + expansionScan.modules;
         // Match the existing allowed-to-work switch, including an enabled machine waiting for fuel.
-        boolean changedWhileEnabled = expansionKnown && expansionLevel != next
+        boolean changedWhileEnabled = expansion.accept(expansionScan)
             && (tile.isAllowedToWork() || mMaxProgresstime > 0);
-        expansionLevel = next;
-        validatedModules = new HashSet<>(expansionScan.valid);
-        expansionKnown = expansionValidated = true;
-        expansionState = expansionScan.capped ? "expansion_capped" : "expansion_valid";
         if (changedWhileEnabled) stopExpansion("expansion_changed");
         markDirty();
     }
@@ -295,7 +288,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     protected void runMachine(IGregTechTileEntity tile, long tick) {
-        if (!expansionValidated) return;
+        if (!expansion.validated()) return;
         super.runMachine(tile, tick);
     }
 
@@ -335,7 +328,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private void resetMachineTier() {
         fuelRodTier = -1;
         pipeTier = -1;
-        expansionLevel = 1;
     }
 
     public int getFuelRodTier() {
@@ -393,8 +385,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
         needsWaterFill = false;
-        expansionValidated = false;
-        expansionState = "structure";
+        expansion.invalidate();
         resetMachineTier();
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) {
             return;
@@ -461,44 +452,23 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.title"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.3"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.formula.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.direct.formula.1"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.title"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat_mode"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.formula.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat.formula.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.cooling"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.features"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.variables"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.pulses"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.formula.limits"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.heat_capacity"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.2"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.meltdown"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.breeding.2"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.2"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.3"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.4"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.5"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.6"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.support_any"))
+            .addMarkdown(
+                new ResourceLocation(Thermonuclear.MODID, "nuclear-power-plant"),
+                ImmutableMap.<String, Object>builder()
+                    .put("parallel_1", NumberFormatUtil.formatNumber(BlockFuelRod.maxParallel(1)))
+                    .put("parallel_2", NumberFormatUtil.formatNumber(BlockFuelRod.maxParallel(2)))
+                    .put("parallel_3", NumberFormatUtil.formatNumber(BlockFuelRod.maxParallel(3)))
+                    .put("parallel_4", NumberFormatUtil.formatNumber(BlockFuelRod.maxParallel(4)))
+                    .put("capacity_1", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(1)))
+                    .put("capacity_2", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(2)))
+                    .put("capacity_3", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(3)))
+                    .put("capacity_4", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(4)))
+                    .put("meltdown_seconds", decimal(NuclearMeltdownTimer.DELAY_TICKS / 20.0))
+                    .put("cycle_ticks", NumberFormatUtil.formatNumber(CYCLE_TICKS))
+                    .put("steel_modules", NumberFormatUtil.formatNumber(NuclearModuleStructure.moduleLimit(1)))
+                    .put("titanium_modules", NumberFormatUtil.formatNumber(NuclearModuleStructure.moduleLimit(2)))
+                    .put("tungstensteel_modules", NumberFormatUtil.formatNumber(NuclearModuleStructure.moduleLimit(3)))
+                    .build())
             .beginStructureBlock(
                 NuclearPowerPlantStructure.WIDTH,
                 NuclearPowerPlantStructure.HEIGHT,
@@ -549,7 +519,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             .addSubChannel(StructureChannels.REACTOR_PIPE)
             .addSubChannel(StructureChannels.FUEL_ROD)
             .addSubChannel(StructureChannels.EXTRA)
-            .toolTipFinisher();
+            .toolTipFinisher("Thermonuclear Expansion[TNC]");
     }
 
     private enum CoolingFluid {
@@ -576,8 +546,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     private final NuclearHeatBuffer reactorHeat = new NuclearHeatBuffer();
     private final NuclearMeltdownTimer meltdownTimer = new NuclearMeltdownTimer();
     private double fullLoadHeatRate;
-    private NBTTagCompound fuelSnapshot;
-    private Runnable coolingInputCommit;
     private double stoppedInputRate;
     private double stoppedOutputRate;
 
@@ -604,7 +572,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     public int getFuelBatchLimit() {
-        return expansionValidated ? expansionLevel : 0;
+        return expansion.batchLimit();
     }
 
     public boolean requestFuelEjection() {
@@ -613,7 +581,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             || !mMachine
             || tile.isAllowedToWork()
             || running
-            || fuelSnapshot != null
+            || isProcessingCycle()
             || workingFuels.workingCount() == 0
             || getOutputBusses().isEmpty()) return false;
 
@@ -640,7 +608,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return true;
     }
 
-    private boolean flushDepleted() {
+    private boolean flushDepleted(CycleContext context) {
         ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true);
         List<WorkingFuelPool.Batch> batches = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
@@ -652,7 +620,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             amounts.add(ejected);
         }
         if (batches.isEmpty()) return false;
-        commitOutput(() -> {
+        context.onCommit(() -> {
             outputs.commit();
             for (int i = 0; i < batches.size(); i++) {
                 WorkingFuelPool.Batch batch = batches.get(i);
@@ -663,7 +631,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return true;
     }
 
-    private void processBreeders(long pulses) {
+    private void processBreeders(CycleContext context, long pulses) {
         breederPulses = pulses;
         if (pulses <= 0 || breederInputs.isEmpty() || breederOutputs.isEmpty()) return;
         List<ItemStack> inputs = new ArrayList<>();
@@ -672,7 +640,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             for (int slot = 0; slot < bus.getCircuitSlot(); slot++) inputs.add(bus.getStackInSlot(slot));
         }
         Runnable consumeBreeders = breederPool.prepareLoad(inputs, getFuelRodLimit());
-        commitOutput(() -> {
+        context.deferInput(() -> {
             consumeBreeders.run();
             for (MTEBreederInputBus bus : breederInputs) {
                 if (!bus.isValid()) continue;
@@ -683,7 +651,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         breederPool.advance(pulses);
     }
 
-    private boolean flushBreederProducts() {
+    private boolean flushBreederProducts(CycleContext context) {
         if (breederPool.completedCount() == 0 || breederOutputs.isEmpty()) return false;
         List<IOutputBus> outputs = new ArrayList<>();
         for (MTEBreederOutputBus bus : breederOutputs) if (bus.isValid()) outputs.add(bus);
@@ -694,7 +662,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         int ejected = 0;
         for (ItemStack stack : remaining) ejected += helper.ejectStack(stack);
         if (ejected == 0) return false;
-        commitOutput(() -> {
+        context.onCommit(() -> {
             helper.commit();
             breederPool.finishOutput(remaining);
         });
@@ -702,48 +670,41 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
-    protected boolean processCycle() {
-        coolingInputCommit = null;
-        try {
-            boolean successful = processNuclearCycle();
-            if (successful) {
-                flushDepleted();
-                flushBreederProducts();
-            } else {
-                workingFuels.discardStaged();
-                if ("fuel".equals(status) || "spent_full".equals(status)
-                    || "fuel_limit".equals(status)
-                    || "output_full".equals(status)) {
-                    boolean spentOutput = flushDepleted();
-                    boolean breederOutput = flushBreederProducts();
-                    if (spentOutput || breederOutput) {
-                        cycleAdvancesStartup = false;
-                        successful = true;
-                    }
+    protected boolean processCycle(CycleContext context) {
+        boolean successful = processNuclearCycle(context);
+        if (successful) {
+            flushDepleted(context);
+            flushBreederProducts(context);
+        } else {
+            workingFuels.discardStaged();
+            if ("fuel".equals(status) || "spent_full".equals(status)
+                || "fuel_limit".equals(status)
+                || "output_full".equals(status)) {
+                boolean spentOutput = flushDepleted(context);
+                boolean breederOutput = flushBreederProducts(context);
+                if (spentOutput || breederOutput) {
+                    cycleAdvancesStartup = false;
+                    successful = true;
                 }
             }
-            // A rejected heat cycle must not consume coolant while its outputs are discarded.
-            if (successful && coolingInputCommit != null) coolingInputCommit.run();
-            return successful;
-        } finally {
-            coolingInputCommit = null;
         }
+        return successful;
     }
 
-    private boolean processNuclearCycle() {
+    private boolean processNuclearCycle(CycleContext context) {
         if (getOutputBusses().isEmpty() || (mInputBusses.isEmpty() && mDualInputHatches.isEmpty())) {
             return fail("hatches");
         }
         long heatBeforeCooling = reactorHeat.stored();
         double remainderBeforeCooling = reactorHeat.remainder();
-        if (mode == NuclearOperatingMode.HEAT_SUPPLY && !coolReactor()) return false;
+        if (mode == NuclearOperatingMode.HEAT_SUPPLY && !coolReactor(context)) return false;
         boolean cooled = reactorHeat.stored() < heatBeforeCooling
             || (reactorHeat.stored() == heatBeforeCooling && reactorHeat.remainder() < remainderBeforeCooling);
         workingFuels.finishSpent();
         if (workingFuels.exceeds(getFuelBatchLimit(), getMaxParallel())) {
             return coolingOnly(cooled, "fuel_limit");
         }
-        workingFuels.prepareLoad(cycleItems(), getFuelBatchLimit(), getFuelRodLimit());
+        workingFuels.prepareLoad(context.availableItems(), getFuelBatchLimit(), getFuelRodLimit());
         if (workingFuels.workingCount() == 0)
             return coolingOnly(cooled, workingFuels.spentCount() > 0 ? "spent_full" : "fuel");
         double efficiency = efficiencyPolicy.efficiency(mode);
@@ -797,11 +758,11 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             fullLoadHeatRate = fullOutput / CYCLE_TICKS;
             reactorHeat.add(actualHeat);
         }
-        processBreeders(pulses);
+        processBreeders(context, pulses);
         for (int i = 0; i < active.size(); i++) active.get(i)
             .advance(advances.get(i));
         workingFuels.finishSpent();
-        workingFuels.consumeInputs();
+        context.deferInput(workingFuels::consumeInputs);
         return true;
     }
 
@@ -812,7 +773,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return cooled || fail(reason);
     }
 
-    private boolean coolReactor() {
+    private boolean coolReactor(CycleContext context) {
         if (!hasFluidInputs() || mOutputHatches.isEmpty()) return fail("hatches");
         selectCoolingFluid();
         if (selectedCoolingFluid == null || !availableCoolingFluid(selectedCoolingFluid)) return true;
@@ -848,22 +809,15 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         reactorHeat.remove(amount / litresPerHeat);
         if (distilled) distilledSteamRemainder = NuclearCoolingMath
             .steamRemainder(amount, Config.nuclearPowerPlant.nuclearSteamPerDistilledWater, distilledSteamRemainder);
-        coolingInputCommit = () -> consume(input, amount);
-        if (accepted != null) commitOutput(accepted::commit);
+        context.deferInput(() -> consume(input, amount));
+        if (accepted != null) context.onCommit(accepted::commit);
         inputLitresPerTick = amount / (double) CYCLE_TICKS;
         outputLitresPerTick = produced / (double) CYCLE_TICKS;
         return true;
     }
 
-    private boolean processStoppedCoolingCycle() {
-        coolingInputCommit = null;
-        try {
-            if (!coolReactor() || coolingInputCommit == null) return false;
-            coolingInputCommit.run();
-            return true;
-        } finally {
-            coolingInputCommit = null;
-        }
+    private boolean processStoppedCoolingCycle(CycleContext context) {
+        return coolReactor(context) && inputLitresPerTick > 0;
     }
 
     private static double nuclearEnergyMultiplier() {
@@ -874,26 +828,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         double outputMultiplier = ic2Value * Config.nuclearPowerPlant.nuclearDirectOutputMultiplier;
         return Double.isFinite(outputMultiplier) && outputMultiplier > 0 ? outputMultiplier : 0;
-    }
-
-    @Override
-    public void startRecipeProcessing() {
-        super.startRecipeProcessing();
-        fuelSnapshot = new NBTTagCompound();
-        saveFuelState(fuelSnapshot);
-        workingFuels.clearPlans();
-    }
-
-    @Override
-    public void endRecipeProcessing() {
-        super.endRecipeProcessing();
-        if (!checkRecipeResult.wasSuccessful() && fuelSnapshot != null) {
-            // ME extraction failures must not leave a copied internal batch that was never paid for.
-            loadFuelState(fuelSnapshot);
-        }
-        if (checkRecipeResult.wasSuccessful()) markDirty();
-        fuelSnapshot = null;
-        workingFuels.clearPlans();
     }
 
     private boolean selectCoolingFluid() {
@@ -918,7 +852,15 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
-    protected void beforeProcessingCycle() {
+    protected void beforeProcessingCycle(CycleContext context) {
+        NBTTagCompound snapshot = new NBTTagCompound();
+        saveFuelState(snapshot);
+        context.onRollback(() -> {
+            loadFuelState(snapshot);
+            fullLoadHeatRate = 0;
+        });
+        context.onClose(workingFuels::clearPlans);
+        workingFuels.clearPlans();
         fullLoadHeatRate = 0;
         breederPulses = 0;
     }
@@ -941,8 +883,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setInteger("tnExpansionLevel", expansionLevel);
-        nbt.setBoolean("tnExpansionKnown", expansionKnown);
+        expansion.save(nbt);
         saveFuelState(nbt);
         nbt.setInteger("tnOverheatTicks", meltdownTimer.elapsedTicks());
         nbt.setDouble("tnFullLoadHeatRate", fullLoadHeatRate);
@@ -959,15 +900,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        int savedLevel = nbt.getInteger("tnExpansionLevel");
-        expansionKnown = nbt.getBoolean("tnExpansionKnown") && savedLevel >= 1
-            && savedLevel <= 1 + NuclearModuleStructure.MAX_MODULES;
-        expansionLevel = expansionKnown ? savedLevel : 1;
-        // History supports change detection, never formation or permission to resume a saved cycle.
-        expansionValidated = false;
-        expansionState = "checking";
-        expansionScan = null;
-        validatedModules = java.util.Collections.emptySet();
+        expansion.load(nbt);
         loadFuelState(nbt);
         meltdownTimer.restore(nbt.getInteger("tnOverheatTicks"));
         double savedRate = nbt.getDouble("tnFullLoadHeatRate");
@@ -1057,7 +990,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         World world = tile.getWorld();
         int[] worldOffset = new int[3];
         List<int[]> rods = new ArrayList<>(FUEL_ROD_OFFSETS);
-        for (Position origin : validatedModules) {
+        for (Position origin : expansion.modules()) {
             for (Position local : NuclearModuleStructure.fuelRods()) {
                 rods.add(new int[] { origin.x + local.x, origin.y + local.y, origin.z + local.z });
             }
@@ -1094,8 +1027,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         mMachine = false;
         // Melting removes the structure water deliberately; never refill a destroyed core.
         needsWaterFill = false;
-        expansionValidated = false;
-        expansionState = "structure";
+        expansion.invalidate();
         fuelRodTier = -1;
         running = false;
         operatingEUt = fullLoadEUt = fullLoadHeatRate = 0;
@@ -1141,8 +1073,10 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
         info.put("mode", mode.translationKey());
-        if (expansionValidated) {
-            info.put("expansion_count", (expansionLevel - 1) + " / " + NuclearModuleStructure.moduleLimit(pipeTier));
+        if (expansion.validated()) {
+            info.put(
+                "expansion_count",
+                (expansion.batchLimit() - 1) + " / " + NuclearModuleStructure.moduleLimit(pipeTier));
         }
         if (mMachine && fuelRodTier > 0) {
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));

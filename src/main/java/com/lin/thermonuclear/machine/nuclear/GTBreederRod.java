@@ -8,7 +8,6 @@ import com.lin.thermonuclear.item.ItemRareEarthBreederRod;
 import gregtech.api.enums.ItemList;
 import gregtech.api.items.ItemBreederCell;
 
-/** Explicit GT5U .133 and Thermonuclear breeder mappings; no reflected protected product field. */
 public final class GTBreederRod {
 
     private GTBreederRod() {}

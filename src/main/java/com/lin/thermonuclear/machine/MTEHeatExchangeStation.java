@@ -5,21 +5,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import com.lin.thermonuclear.Thermonuclear;
 import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.HeatExchangeRule;
 import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.gui.HeatExchangeStationGui;
-import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
+import com.lin.thermonuclear.machine.base.CycleContext;
+import com.lin.thermonuclear.machine.base.TNCCycleMachineBase;
 import com.lin.thermonuclear.recipe.heatexchange.DefaultHeatExchangeRules;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeBatch;
 import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
@@ -37,10 +42,11 @@ import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MTEHeatExchangeStation> {
+public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExchangeStation> {
 
     private static final String PIECE = "heat_exchange_station";
     private static final int WIDTH = 9;
@@ -179,31 +185,16 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.exchange.title"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.exchange.formula"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.heat_exchange.coefficient.ic2",
-                    decimal(DefaultHeatExchangeRules.IC2_COOLANT.steamPerHotCoolant())))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.heat_exchange.coefficient.super",
-                    decimal(DefaultHeatExchangeRules.SUPER_COOLANT.steamPerHotCoolant())))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.heat_exchange.coefficient.nak_composite",
-                    decimal(DefaultHeatExchangeRules.NAK_COMPOSITE_COOLANT.steamPerHotCoolant())))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.features"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.coolant_return"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.heat_exchange.water",
-                    HeatExchangeBatch.STEAM_PER_WATER))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.limits"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.heat_exchange.automatic"))
+            .addMarkdown(
+                new ResourceLocation(Thermonuclear.MODID, "heat-exchange-station"),
+                ImmutableMap.<String, Object>builder()
+                    .put("ic2_coefficient", decimal(DefaultHeatExchangeRules.IC2_COOLANT.steamPerHotCoolant()))
+                    .put("super_coefficient", decimal(DefaultHeatExchangeRules.SUPER_COOLANT.steamPerHotCoolant()))
+                    .put(
+                        "nak_coefficient",
+                        decimal(DefaultHeatExchangeRules.NAK_COMPOSITE_COOLANT.steamPerHotCoolant()))
+                    .put("steam_per_water", NumberFormatUtil.formatNumber(HeatExchangeBatch.STEAM_PER_WATER))
+                    .build())
             .beginStructureBlock(WIDTH, HEIGHT, LENGTH, true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.controller"))
             .addCasing("253", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.casings"), false)
@@ -239,7 +230,7 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     }
 
     @Override
-    protected boolean processCycle() {
+    protected boolean processCycle(CycleContext context) {
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         selected = selectRecipe();
         if (selected == null) return fail("hot_fluid");
@@ -262,12 +253,14 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             : null;
         if (coldOutput == null || (steam > 0 && steamOutput == null)) return fail("output_full");
         // All capacity reservations and both input checks precede any real mutation.
-        consume(coolant.hot(), hot, hotInputs);
-        if (water > 0) consume(WorkingFluids.distilledWater, water, coldInputs);
-        commitOutput(coldOutput::commit);
-        if (steam > 0) commitOutput(steamOutput::commit);
+        context.deferInput(() -> {
+            consume(coolant.hot(), hot, hotInputs);
+            if (water > 0) consume(WorkingFluids.distilledWater, water, coldInputs);
+        });
+        context.onCommit(coldOutput::commit);
+        if (steam > 0) context.onCommit(steamOutput::commit);
         final String steamId = steamType.id();
-        commitOutput(() -> {
+        context.onCommit(() -> {
             waterCredit = batch.waterCredit();
             steamRemainders.put(steamId, batch.steamRemainder());
         });

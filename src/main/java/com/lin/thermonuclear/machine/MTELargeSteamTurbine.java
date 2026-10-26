@@ -5,27 +5,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
+import com.lin.thermonuclear.Thermonuclear;
 import com.lin.thermonuclear.api.SteamTurbineFuel;
 import com.lin.thermonuclear.api.SteamTurbineFuels;
 import com.lin.thermonuclear.block.BlockMachineComponent;
 import com.lin.thermonuclear.block.BlockTurbineShaft;
 import com.lin.thermonuclear.gui.LargeSteamTurbineGui;
 import com.lin.thermonuclear.loader.BlockLoader;
-import com.lin.thermonuclear.machine.base.ThermonuclearMultiblockBase;
+import com.lin.thermonuclear.machine.base.CycleContext;
+import com.lin.thermonuclear.machine.base.TNCCycleMachineBase;
 import com.lin.thermonuclear.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.recipe.steamturbine.SteamTurbineRecipes;
 import com.lin.thermonuclear.registry.StructureChannels;
@@ -42,11 +47,12 @@ import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.SimpleShutDownReason;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTELargeSteamTurbine> {
+public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeSteamTurbine> {
 
     private static final String PIECE = "large_steam_turbine";
     private static final int OFFSET_X = SteamTurbineStructure.OFFSET_X;
@@ -159,39 +165,20 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.generation.title"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.generation.formula"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.variables"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.steam_turbine.energy.0",
-                    decimal(DefaultSteamTurbineFuels.STEAM.euPerLitre()),
-                    decimal(DefaultSteamTurbineFuels.OVER_HEAT_STEAM.euPerLitre())))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.steam_turbine.energy.1",
-                    decimal(DefaultSteamTurbineFuels.SUPERCRITICAL_STEAM.euPerLitre()),
-                    decimal(DefaultSteamTurbineFuels.ULTRA_SUPERCRITICAL_STEAM.euPerLitre())))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.shaft_limits"))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.features"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.steam_turbine.startup",
-                    Config.largeSteamTurbine.turbineStartupTicks,
-                    Config.largeSteamTurbine.turbineDecayTicks))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.power_limits"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "thermonuclear.tooltip.steam_turbine.condensation",
-                    GTValues.STEAM_PER_WATER))
-            .addInfo(StatCollector.translateToLocalFormatted("thermonuclear.tooltip.steam_turbine.intake", CYCLE_TICKS))
-            .addSeparator()
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.0"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.wireless.1"))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.steam_turbine.support"))
+            .addMarkdown(
+                new ResourceLocation(Thermonuclear.MODID, "large-steam-turbine"),
+                ImmutableMap.<String, Object>builder()
+                    .put("steam_energy", decimal(DefaultSteamTurbineFuels.STEAM.euPerLitre()))
+                    .put("superheated_energy", decimal(DefaultSteamTurbineFuels.OVER_HEAT_STEAM.euPerLitre()))
+                    .put("supercritical_energy", decimal(DefaultSteamTurbineFuels.SUPERCRITICAL_STEAM.euPerLitre()))
+                    .put(
+                        "ultra_supercritical_energy",
+                        decimal(DefaultSteamTurbineFuels.ULTRA_SUPERCRITICAL_STEAM.euPerLitre()))
+                    .put("startup_ticks", NumberFormatUtil.formatNumber(Config.largeSteamTurbine.turbineStartupTicks))
+                    .put("decay_ticks", NumberFormatUtil.formatNumber(Config.largeSteamTurbine.turbineDecayTicks))
+                    .put("steam_per_water", NumberFormatUtil.formatNumber(GTValues.STEAM_PER_WATER))
+                    .put("cycle_ticks", GTUtility.formatNumber(CYCLE_TICKS))
+                    .build())
             .beginStructureBlock(
                 SteamTurbineStructure.WIDTH,
                 SteamTurbineStructure.HEIGHT,
@@ -239,7 +226,7 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
     }
 
     @Override
-    protected boolean processCycle() {
+    protected boolean processCycle(CycleContext context) {
         currentFuel = null;
         if (!checkWirelessOwner()) return false;
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
@@ -271,11 +258,11 @@ public final class MTELargeSteamTurbine extends ThermonuclearMultiblockBase<MTEL
             new FluidStack(WorkingFluids.distilledWater, Math.max(1, waterLitresPerCycle)));
         if (outputs == null) return fail("output_full");
         if (waterLitresPerCycle == 0) outputs = null;
-        consume(currentFuel.getWorkingFluid(), steamLitresPerCycle);
-        if (outputs != null) commitOutput(outputs::commit);
+        context.deferInput(() -> consume(currentFuel.getWorkingFluid(), steamLitresPerCycle));
+        if (outputs != null) context.onCommit(outputs::commit);
         final int remainingSteamLitres = (int) ((steamLitresPerCycle + condensationRemainderLitres)
             % GTValues.STEAM_PER_WATER);
-        commitOutput(() -> condensationRemainderLitres = remainingSteamLitres);
+        context.onCommit(() -> condensationRemainderLitres = remainingSteamLitres);
         // Integer batches stay at the fluid transaction boundary; all operating rates use ticks.
         inputLitresPerTick = litresPerTick(steamLitresPerCycle, CYCLE_TICKS);
         outputLitresPerTick = litresPerTick(waterLitresPerCycle, CYCLE_TICKS);

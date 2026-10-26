@@ -70,11 +70,18 @@
 
 - 结构／仓口提示组织：`NuclearReactor.java`、`wireless/FastNeutronBreederReactor.java`；主题分隔与分组写法：`WhiteNightGenerator.java`。
 - 编号语言键与逐条 `addInfo`：`SiphonTurbine.createTooltip()`。
+- 主说明模板迁移前核对 `NuclearReactor#createTooltip()` 与 `WhiteNightGenerator#createTooltip()`，这两个入口仍采用逐行 `addInfo`／`addSeparator`；本项目只沿用主题分组与结构页分工，模板 API 及语法按 GT5U `.205` 的 `MTECleanroom`、`MultiblockTooltipBuilder` 和 `MarkdownTooltipLoader` 实现，不从参考库复制文本或资源。
 - 解析受限的 `SiphonTurbineGui` 同步显示方式仅参考实现思路，本项目沿用既有 info 接口。以上签名均以本项目实际依赖为准，不复制数值、资源或扩展基类。
+- GUI 终端参考 `common/gui/modularui/SiphonTurbineGui.java` 的服务端数据同步与客户端文本显示分离；其固定字段不适用于本项目条件行。本项目按 ModularUI2 `2.3.92-1.7.10` 的 `GenericListSyncHandler`／`TextWidget` 核对完整有序快照同步与动态多行文本尺寸更新，保留客户端本地化，不复制参考库的机器状态 setter。
 
 ### 无线与电网接入
 
 `NaquadahReactor.java` 的无动力仓判定与所有者入网、`LargeEssentiaGenerator.java` 的右键升级，以及 `common/item/items/WirelessUpgradeChip.java` 的物品用途，用于无线升级芯片与自动入网。本项目直接按 GT5U 核对 `WirelessNetworkManager`、右键与掉落 NBT API 后调用 GT 电网，不依赖 GTNL，也不采用其批次入网与自有无线接口。
+
+### 周期处理与事务边界
+
+- 参考 `J/common/machine/multiblock/NaquadahReactor.java` 的 `checkProcessing()`、`onRunningTick()` 与 `outputAfterRecipe()`，并追至父类 `J/common/machine/multiMachineBase/MultiMachineBase.java`。采用输入处理与产物提交分离的思路，不复制其配方逻辑、批次无线输出或数值；这两个入口没有本项目所需的独立 `CycleContext` 实现。
+- API 按本地 GT5U `5.09.54.205` 的 `MTEMultiBlockBase.checkRecipe()`、`startRecipeProcessing()`、`endRecipeProcessing()` 核对：原生入口先开输入事务，再调用处理逻辑，末尾仓口结算仍可改变处理结果。本项目在原生结算成功后提交产物，失败时撤销内部状态与未执行动作；不能撤回其他仓口已经完成的外部扣料或已开始的产物提交。保留原周期与扩展 NBT 键；未运行参考库构建。
 
 ### 兼容与注入
 

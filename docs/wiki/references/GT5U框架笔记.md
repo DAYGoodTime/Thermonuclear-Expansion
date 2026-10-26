@@ -9,13 +9,12 @@
 
 ## 0. Local reference source trees (offline lookup)
 
-The workspace already contains decompiled/source copies of the common dependencies. **Check these local paths
-first** when verifying API behaviour instead of guessing:
+GT5U 当前本地源码入口及回退约定见[本地 GT5U 源码](README.md#本地-gt5u-源码)；先核对版本，再读取源码。下表其他路径为迁入时的快照，使用前检查是否存在，不作为当前依赖版本依据：
 
 | Path | Contents / use |
 |---|---|
-| `tmp/GT5-Unofficial-beta3/` | **GT5U 5.09.54.133 源码快照**（早期基线）；查 `gregtech.api.*` / `gregtech.common.*` 仍可从这里入手，但它**已不是当前编译依赖**——依赖由 `dependencies.gradle` 的 `gtnhVersion`（2.9.0-RC-2）manifest 解析，目前是 5.09.54.205，版本敏感的 API 请对照解析出来的 jar |
-| `tmp/GT5-Unofficial-master/` | GT5U master-branch snapshot, **noticeably older than the beta3 checkout (5.09.54.133)**; historical/diff reference only — always verify against `tmp/GT5-Unofficial-beta3/` |
+| `tmp/GT5-Unofficial-beta3/` | GT5U `5.09.54.133` 早期源码快照，仅用于历史对照，不作为当前 API 核验入口 |
+| `tmp/GT5-Unofficial-master/` | GT5U 旧 master 快照，仅用于历史对照；API 核验使用当前依赖对应的本地源码或 JAR |
 | `tmp/ic2-decompiled/`, `tmp/ic2-src/` | Decompiled IC2 source incl. `ic2.core.*` internals (`ItemReactorUranium`, `ItemReactorHeatStorage`, `TileEntityNuclearReactorElectric`, ...) |
 | `build/rfg/minecraft-src/java/` | **Forge + Minecraft 1.7.10 decompiled source** (`net.minecraft.*` such as `RenderItem`, `ItemRenderer`, `FontRenderer`, plus `cpw.mods.fml.*`) |
 | `build/rfg/minecraft-src/resources/` | Vanilla MC assets |

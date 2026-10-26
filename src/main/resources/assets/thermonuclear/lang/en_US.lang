@@ -18,8 +18,6 @@ item.thermonuclear.depleted_naquadah_fuel_rod_mk_vi.name=Depleted Naquadah Based
 thermonuclear.tooltip.naquadah_fuel_rod.depleted=Drain matching depleted fuel in a Fluid Canner and recover the empty fuel rod
 thermonuclear.tooltip.wireless_chip.0=Right-click a Nuclear Power Plant or Large Steam Turbine controller; consumes 1 chip to permanently unlock wireless output
 thermonuclear.tooltip.wireless_chip.1=Without dynamos, generation goes directly to the controller owner's GT wireless energy network
-thermonuclear.tooltip.wireless.0=§bWireless output upgrade§7: right-click with this mod's Wireless Upgrade Chip; retained when dismantled
-thermonuclear.tooltip.wireless.1=No dynamos: wireless output to the controller owner's GT network; installed dynamos: wired output
 thermonuclear.chat.wireless.installed=Wireless upgrade installed: without dynamos, power goes to the controller owner's GT wireless energy network.
 thermonuclear.chat.wireless.already=This controller is already upgraded; no additional chip is consumed.
 thermonuclear.gui.wireless=§5Wireless Mode Enabled
@@ -104,49 +102,6 @@ thermonuclear.turbine.fuel.ultrasupercritical=Ultra-supercritical steam
 fluid.thermonuclear.ultrasupercriticalsteam=Ultra-Supercritical Steam
 thermonuclear.tooltip.prototype=Development prototype; values subject to change
 thermonuclear.tooltip.mod=Thermonuclear Expansion [TNC]
-thermonuclear.tooltip.breeding.0=§bOptional breeding§7: paired breeder input/output buses enable breeder rod material conversion
-thermonuclear.tooltip.breeding.1=Separate breeder pool uses the fuel rod tier limit without using fuel parallel, including pending products
-thermonuclear.tooltip.breeding.2=Every breeder rod gains §6P§7 progress per cycle; P= pulses x §64§7
-thermonuclear.tooltip.nuclear.0=Fuel rod block tiers §61-4§7 allow max parallel per batch: §68 / 32 / 128 / 512§7
-thermonuclear.tooltip.nuclear.1=Parallel setting controls the number of fuel rods in newly loaded batches
-thermonuclear.tooltip.nuclear.2=Consumes shortest remaining lifetime first
-thermonuclear.tooltip.nuclear.meltdown=Exceeding heat capacity does not immediately stop the reactor; after §610 continuous seconds§7, core water evaporates and fuel rod blocks melt into lava
-thermonuclear.tooltip.nuclear.3=Consumes fuel to produce power
-thermonuclear.tooltip.nuclear.direct.title=§bDirect generation mode§7
-thermonuclear.tooltip.nuclear.direct.formula.0=Generation (EU/t) = §6E x C x P x N x S x M x eta§7
-thermonuclear.tooltip.nuclear.direct.formula.1=E: base fuel energy per pulse; M: IC2 nuclear multiplier x configured direct multiplier; eta: configured direct efficiency
-thermonuclear.tooltip.nuclear.heat.title=§bHeat supply mode§7
-thermonuclear.tooltip.nuclear.heat.formula.0=Heat (heat/t) = §6C x round[P x (P + 1) / 2 x H] x N x S x M x eta x R / 20§7
-thermonuclear.tooltip.nuclear.heat.formula.1=H: base fuel heat; M: configured heat multiplier; eta: configured heat efficiency; R: average startup multiplier this cycle
-thermonuclear.tooltip.nuclear.heat_mode=Consumes fuel to accumulate hull heat; cooling fluids carry it out as hot fluids;
-thermonuclear.tooltip.nuclear.cooling=Supports IC2 coolant, super coolant and NaK composite coolant; distilled water cooling produces ordinary steam
-thermonuclear.tooltip.nuclear.features=§bFeatures and support§7
-thermonuclear.tooltip.nuclear.heat_capacity=Fuel rod block tiers §61-4§7 allow heat capacity: §650000 / 100000 / 1000000 / 2147483647§7
-thermonuclear.tooltip.nuclear.formula.variables=C: cells per fuel rod; N: rods in the current batch; S: configured fuel cycles per second
-thermonuclear.tooltip.nuclear.formula.pulses=Pulses per cell: §6P = 1 + floor(C / 2) + reflector pulses§7; configured reflector pulses apply above §64§7 rods per batch, otherwise §60§7
-thermonuclear.tooltip.support_any=§aSupports Multi-Amp Dynamos and Laser Hatches§7
-thermonuclear.tooltip.heat_exchange.exchange.title=§bSteam production§7
-thermonuclear.tooltip.heat_exchange.exchange.formula=Steam (L) = hot coolant (L) x K; K: yield of the coolant's unique conversion path
-thermonuclear.tooltip.heat_exchange.coefficient.ic2=IC2 hot coolant: superheated steam only, K = §6%s§7
-thermonuclear.tooltip.heat_exchange.coefficient.super=Hot super coolant: supercritical steam only, K = §6%s§7
-thermonuclear.tooltip.heat_exchange.coefficient.nak_composite=Hot NaK composite coolant: ultra-supercritical steam only, K = §6%s§7
-thermonuclear.tooltip.heat_exchange.features=§bExchange mechanics and controls§7
-thermonuclear.tooltip.heat_exchange.coolant_return=Returns matching cold coolant at §61:1§7; yields from different hot fluids are not pooled
-thermonuclear.tooltip.heat_exchange.water=Consumes §61 L§7 distilled water per §6%s L§7 steam; prepaid water credit and fractional steam carry across batches
-thermonuclear.tooltip.heat_exchange.limits=Each cycle processes one matching hot fluid; throughput is limited by hot fluid, distilled water and both output paths
-thermonuclear.tooltip.heat_exchange.automatic=Input hot coolant automatically selects its unique steam output; no steam mode switching required
-thermonuclear.tooltip.steam_turbine.generation.title=§bSteam power generation§7
-thermonuclear.tooltip.steam_turbine.generation.formula=Generation (EU/t) = Q x E x R
-thermonuclear.tooltip.steam_turbine.energy.0=E (EU/L): ordinary steam §6%s§7; superheated steam §6%s§7
-thermonuclear.tooltip.steam_turbine.energy.1=E (EU/L): supercritical steam §6%s§7; ultra-supercritical steam §6%s§7
-thermonuclear.tooltip.steam_turbine.shaft_limits=Low-pressure shafts accept ordinary/superheated/supercritical steam; high-pressure shafts also accept ultra-supercritical steam
-thermonuclear.tooltip.steam_turbine.features=§bGeneration mechanics and controls§7
-thermonuclear.tooltip.steam_turbine.variables=Q: actual steam intake (L/t); R: startup multiplier this tick (§60-1§7); no extra configured power multiplier
-thermonuclear.tooltip.steam_turbine.startup=Warmup time: §6%s ticks§7; turbine efficiency reaches zero after §6%s ticks§7 of shutdown
-thermonuclear.tooltip.steam_turbine.power_limits=Wired output is limited by dynamos; excess power is discarded without reducing steam intake; wireless output bypasses dynamo limits
-thermonuclear.tooltip.steam_turbine.condensation=Returns §61 L§7 distilled water per §6%s L§7 steam; fractional water carries across batches; blocked output stops work
-thermonuclear.tooltip.steam_turbine.intake=GUI steam cap applies per §6%s-tick§7 cycle from the next cycle; §60§7 stops steam intake
-thermonuclear.tooltip.steam_turbine.support=§aSupports Multi-Amp Dynamos and Laser Dynamos§7
 thermonuclear.structure.controller=Front centre, middle layer
 thermonuclear.structure.box.0=3x3x3 hollow
 thermonuclear.structure.box.1=Consists of 1 controller and 25 heat-proof casings (hatches replace casings)
@@ -227,10 +182,7 @@ thermonuclear.status.expansion_capped=Current pipe tier's module limit reached (
 thermonuclear.status.expansion_changed=Expansion level changed; stopped, manual restart required
 thermonuclear.status.expansion_timeout=Expansion structure check error: timeout
 thermonuclear.structure.nuclear.expansion_timeout=Expansion structure check error: timeout
-thermonuclear.tooltip.nuclear.expansion.0=§bConnected module expansion§7: the main structure provides §61§7 fuel batch slot; each valid module adds §61§7 independent slot
 thermonuclear.tooltip.nuclear.expansion.4=The extra channel selects example layouts only; actual module connections remain flexible
-thermonuclear.tooltip.nuclear.expansion.5=Each batch has its own parallel limit and lifetime and may use different fuel; total power and heat are summed across batches
-thermonuclear.tooltip.nuclear.expansion.6=Pending spent rods retain their slot while other batches keep running; expansion does not increase heat capacity, cooling capacity or breeder pool size
 thermonuclear.tooltip.nuclear.expansion.1=Main structure steel / titanium / tungstensteel pipes allow §61§7 / §63§7 / §65§7 expansion modules, excluding the main structure; level = 1 + connected complete modules
 thermonuclear.tooltip.nuclear.expansion.2=Both the back and right sides of the main structure accept modules simultaneously; complete modules touch wall-to-wall in the same horizontal facing and expand in all four horizontal directions, without connecting pipes or shared blocks
 thermonuclear.tooltip.nuclear.expansion.3=Lowercase channel extra: §61§7 main only; §62§7 main + one back module; §63§7 two consecutive back modules. Right-click the blueprint in air to configure hints and auto-build examples; actual module connections remain flexible. Count changes while enabled or prepaid require a manual restart

@@ -3,7 +3,6 @@ package com.lin.thermonuclear.machine.base;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,7 +10,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BooleanSupplier;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -35,23 +33,16 @@ import gregtech.api.casing.Casings;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEHatch;
-import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.recipe.check.CheckRecipeResult;
-import gregtech.api.recipe.check.CheckRecipeResultRegistry;
-import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.FluidEjectionHelper;
-import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
-import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -59,27 +50,15 @@ import mcp.mobius.waila.api.IWailaDataAccessor;
 public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultiblockBase<T>>
     extends MTEEnhancedMultiBlockBase<T> implements ISurvivalConstructable {
 
-    public static final int CYCLE_TICKS = 20;
-
-    protected final StartupProgress startup = new StartupProgress();
     protected boolean running;
     protected String status = "stopped";
-    protected double fullLoadEUt;
     protected long producedEUt;
     protected long sentEUt;
     protected long discardedEUt;
     protected boolean powerLimited;
-    protected double inputLitresPerTick;
-    protected double outputLitresPerTick;
     private double energyFraction;
-    private boolean hadStructure;
     private boolean wirelessUpgrade;
     private UUID wirelessOwner;
-    // Prepaid operating power in EU/t, not total EU for the processing cycle; excludes startup.
-    protected double operatingEUt;
-    protected boolean cycleAdvancesStartup = true;
-    private List<FluidStack> cycleFluids;
-    private final List<Runnable> outputCommits = new ArrayList<>();
     private final List<MTEHatch> cycleDynamos = new ArrayList<>();
 
     protected ThermonuclearMultiblockBase(int id, String name, String regional) {
@@ -137,17 +116,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return true;
     }
 
-    protected abstract boolean processCycle();
-
-    protected abstract int startupTicks();
-
-    protected abstract int decayTicks();
-
     public abstract String nameKey();
 
     public abstract Map<String, String> displayInfo();
-
-    protected void beforeProcessingCycle() {}
 
     @Override
     public String getLocalName() {
@@ -221,163 +192,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         fixAllIssues();
     }
 
-    @Override
-    public void onPostTick(IGregTechTileEntity tile, long tick) {
-        if (!tile.isServerSide()) {
-            super.onPostTick(tile, tick);
-            return;
-        }
-        boolean formed = mMachine || hadStructure;
-        double previousStartup = startup.get();
-        running = false;
-        producedEUt = sentEUt = discardedEUt = 0;
-        powerLimited = false;
-        super.onPostTick(tile, tick);
-        if (mStartUpCheck >= 0) {
-            status = "checking";
-            tile.setActive(false);
-            return;
-        }
-        if (formed && !mMachine) startup.clear();
-        hadStructure = mMachine;
-        if (!running) {
-            if (mMaxProgresstime <= 0) startup.decay(decayTicks());
-            if (!mMachine) status = "structure";
-            else if (!tile.isAllowedToWork()) status = "stopped";
-            if (mMaxProgresstime <= 0) inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
-        }
-        tile.setActive(running);
-        if (startup.get() != previousStartup) markDirty();
-    }
-
-    @Override
-    protected void runMachine(IGregTechTileEntity tile, long tick) {
-        if (!tile.isAllowedToWork()) {
-            mMaxProgresstime = mProgresstime = 0;
-            operatingEUt = 0;
-            return;
-        }
-        super.runMachine(tile, tick);
-    }
-
-    @Override
-    public final CheckRecipeResult checkProcessing() {
-        operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
-        cycleAdvancesStartup = true;
-        outputCommits.clear();
-        beforeProcessingCycle();
-        if (!processCycle()) return failureResult();
-        mMaxProgresstime = CYCLE_TICKS;
-        mProgresstime = 0;
-        mEUt = 0;
-        mEfficiency = 10000;
-        mEfficiencyIncrease = 10000;
-        mOutputItems = null;
-        mOutputFluids = null;
-        status = "running";
-        return operatingEUt > 0 ? CheckRecipeResultRegistry.GENERATING : CheckRecipeResultRegistry.SUCCESSFUL;
-    }
-
-    private CheckRecipeResult failureResult() {
-        return switch (status) {
-            case "fuel", "steam" -> CheckRecipeResultRegistry.NO_FUEL_FOUND;
-            case "spent_full" -> CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
-            case "output_full" -> CheckRecipeResultRegistry.FLUID_OUTPUT_FULL;
-            default -> SimpleCheckRecipeResult.ofFailure("thermonuclear.status." + status);
-        };
-    }
-
-    @Override
-    public void startRecipeProcessing() {
-        super.startRecipeProcessing();
-        cycleFluids = new ArrayList<>(getStoredFluids());
-        for (IDualInputHatch hatch : mDualInputHatches) {
-            cycleFluids.addAll(Arrays.asList(hatch.getAllFluids()));
-        }
-    }
-
-    protected final boolean processIdleCycle(BooleanSupplier processor) {
-        operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
-        cycleAdvancesStartup = false;
-        outputCommits.clear();
-        beforeProcessingCycle();
-        CheckRecipeResult previousResult = checkRecipeResult;
-        try {
-            startRecipeProcessing();
-            try {
-                checkRecipeResult = SimpleCheckRecipeResult.ofFailure("thermonuclear.status.processing_failed");
-                checkRecipeResult = processor.getAsBoolean() ? CheckRecipeResultRegistry.SUCCESSFUL : failureResult();
-            } finally {
-                endRecipeProcessing();
-            }
-            return checkRecipeResult.wasSuccessful();
-        } finally {
-            // Cooling a stopped machine must not replace its production/shutdown diagnostic.
-            checkRecipeResult = previousResult;
-        }
-    }
-
-    @Override
-    public void endRecipeProcessing() {
-        try {
-            super.endRecipeProcessing();
-            if (checkRecipeResult.wasSuccessful()) {
-                outputCommits.forEach(Runnable::run);
-            } else {
-                mMaxProgresstime = mProgresstime = 0;
-                operatingEUt = 0;
-            }
-            updateSlots();
-            for (var hatch : mInputHatches) if (hatch.isValid()) hatch.markDirty();
-            for (var bus : mInputBusses) if (bus.isValid()) bus.markDirty();
-            for (var hatch : mDualInputHatches) {
-                if (((MetaTileEntity) hatch).isValid()) hatch.markDirty();
-            }
-        } finally {
-            outputCommits.clear();
-            cycleFluids = null;
-        }
-    }
-
-    protected final void commitOutput(Runnable commit) {
-        outputCommits.add(commit);
-    }
-
     protected final boolean hasFluidInputs() {
         return !mInputHatches.isEmpty() || mDualInputHatches.stream()
             .anyMatch(IDualInputHatch::supportsFluids);
-    }
-
-    protected final List<ItemStack> cycleItems() {
-        List<ItemStack> items = new ArrayList<>();
-        for (IDualInputHatch hatch : mDualInputHatches) {
-            items.addAll(Arrays.asList(hatch.getAllItems()));
-        }
-        Set<GTUtility.ItemId> meItems = new HashSet<>();
-        for (MTEHatchInputBus bus : mInputBusses) {
-            if (!bus.isValid()) continue;
-            // Keep hatch/slot traversal stable even when multiple ME buses expose the same stock.
-            for (int slot = 0; slot < bus.getSizeInventory(); slot++) {
-                ItemStack stack = bus.getStackInSlot(slot);
-                if (stack == null || stack.stackSize <= 0) continue;
-                if (bus instanceof MTEHatchInputBusME && !meItems.add(GTUtility.ItemId.createNoCopy(stack))) continue;
-                items.add(stack);
-            }
-        }
-        return items;
-    }
-
-    @Override
-    public boolean onRunningTick(ItemStack stack) {
-        if (operatingEUt > 0 && !checkWirelessOwner()) return false;
-        running = true;
-        status = "running";
-        if (operatingEUt > 0) generate(operatingEUt * startup.next(startupTicks()));
-        if (startupTicks() > 0) {
-            if (cycleAdvancesStartup) startup.advance(startupTicks());
-            else startup.decay(decayTicks());
-        }
-        return true;
     }
 
     protected boolean fail(String reason) {
@@ -385,11 +202,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return false;
     }
 
-    protected long available(Fluid fluid) {
-        return availableFromStacks(fluid, cycleFluids);
-    }
-
-    private long availableFromStacks(Fluid fluid, List<FluidStack> fluids) {
+    protected final long availableFromStacks(Fluid fluid, List<FluidStack> fluids) {
         if (fluid == null) return 0;
         FluidStack requested = new FluidStack(fluid, 1);
         long amount = 0;
@@ -429,15 +242,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return fluids;
     }
 
-    protected void consume(Fluid fluid, int amount) {
-        consume(fluid, (long) amount);
-    }
-
-    protected void consume(Fluid fluid, long amount) {
-        consumeFromStacks(fluid, amount, cycleFluids);
-    }
-
-    private void consumeFromStacks(Fluid fluid, long amount, List<FluidStack> fluids) {
+    protected final void consumeFromStacks(Fluid fluid, long amount, List<FluidStack> fluids) {
         if (amount < 0) throw new IllegalArgumentException("Negative fluid consumption");
         FluidStack requested = fluid == null ? null : new FluidStack(fluid, 1);
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -556,25 +361,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     }
 
     @Override
-    public long getEUtForDamageCalc() {
-        // The parent applies wear before onRunningTick, so the reset display counter is not usable here.
-        return (long) Math.min(Long.MAX_VALUE, operatingEUt * startup.next(startupTicks()));
-    }
-
-    @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setBoolean("tnWirelessUpgrade", wirelessUpgrade);
-        nbt.setDouble("tnStartup", startup.get());
         nbt.setDouble("tnEnergyFraction", energyFraction);
-        nbt.setBoolean("tnHadStructure", mMachine || hadStructure);
-        nbt.setInteger("tnCycleVersion", 1);
-        // Legacy keys already store tick-based rates; retain their names and value units.
-        nbt.setDouble("tnCycleEUt", operatingEUt);
-        nbt.setBoolean("tnCycleAdvancesStartup", cycleAdvancesStartup);
-        nbt.setDouble("tnFullLoadEUt", fullLoadEUt);
-        nbt.setDouble("tnInputRate", inputLitresPerTick);
-        nbt.setDouble("tnOutputRate", outputLitresPerTick);
     }
 
     @Override
@@ -582,30 +372,8 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         super.loadNBTData(nbt);
         wirelessUpgrade = usesDynamo() && nbt.getBoolean("tnWirelessUpgrade");
         wirelessOwner = null;
-        startup.restore(nbt.getDouble("tnStartup"));
         energyFraction = StartupProgress.fraction(nbt.getDouble("tnEnergyFraction"));
-        hadStructure = nbt.getBoolean("tnHadStructure");
-        // Only the new 20-tick cycle can resume; old one-tick prototypes have no prepaid cycle.
-        mOutputItems = null;
-        mOutputFluids = null;
-        mEUt = 0;
-        if (nbt.getInteger("tnCycleVersion") == 1 && mMaxProgresstime == CYCLE_TICKS
-            && mProgresstime >= 0
-            && mProgresstime < CYCLE_TICKS) {
-            operatingEUt = finiteRate(nbt.getDouble("tnCycleEUt"));
-            cycleAdvancesStartup = !nbt.hasKey("tnCycleAdvancesStartup") || nbt.getBoolean("tnCycleAdvancesStartup");
-            fullLoadEUt = finiteRate(nbt.getDouble("tnFullLoadEUt"));
-            inputLitresPerTick = finiteRate(nbt.getDouble("tnInputRate"));
-            outputLitresPerTick = finiteRate(nbt.getDouble("tnOutputRate"));
-        } else {
-            mMaxProgresstime = mProgresstime = 0;
-            operatingEUt = 0;
-        }
         fixAllIssues();
-    }
-
-    private static double finiteRate(double value) {
-        return Double.isFinite(value) && value > 0 ? value : 0;
     }
 
     @Override
@@ -618,10 +386,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
-        tag.setBoolean("tnGenerator", usesDynamo());
         tag.setBoolean("tnWirelessUpgrade", usesDynamo() && wirelessUpgrade);
-        tag.setLong("tnProducedEUt", running ? producedEUt : 0);
-        tag.setLong("tnSentEUt", running ? sentEUt : 0);
+        if (usesDynamo()) {
+            tag.setLong("energyUsage", running ? -producedEUt : 0);
+        }
     }
 
     @Override
@@ -629,16 +397,13 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         IWailaConfigHandler config) {
         super.getWailaBody(stack, tooltip, accessor, config);
         NBTTagCompound tag = accessor.getNBTData();
-        if (!tag.getBoolean("tnGenerator")) return;
         if (tag.getBoolean("tnWirelessUpgrade")) {
             tooltip.add(StatCollector.translateToLocal("thermonuclear.gui.wireless"));
         }
-        tooltip.add(StatCollector.translateToLocalFormatted("thermonuclear.waila.sent", tag.getLong("tnSentEUt")));
     }
 
     @Override
     public void onRemoval() {
-        startup.clear();
         energyFraction = 0;
         super.onRemoval();
     }
@@ -651,14 +416,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         boolean processingFailed = !running && (status.equals("running")) && !checkRecipeResult.wasSuccessful();
         info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
         return info;
-    }
-
-    protected final void addStartupInfo(Map<String, String> info) {
-        info.put("startup", decimal(startup.get() * 100));
-    }
-
-    protected final void addGenerationInfo(Map<String, String> info) {
-        info.put("full_load", decimal(fullLoadEUt));
     }
 
     public static String formatInfo(String key, String value) {
@@ -702,10 +459,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             + (key.equals("mode") || key.equals("steam_type") ? EnumChatFormatting.GOLD : EnumChatFormatting.AQUA)
             + text
             + EnumChatFormatting.RESET;
-    }
-
-    protected static String decimalPerCycle(double valuePerTick) {
-        return decimal(valuePerTick * CYCLE_TICKS);
     }
 
     public static String decimal(double value) {

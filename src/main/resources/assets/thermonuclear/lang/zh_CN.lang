@@ -1,4 +1,4 @@
-thermonuclear.machine.nuclear.name=核电站主机
+thermonuclear.machine.nuclear.name="华龙一号“
 thermonuclear.machine.heat_exchange.name=热交换站
 thermonuclear.machine.steam_turbine.name=大型蒸汽涡轮机
 thermonuclear.machine.debug_structure.name=调试结构构建机
@@ -18,8 +18,6 @@ item.thermonuclear.depleted_naquadah_fuel_rod_mk_vi.name=枯竭硅岩基燃料�
 thermonuclear.tooltip.naquadah_fuel_rod.depleted=流体灌装机排出对应枯竭燃料，并回收空燃料棒
 thermonuclear.tooltip.wireless_chip.0=右键消耗 1 个芯片永久解锁无线输出
 thermonuclear.tooltip.wireless_chip.1=无动力仓时自动启用
-thermonuclear.tooltip.wireless.0=§b无线输出升级§7：使用本模组无线升级芯片右键主机解锁，拆机保留升级
-thermonuclear.tooltip.wireless.1=无动力仓时自动无线输出至无线电网；安装动力仓则使用有线输出
 thermonuclear.chat.wireless.installed=无线升级已安装：无动力仓时自动启动。
 thermonuclear.chat.wireless.already=本主机已安装无线升级，不消耗额外芯片。
 thermonuclear.gui.wireless=§5已启用无线模式
@@ -103,49 +101,6 @@ thermonuclear.turbine.fuel.ultrasupercritical=超超临界蒸汽
 fluid.thermonuclear.ultrasupercriticalsteam=超超临界蒸汽
 thermonuclear.tooltip.prototype=数值设计尚不完善,如有问题欢迎修改
 thermonuclear.tooltip.mod=热核扩展 | Thermonuclear Expansion [TNC]
-thermonuclear.tooltip.breeding.0=§b可选增殖功能§7：安装增殖输入／输出总线，可以转换大量元素
-thermonuclear.tooltip.breeding.1=增殖燃料棒存储与普通燃料棒独立，两者存放上限一致，受燃料棒方块等级影响
-thermonuclear.tooltip.breeding.2=每根增殖棒每周期可获得P点进度。P=运行中燃料棒的总脉冲 × §64§7
-thermonuclear.tooltip.nuclear.0=燃料棒方块 §61—4§7 级每批最大并行：§68 / 32 / 128 / 512§7
-thermonuclear.tooltip.nuclear.1=在并行设置控制里可以设置每批输入的燃料棒数量
-thermonuclear.tooltip.nuclear.2=在输入批次时会优先消耗剩余寿命较短的燃料棒
-thermonuclear.tooltip.nuclear.meltdown=过热不会立即停机；连续过热超过 §610 秒§7 后蒸干堆芯结构水，并将燃料棒方块融为岩浆
-thermonuclear.tooltip.nuclear.3=消耗燃料棒输出电力
-thermonuclear.tooltip.nuclear.direct.title=§b直接发电模式§7
-thermonuclear.tooltip.nuclear.direct.formula.0=发电（EU/t）= §6E × C × P × N × S × M × η§7
-thermonuclear.tooltip.nuclear.direct.formula.1=E：燃料每脉冲基础发电值；M：IC2 核电倍率 × 发电倍率；η：发电效率
-thermonuclear.tooltip.nuclear.heat.title=§b供热模式§7
-thermonuclear.tooltip.nuclear.heat.formula.0=发热（热量/t）= §6C × round[P × (P + 1) / 2 × H] × N × S × M × η × R / 20§7
-thermonuclear.tooltip.nuclear.heat.formula.1=H：燃料基础热值；M：配置供热倍率；η：配置供热效率；R：本周期平均启动倍率
-thermonuclear.tooltip.nuclear.heat_mode=消耗燃料积累堆芯热量，通过冷却介质输出热流体；
-thermonuclear.tooltip.nuclear.cooling=支持 IC2 冷却液、超级冷却液、钾钠合金复合冷却液，输入蒸馏水则产出普通蒸汽
-thermonuclear.tooltip.nuclear.features=§b特性与支持§7
-thermonuclear.tooltip.nuclear.heat_capacity=燃料棒方块 §61—4§7 级热量上限：§650000 / 100000 / 1000000 / 2147483647§7
-thermonuclear.tooltip.nuclear.formula.variables=C：单根燃料棒内燃料单元数；N：当前批次燃料棒数量；S：配置燃耗（周期/秒）
-thermonuclear.tooltip.nuclear.formula.pulses=每单元脉冲 §6P = 1 + floor(C / 2) + 反射脉冲§7；批次超过 §64§7 根时追加配置反射脉冲，否则为 §60§7
-thermonuclear.tooltip.support_any=§a支持多安动力仓 激光仓§7
-thermonuclear.tooltip.heat_exchange.exchange.title=§b换热产汽§7
-thermonuclear.tooltip.heat_exchange.exchange.formula=产汽（L）= 热冷却液（L）× K；K：对应冷却液唯一路径的产汽系数
-thermonuclear.tooltip.heat_exchange.coefficient.ic2=IC2 热冷却液：仅过热蒸汽，K = §6%s§7
-thermonuclear.tooltip.heat_exchange.coefficient.super=热超级冷却液：仅超临界蒸汽，K = §6%s§7
-thermonuclear.tooltip.heat_exchange.coefficient.nak_composite=热钾钠合金复合冷却液：仅超超临界蒸汽，K = §6%s§7
-thermonuclear.tooltip.heat_exchange.features=§b换热机制与操作§7
-thermonuclear.tooltip.heat_exchange.coolant_return=热冷却液与对应冷冷却液按 §61:1§7 返还，不混合不同热流体的产汽量
-thermonuclear.tooltip.heat_exchange.water=每 §6%s L§7 蒸汽消耗 §61 L§7 蒸馏水，预付水耗额度与不足整升的产汽量跨批保留
-thermonuclear.tooltip.heat_exchange.limits=每周期仅处理一种匹配热流体，实际吞吐受热流体、蒸馏水与两路输出空间限制
-thermonuclear.tooltip.heat_exchange.automatic=根据输入热冷却液自动选择唯一蒸汽产物，无需切换蒸汽模式
-thermonuclear.tooltip.steam_turbine.generation.title=§b蒸汽发电§7
-thermonuclear.tooltip.steam_turbine.generation.formula=发电（EU/t）= Q × E × R
-thermonuclear.tooltip.steam_turbine.energy.0=E（EU/L）：普通蒸汽 §6%s§7；过热蒸汽 §6%s§7
-thermonuclear.tooltip.steam_turbine.energy.1=E（EU/L）：超临界蒸汽 §6%s§7；超超临界蒸汽 §6%s§7
-thermonuclear.tooltip.steam_turbine.shaft_limits=低压轴支持普通／过热／超临界蒸汽；高压轴额外支持超超临界蒸汽
-thermonuclear.tooltip.steam_turbine.features=§b发电机制与操作§7
-thermonuclear.tooltip.steam_turbine.variables=Q：实际耗汽量（L/t）；R：本 tick 启动倍率（§60—1§7），无额外配置发电倍率
-thermonuclear.tooltip.steam_turbine.startup=预热时间: §6%s tick§7，停机 §6%s tick§7 后涡轮效率归0
-thermonuclear.tooltip.steam_turbine.power_limits=有线输出受动力仓上限限制；溢出电力丢弃，不减少耗汽；无线输出不受动力仓限制
-thermonuclear.tooltip.steam_turbine.condensation=每 §6%s L§7 蒸汽回收 §61 L§7 蒸馏水，不足整升的余量跨批保留；输出堵塞时停机
-thermonuclear.tooltip.steam_turbine.intake=GUI 可设置每 §6%s tick§7 周期耗汽上限，下周期生效；设为 §60§7 时停止耗汽
-thermonuclear.tooltip.steam_turbine.support=§a支持 多A动力仓 激光仓§7
 thermonuclear.structure.controller=正面中央第二层
 thermonuclear.structure.box.0=尺寸 3×3×3，中空
 thermonuclear.structure.box.1=由主机与 25 个耐热机器外壳构成（仓口替换外壳）
@@ -226,13 +181,10 @@ thermonuclear.status.expansion_capped=已达到当前管道的模块上限（不
 thermonuclear.status.expansion_changed=扩展等级改变，已停机；请手动重启
 thermonuclear.status.expansion_timeout=扩展结构检查错误：超时
 thermonuclear.structure.nuclear.expansion_timeout=扩展结构检查错误：超时
-thermonuclear.tooltip.nuclear.expansion.0=§b连通模块扩展§7：主结构提供 §61§7 个燃料批次，每个有效模块增加 §61§7 个独立批次
 thermonuclear.tooltip.nuclear.expansion.1=主结构钢／钛／钨钢管道分别允许 §61§7／§63§7／§65§7 片扩展模块（不含主结构）
 thermonuclear.tooltip.nuclear.expansion.2=主结构背面与右侧可同时安装模块，模块可向前后左右继续扩展
 thermonuclear.tooltip.nuclear.expansion.3=模块内的燃料棒和管道方块等级必须同主结构一致，否则不作为有效模块
 thermonuclear.tooltip.nuclear.expansion.4=extra显示的结构搭建只是其中一种扩展方式，如何连接模块可以自由发挥
-thermonuclear.tooltip.nuclear.expansion.5=各批独立使用并行设置并记录寿命，可混用不同燃料；总发电与总产热为各批之和
-thermonuclear.tooltip.nuclear.expansion.6=乏燃料未排出时保留批次槽，其他批次继续工作；扩展不增加热容量、冷却能力或增殖池容量
 thermonuclear.structure.nuclear.outlet=主结构钢／钛／钨钢管道支撑（与主结构管道同级，不是外接连接口）
 thermonuclear.structure.nuclear.frames=钢框架
 thermonuclear.structure.nuclear.steel_casings=实心钢机械方块
