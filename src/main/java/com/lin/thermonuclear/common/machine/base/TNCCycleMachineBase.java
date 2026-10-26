@@ -69,6 +69,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         if (mStartUpCheck >= 0) {
             status = "checking";
             tile.setActive(false);
+            syncStartupEfficiency();
             return;
         }
         if (formed && !mMachine) startup.clear();
@@ -80,7 +81,15 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
             if (mMaxProgresstime <= 0) inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
         }
         tile.setActive(running);
+        syncStartupEfficiency();
         if (startup.get() != previousStartup) markDirty();
+    }
+
+    private void syncStartupEfficiency() {
+        // Mirror startup for GT readouts only; generation already applies the startup multiplier.
+        mEfficiency = startupTicks() > 0 ? (int) (startup.get() * 10000)
+            : (running || mMaxProgresstime > 0 ? 10000 : 0);
+        mEfficiencyIncrease = 0;
     }
 
     @Override
@@ -147,6 +156,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
             operatingEUt = fullLoadEUt = inputLitresPerTick = outputLitresPerTick = 0;
             cycleAdvancesStartup = true;
         }
+        syncStartupEfficiency();
     }
 
     private static double finiteRate(double value) {
@@ -156,6 +166,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     @Override
     public void onRemoval() {
         startup.clear();
+        mEfficiency = mEfficiencyIncrease = 0;
         super.onRemoval();
     }
 
@@ -246,7 +257,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
                 mMaxProgresstime = CYCLE_TICKS;
                 mProgresstime = 0;
                 mEUt = 0;
-                mEfficiency = mEfficiencyIncrease = 10000;
+                syncStartupEfficiency();
                 mOutputItems = null;
                 mOutputFluids = null;
                 status = "running";

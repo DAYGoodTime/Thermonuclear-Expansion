@@ -1,5 +1,7 @@
 package com.lin.thermonuclear.common.block;
 
+import com.lin.thermonuclear.Config;
+
 public final class BlockFuelRod extends BlockTieredMachineComponent {
 
     private BlockFuelRod(int tier) {
@@ -13,23 +15,11 @@ public final class BlockFuelRod extends BlockTieredMachineComponent {
     }
 
     public static long heatCapacity(int tier) {
-        return switch (tier) {
-            case 1 -> 100000;
-            case 2 -> 1000000;
-            case 3 -> 100_000_000;
-            case 4 -> Integer.MAX_VALUE;
-            default -> 0;
-        };
+        return tier >= 1 && tier <= 4 ? Config.nuclearPowerPlant.fuelRodHeatCapacityValues[tier - 1] : 0L;
     }
 
     public static int maxParallel(int tier) {
-        return switch (tier) {
-            case 1 -> 8;
-            case 2 -> 32;
-            case 3 -> 128;
-            case 4 -> 512;
-            default -> 0;
-        };
+        return tier >= 1 && tier <= 4 ? Config.nuclearPowerPlant.fuelRodMaxParallel[tier - 1] : 0;
     }
 
     public static BlockFuelRod[] registerTiers() {

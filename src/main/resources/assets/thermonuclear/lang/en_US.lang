@@ -16,7 +16,6 @@ item.thermonuclear.depleted_naquadah_fuel_rod_mk_iii.name=Depleted Naquadah Base
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_iv.name=Depleted Naquadah Based Fuel Rod Mk IV
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_v.name=Depleted Naquadah Based Fuel Rod Mk V
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_vi.name=Depleted Naquadah Based Fuel Rod Mk VI
-thermonuclear.tooltip.naquadah_fuel_rod.depleted=Drain matching depleted fuel in a Fluid Canner and recover the empty fuel rod
 thermonuclear.tooltip.wireless_chip.0=Right-click a Nuclear Power Plant or Large Steam Turbine controller; consumes 1 chip to permanently unlock wireless output
 thermonuclear.tooltip.wireless_chip.1=Without dynamos, generation goes directly to the controller owner's GT wireless energy network
 thermonuclear.chat.wireless.installed=Wireless upgrade installed: without dynamos, power goes to the controller owner's GT wireless energy network.

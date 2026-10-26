@@ -16,7 +16,6 @@ item.thermonuclear.depleted_naquadah_fuel_rod_mk_iii.name=枯竭硅岩基燃料�
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_iv.name=枯竭硅岩基燃料棒 Mk IV
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_v.name=枯竭硅岩基燃料棒 Mk V
 item.thermonuclear.depleted_naquadah_fuel_rod_mk_vi.name=枯竭硅岩基燃料棒 Mk VI
-thermonuclear.tooltip.naquadah_fuel_rod.depleted=流体灌装机排出对应枯竭燃料，并回收空燃料棒
 thermonuclear.tooltip.wireless_chip.0=右键消耗 1 个芯片永久解锁无线输出
 thermonuclear.tooltip.wireless_chip.1=无动力仓时自动启用
 thermonuclear.chat.wireless.installed=无线升级已安装：无动力仓时自动启动。

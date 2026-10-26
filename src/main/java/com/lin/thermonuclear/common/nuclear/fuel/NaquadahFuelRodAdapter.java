@@ -5,7 +5,6 @@ import net.minecraft.item.ItemStack;
 import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.api.FuelRodAdapter;
 import com.lin.thermonuclear.common.item.ItemNaquadahFuelRod;
-import com.lin.thermonuclear.common.loader.ItemLoader;
 
 /** Sealed liquid fuel follows GT single-cell reflection and contributes one breeder pulse per rod. */
 public final class NaquadahFuelRodAdapter implements FuelRodAdapter {
@@ -62,6 +61,6 @@ public final class NaquadahFuelRodAdapter implements FuelRodAdapter {
 
     @Override
     public ItemStack depleted(ItemStack stack) {
-        return new ItemStack(ItemLoader.depletedNaquadahFuelRod(((ItemNaquadahFuelRod) stack.getItem()).tier()));
+        return ((ItemNaquadahFuelRod) stack.getItem()).depletedStack();
     }
 }

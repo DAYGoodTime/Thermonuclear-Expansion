@@ -36,9 +36,9 @@ import com.lin.thermonuclear.Config;
 import com.lin.thermonuclear.Thermonuclear;
 import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.FuelRodAdapter;
+import com.lin.thermonuclear.client.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.common.block.BlockFuelRod;
 import com.lin.thermonuclear.common.block.BlockMachineComponent;
-import com.lin.thermonuclear.client.gui.NuclearPowerPlantGui;
 import com.lin.thermonuclear.common.loader.BlockLoader;
 import com.lin.thermonuclear.common.machine.base.CycleContext;
 import com.lin.thermonuclear.common.machine.base.TNCCycleMachineBase;
@@ -712,7 +712,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         workingFuels.prepareLoad(context.availableItems(), getFuelBatchLimit(), getFuelRodLimit());
         if (workingFuels.workingCount() == 0)
             return coolingOnly(cooled, workingFuels.spentCount() > 0 ? "spent_full" : "fuel");
-        double efficiency = switch (mode){
+        double efficiency = switch (mode) {
             case DIRECT_GENERATION -> Config.nuclearPowerPlant.nuclearDirectEfficiency;
             case HEAT_SUPPLY -> Config.nuclearPowerPlant.nuclearHeatEfficiency;
         };

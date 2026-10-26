@@ -5,6 +5,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import com.lin.thermonuclear.common.nuclear.breeding.RareEarthBreedingRoute;
+import com.lin.thermonuclear.common.registry.NaquadahFuelTier;
 
 public enum TNCItemList {
 
@@ -23,6 +24,18 @@ public enum TNCItemList {
     FuelRodTier3,
     FuelRodTier4,
     WirelessUpgradeChip,
+    NaquadahFuelRodMkI(NaquadahFuelTier.MK_I, false),
+    DepletedNaquadahFuelRodMkI(NaquadahFuelTier.MK_I, true),
+    NaquadahFuelRodMkII(NaquadahFuelTier.MK_II, false),
+    DepletedNaquadahFuelRodMkII(NaquadahFuelTier.MK_II, true),
+    NaquadahFuelRodMkIII(NaquadahFuelTier.MK_III, false),
+    DepletedNaquadahFuelRodMkIII(NaquadahFuelTier.MK_III, true),
+    NaquadahFuelRodMkIV(NaquadahFuelTier.MK_IV, false),
+    DepletedNaquadahFuelRodMkIV(NaquadahFuelTier.MK_IV, true),
+    NaquadahFuelRodMkV(NaquadahFuelTier.MK_V, false),
+    DepletedNaquadahFuelRodMkV(NaquadahFuelTier.MK_V, true),
+    NaquadahFuelRodMkVI(NaquadahFuelTier.MK_VI, false),
+    DepletedNaquadahFuelRodMkVI(NaquadahFuelTier.MK_VI, true),
     CalciumToScandiumBreederRod(RareEarthBreedingRoute.CALCIUM_TO_SCANDIUM, false),
     BredCalciumToScandiumBreederRod(RareEarthBreedingRoute.CALCIUM_TO_SCANDIUM, true),
     StrontiumToYttriumBreederRod(RareEarthBreedingRoute.STRONTIUM_TO_YTTRIUM, false),
@@ -60,15 +73,26 @@ public enum TNCItemList {
 
     private final RareEarthBreedingRoute route;
     private final boolean bred;
+    private final NaquadahFuelTier fuelTier;
+    private final boolean depleted;
     private ItemStack template;
 
     TNCItemList() {
-        this(null, false);
+        this((RareEarthBreedingRoute) null, false);
     }
 
     TNCItemList(RareEarthBreedingRoute route, boolean bred) {
         this.route = route;
         this.bred = bred;
+        this.fuelTier = null;
+        this.depleted = false;
+    }
+
+    TNCItemList(NaquadahFuelTier fuelTier, boolean depleted) {
+        this.route = null;
+        this.bred = false;
+        this.fuelTier = fuelTier;
+        this.depleted = depleted;
     }
 
     public void set(ItemStack stack) {
@@ -122,5 +146,13 @@ public enum TNCItemList {
                 throw new IllegalStateException("Thermonuclear item not yet bound: " + entry.name());
             }
         }
+    }
+
+    public static TNCItemList naquadahFuelRod(NaquadahFuelTier tier, boolean depleted) {
+        if (tier == null) throw new IllegalArgumentException("Fuel tier must not be null");
+        for (TNCItemList entry : values()) {
+            if (entry.fuelTier == tier && entry.depleted == depleted) return entry;
+        }
+        throw new IllegalArgumentException("Unknown naquadah fuel tier: " + tier);
     }
 }

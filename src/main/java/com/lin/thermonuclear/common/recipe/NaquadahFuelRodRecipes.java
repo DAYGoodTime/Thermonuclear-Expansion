@@ -6,7 +6,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
-import com.lin.thermonuclear.common.loader.ItemLoader;
+import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.common.registry.NaquadahFuelTier;
 
 import bartworks.system.material.Werkstoff;
@@ -21,8 +21,10 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
     @Override
     public void loadRecipes() {
         for (NaquadahFuelTier tier : NaquadahFuelTier.values()) {
-            ItemStack workingRod = new ItemStack(ItemLoader.naquadahFuelRod(tier));
-            ItemStack depletedRod = new ItemStack(ItemLoader.depletedNaquadahFuelRod(tier));
+            ItemStack workingRod = TNCItemList.naquadahFuelRod(tier, false)
+                .get(1);
+            ItemStack depletedRod = TNCItemList.naquadahFuelRod(tier, true)
+                .get(1);
             FluidStack fuel = fluid(tier, false);
             FluidStack depletedFuel = fluid(tier, true);
 
@@ -32,7 +34,7 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
                 .fluidInputs(fuel)
                 .itemOutputs(workingRod.copy())
                 .duration(10 * SECONDS)
-                .eut(TierEU.RECIPE_LV)
+                .eut(TierEU.RECIPE_ZPM)
                 .addTo(RecipeMaps.cannerRecipes);
 
             // Only depleted items can be drained; used working rods cannot recover fresh fuel.
@@ -41,8 +43,8 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
                 .itemOutputs(ItemList.IC2_Fuel_Rod_Empty.get(1))
                 .fluidOutputs(depletedFuel)
                 .duration(10 * SECONDS)
-                .eut(TierEU.RECIPE_LV)
-                .addTo(RecipeMaps.cannerRecipes);
+                .eut(TierEU.RECIPE_ZPM)
+                .addTo(RecipeMaps.centrifugeRecipes);
 
         }
     }

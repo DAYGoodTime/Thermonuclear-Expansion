@@ -2,13 +2,13 @@ package com.lin.thermonuclear.common.loader;
 
 import java.util.Map;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 
 import com.gtnewhorizon.gtnhlib.util.AnimatedTooltipHandler;
 import com.lin.thermonuclear.api.TNCItemList;
-import com.lin.thermonuclear.common.item.ItemDepletedNaquadahFuelRod;
 import com.lin.thermonuclear.common.item.ItemNaquadahFuelRod;
 import com.lin.thermonuclear.common.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.common.item.ItemWirelessUpgradeChip;
@@ -16,9 +16,6 @@ import com.lin.thermonuclear.common.nuclear.breeding.RareEarthBreedingRoute;
 import com.lin.thermonuclear.common.registry.NaquadahFuelTier;
 
 public final class ItemLoader {
-
-    private static Map<NaquadahFuelTier, ItemNaquadahFuelRod> naquadahFuelRods;
-    private static Map<NaquadahFuelTier, ItemDepletedNaquadahFuelRod> depletedNaquadahFuelRods;
 
     private ItemLoader() {}
 
@@ -36,8 +33,14 @@ public final class ItemLoader {
             TNCItemList.rareEarthRod(route, true)
                 .set(bredRareEarthRods.get(route));
         }
-        depletedNaquadahFuelRods = ItemDepletedNaquadahFuelRod.registerVariants();
-        naquadahFuelRods = ItemNaquadahFuelRod.registerVariants();
+        Map<NaquadahFuelTier, ItemNaquadahFuelRod> naquadahFuelRods = ItemNaquadahFuelRod.registerVariants();
+        for (NaquadahFuelTier tier : NaquadahFuelTier.values()) {
+            ItemNaquadahFuelRod rod = naquadahFuelRods.get(tier);
+            TNCItemList.naquadahFuelRod(tier, false)
+                .set(rod);
+            TNCItemList.naquadahFuelRod(tier, true)
+                .set(rod.depletedStack());
+        }
     }
 
     public static ItemStack register(ItemStack stack) {
@@ -52,14 +55,12 @@ public final class ItemLoader {
     }
 
     public static ItemNaquadahFuelRod naquadahFuelRod(NaquadahFuelTier tier) {
-        ItemNaquadahFuelRod item = naquadahFuelRods.get(tier);
-        if (item == null) throw new IllegalArgumentException("Unknown naquadah fuel tier: " + tier);
-        return item;
+        return (ItemNaquadahFuelRod) TNCItemList.naquadahFuelRod(tier, false)
+            .getItem();
     }
 
-    public static ItemDepletedNaquadahFuelRod depletedNaquadahFuelRod(NaquadahFuelTier tier) {
-        ItemDepletedNaquadahFuelRod item = depletedNaquadahFuelRods.get(tier);
-        if (item == null) throw new IllegalArgumentException("Unknown depleted naquadah fuel tier: " + tier);
-        return item;
+    public static Item depletedNaquadahFuelRod(NaquadahFuelTier tier) {
+        return TNCItemList.naquadahFuelRod(tier, true)
+            .getItem();
     }
 }

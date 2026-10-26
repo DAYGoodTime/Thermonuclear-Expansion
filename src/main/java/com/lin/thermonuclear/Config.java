@@ -9,7 +9,9 @@ import net.minecraftforge.common.config.Configuration;
 import com.gtnewhorizon.gtnhlib.config.Config.Comment;
 import com.gtnewhorizon.gtnhlib.config.Config.DefaultDouble;
 import com.gtnewhorizon.gtnhlib.config.Config.DefaultInt;
+import com.gtnewhorizon.gtnhlib.config.Config.DefaultIntList;
 import com.gtnewhorizon.gtnhlib.config.Config.DefaultString;
+import com.gtnewhorizon.gtnhlib.config.Config.DefaultStringList;
 import com.gtnewhorizon.gtnhlib.config.Config.Ignore;
 import com.gtnewhorizon.gtnhlib.config.Config.LangKey;
 import com.gtnewhorizon.gtnhlib.config.Config.Name;
@@ -19,7 +21,6 @@ import com.gtnewhorizon.gtnhlib.config.Config.RequiresMcRestart;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigFieldParser;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
-
 
 @com.gtnewhorizon.gtnhlib.config.Config(modid = Thermonuclear.MODID, category = "")
 @Comment("原型测试配置，不代表最终 GTNH 平衡。修改后需要重启游戏或服务器。")
@@ -58,6 +59,18 @@ public class Config {
 
     public static class NuclearPowerPlant {
 
+        @Comment("燃料棒方块 1—4 级热容量，按等级顺序填写恰好四个十进制正整数，最大 9223372036854775807。")
+        @DefaultStringList({ "100000", "1000000", "2147483647", "9223372036854775807" })
+        public String[] fuelRodHeatCapacity;
+
+        // GTNHLib 0.11.52 cannot parse long[]; keep exact integers without a double conversion.
+        @Ignore
+        public long[] fuelRodHeatCapacityValues;
+
+        @Comment("燃料棒方块 1—4 级最大并行，按等级顺序填写恰好四个正整数，最大 2147483647。")
+        @DefaultIntList({ 8, 32, 128, 512 })
+        public int[] fuelRodMaxParallel;
+
         @Comment("核电站直接发电模式基准效率")
         @DefaultDouble(1)
         @RangeDouble(min = 0.001, max = 1)
@@ -68,11 +81,6 @@ public class Config {
         @RangeDouble(min = 0.001, max = 1)
         public double nuclearHeatEfficiency;
 
-        @Comment("旧热缓存容量兼容参数，当前不读取；热量上限由燃料棒方块等级决定。")
-        @DefaultInt(50000)
-        @RangeInt(min = 1, max = Integer.MAX_VALUE)
-        public int nuclearHeatCapacity;
-
         @Comment("停机且未完成流体冷却时的自然散热，单位：热量/秒。设为 0 关闭自然散热。")
         @DefaultDouble(100)
         @RangeDouble(min = 0, max = Integer.MAX_VALUE)
@@ -82,11 +90,6 @@ public class Config {
         @DefaultDouble(1)
         @RangeDouble(min = 0.001, max = 100)
         public double fuelCyclesPerSecond;
-
-        @Comment("旧管道等级批量兼容参数，当前不读取；装载上限由燃料棒方块等级与电源面板并行设置决定。")
-        @DefaultInt(256)
-        @RangeInt(min = 1, max = 256)
-        public int nuclearFuelRodsPerPipeTier;
 
         @Name("ic2CoolantLitresPerFuelHeatUnit")
         @Comment("核电站每单位缓存热量加热的 IC2 冷却液，单位：L/热量。")
@@ -167,10 +170,33 @@ public class Config {
         ConfigurationManager.registerConfig(Config.class);
         Configuration configuration = ConfigurationManager.getConfig(Config.class);
         applyDefaultsAndValidate(Config.class, null, configuration, "", resetDefaults);
+        validateFuelRodConfiguration();
         configuration.save();
         if (resetDefaults) {
             Thermonuclear.LOG.info("Development configuration: saved values replaced with annotated defaults.");
         }
+    }
+
+    private static void validateFuelRodConfiguration() {
+        String[] capacities = nuclearPowerPlant.fuelRodHeatCapacity;
+        int[] parallels = nuclearPowerPlant.fuelRodMaxParallel;
+        if (capacities.length != 4 || parallels.length != 4) {
+            throw new ConfigException(
+                "fuelRodHeatCapacity and fuelRodMaxParallel must each contain exactly four tiers.");
+        }
+        long[] values = new long[4];
+        for (int i = 0; i < values.length; i++) {
+            try {
+                values[i] = Long.parseLong(capacities[i].trim());
+            } catch (NumberFormatException e) {
+                throw new ConfigException("Invalid long fuelRodHeatCapacity at tier " + (i + 1) + ": " + capacities[i]);
+            }
+            if (values[i] <= 0 || parallels[i] <= 0) {
+                throw new ConfigException(
+                    "Fuel rod heat capacity and max parallel must be positive at tier " + (i + 1));
+            }
+        }
+        nuclearPowerPlant.fuelRodHeatCapacityValues = values;
     }
 
     private static void migrateLegacyConfiguration(File configFile) {
