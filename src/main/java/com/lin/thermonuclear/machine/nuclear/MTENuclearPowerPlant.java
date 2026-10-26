@@ -10,14 +10,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
@@ -31,6 +28,7 @@ import com.gtnewhorizon.structurelib.alignment.enumerable.Rotation;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.IStructureWalker;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.Config;
@@ -49,17 +47,12 @@ import com.lin.thermonuclear.registry.StructureChannels;
 import com.lin.thermonuclear.registry.WorkingFluids;
 import com.lin.thermonuclear.utils.StartupProgress;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
-import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
@@ -76,29 +69,23 @@ import ic2.core.init.MainConfig;
 import ic2.core.util.ConfigUtil;
 import tectech.thing.metaTileEntity.hatch.MTEHatchDynamoMulti;
 
-public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant>
-    implements INEIPreviewModifier {
+public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTENuclearPowerPlant> {
 
     private static final String PIECE = "nuclear_power_plant";
     private static final int OFFSET_X = NuclearPowerPlantStructure.OFFSET_X;
     private static final int OFFSET_Y = NuclearPowerPlantStructure.OFFSET_Y;
     private static final int OFFSET_Z = NuclearPowerPlantStructure.OFFSET_Z;
     private static final Casings CASING = Casings.HeatProofMachineCasing;
-    // The containment casing currently reuses GT's reinforced-concrete texture.
     private static final int CONTAINMENT_TEXTURE = 221;
     private static final String[][] SHAPE = NuclearPowerPlantStructure.SHAPE;
-    private static final List<int[]> COOLANT_OFFSETS = structureOffsets('A');
     private static final List<int[]> WATER_OFFSETS = structureOffsets('G');
     private static final List<int[]> FUEL_ROD_OFFSETS = structureOffsets('D');
-    private static final List<int[]> SERVICE_OFFSETS = structureOffsets('B');
     private static final List<Casings> PIPE_CASINGS = new ArrayList<>(
         Arrays.asList(Casings.SteelPipeCasing, Casings.TitaniumPipeCasing, Casings.TungstensteelPipeCasing));
     private static final IStructureDefinition<MTENuclearPowerPlant> STRUCTURE = StructureDefinition
         .<MTENuclearPowerPlant>builder()
         .addShape(PIECE, SHAPE)
         .addShape(NuclearModuleStructure.MODULE, NuclearModuleStructure.shape())
-        // BR6343 discovers named sliders by enumerating all definition elements, not construct() branches.
-        // This metadata-only fragment exposes exactly three extra levels; it is never checked or built.
         .addShape("nuclear_preview_levels", new String[][] { { "X" } })
         .addElement('X', StructureChannels.EXTRA.use(pipeChoices(false)))
         .addElement('P', tieredPipe())
@@ -110,54 +97,51 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         .addElement('C', tieredPipe())
         .addElement('D', tieredFuelRod())
         .addElement('F', StructureUtility.ofBlock(BlockLoader.containmentCasing, 0))
-        .addElement('G', GTStructureUtility.ofAnyWater())
+        .addElement('G', StructureUtility.ofChain(GTStructureUtility.ofAnyWater(false), StructureUtility.isAir()))
         .addElement(
             'B',
-            StructureUtility.ofChain(
-                servicePreviewPlacement(),
-                GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
-                    .anyOf(
-                        HatchElement.InputBus,
-                        HatchElement.OutputBus,
-                        HatchElement.Dynamo,
-                        HatchElement.ExoticDynamo,
-                        HatchElement.LaserSource,
-                        HatchElement.Maintenance)
-                    .adder(MTENuclearPowerPlant::addServiceHatch)
-                    .hatchItemFilter(machine -> stack -> isServiceHatchCandidate(ItemMachines.getMetaTileEntity(stack)))
-                    .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
-                    .casingIndex(CONTAINMENT_TEXTURE)
-                    .hint(1)
-                    .buildAndChain(BlockLoader.containmentCasing, 0)))
+            GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
+                .atLeast(
+                    HatchElement.InputBus,
+                    HatchElement.OutputBus,
+                    HatchElement.Dynamo.or(HatchElement.ExoticDynamo)
+                        .or(HatchElement.LaserSource),
+                    HatchElement.Maintenance)
+                .adder(MTENuclearPowerPlant::addServiceHatch)
+                .hatchItemFilterAnd(machine -> stack -> {
+                    IMetaTileEntity hatch = ItemMachines.getMetaTileEntity(stack);
+                    // Breeder buses are optional; they cannot satisfy the ordinary fuel IO counts.
+                    return !(hatch instanceof IDualInputHatch) && !(hatch instanceof MTEBreederInputBus)
+                        && !(hatch instanceof MTEBreederOutputBus);
+                })
+                .shouldSkip((machine, tile) -> tile != null && isServiceHatchCandidate(tile.getMetaTileEntity()))
+                .casingIndex(CONTAINMENT_TEXTURE)
+                .hint(1)
+                .buildAndChain(BlockLoader.containmentCasing, 0))
         .addElement(
             'A',
-            StructureUtility.ofChain(
-                GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
-                    .anyOf(HatchElement.InputHatch, HatchElement.OutputHatch)
-                    .adder(MTENuclearPowerPlant::addCoolantHatch)
-                    .hatchItemFilterAnd(
-                        machine -> stack -> !(ItemMachines.getMetaTileEntity(stack) instanceof IDualInputHatch)
-                            && machine.isCoolantConstructionCandidate(stack))
-                    .casingIndex(CONTAINMENT_TEXTURE)
-                    .hint(2)
-                    .exclusive()
-                    .build(),
-                coolantPreviewPlacement()))
+            GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
+                .atLeast(HatchElement.InputHatch, HatchElement.OutputHatch)
+                .adder(MTENuclearPowerPlant::addCoolantHatch)
+                .hatchItemFilterAnd(
+                    machine -> stack -> !(ItemMachines.getMetaTileEntity(stack) instanceof IDualInputHatch))
+                .casingIndex(CONTAINMENT_TEXTURE)
+                .hint(2)
+                .exclusive()
+                .build())
         .build();
 
     private int fuelRodTier = -1;
     private int pipeTier = -1;
     private final List<MTEBreederInputBus> breederInputs = new ArrayList<>();
     private final List<MTEBreederOutputBus> breederOutputs = new ArrayList<>();
-    private boolean constructing;
-    private boolean previewConstruction;
-    private EntityPlayer previewPlayer;
     private int expansionLevel = 1;
     private boolean expansionKnown;
     private boolean expansionValidated;
     private String expansionState = "checking";
     private NuclearModuleSearch.Result expansionScan;
     private Set<Position> validatedModules = java.util.Collections.emptySet();
+    private boolean needsWaterFill;
 
     private static IStructureElement<MTENuclearPowerPlant> tieredPipe() {
         return StructureChannels.REACTOR_PIPE.use(pipeChoices(true));
@@ -315,109 +299,6 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         super.runMachine(tile, tick);
     }
 
-    private static IStructureElement<MTENuclearPowerPlant> servicePreviewPlacement() {
-        return new IStructureElement<>() {
-
-            @Override
-            public boolean check(MTENuclearPowerPlant machine, World world, int x, int y, int z) {
-                return false;
-            }
-
-            @Override
-            public boolean spawnHint(MTENuclearPowerPlant machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                return false;
-            }
-
-            @Override
-            public boolean placeBlock(MTENuclearPowerPlant machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                if (!machine.previewConstruction || !machine.constructing
-                    || machine.previewPlayer == null
-                    || world instanceof WorldServer
-                    || !world.isAirBlock(x, y, z)) return false;
-                // Fixed minimum legal fuel IO + dynamo; remaining service slots use containment casings.
-                ItemList[] hatches = { ItemList.Hatch_Input_Bus_ULV, ItemList.Hatch_Output_Bus_ULV,
-                    ItemList.Hatch_Dynamo_ULV };
-                for (int i = 0; i < hatches.length; i++) {
-                    int[] offset = SERVICE_OFFSETS.get(i);
-                    int[] p = machine.worldPosition(new Position(offset[0], offset[1], offset[2]));
-                    if (p[0] == x && p[1] == y && p[2] == z)
-                        return machine.placePreviewHatch(hatches[i].get(1), world, x, y, z);
-                }
-                return world.setBlock(x, y, z, BlockLoader.containmentCasing, 0, 2);
-            }
-        };
-    }
-
-    private boolean placePreviewHatch(ItemStack representative, World world, int x, int y, int z) {
-        if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
-            representative,
-            previewPlayer,
-            world,
-            x,
-            y,
-            z,
-            ForgeDirection.UP.ordinal(),
-            0.5f,
-            0.5f,
-            0.5f,
-            0)) return false;
-        if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
-            tile.setFrontFacing(getExtendedFacing().getRelativeForwardInWorld());
-            if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONTAINMENT_TEXTURE);
-        }
-        return true;
-    }
-
-    private static IStructureElement<MTENuclearPowerPlant> coolantPreviewPlacement() {
-        return new IStructureElement<>() {
-
-            @Override
-            public boolean check(MTENuclearPowerPlant machine, World world, int x, int y, int z) {
-                // A rendering fallback must never introduce an alternative valid structure block.
-                return false;
-            }
-
-            @Override
-            public boolean spawnHint(MTENuclearPowerPlant machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                return false;
-            }
-
-            @Override
-            public boolean placeBlock(MTENuclearPowerPlant machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                if (!machine.previewConstruction || !machine.constructing
-                    || machine.previewPlayer == null
-                    || machine.previewPlayer.getUniqueID() == null
-                    || world instanceof WorldServer
-                    || !world.isAirBlock(x, y, z)) return false;
-                // GT's normal hatch placer needs a WorldServer fake player; NEI's DummyWorld cannot supply one.
-                ItemStack representative = machine.coolantConstructionStack();
-                if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
-                    representative,
-                    machine.previewPlayer,
-                    world,
-                    x,
-                    y,
-                    z,
-                    ForgeDirection.UP.ordinal(),
-                    0.5f,
-                    0.5f,
-                    0.5f,
-                    0)) return false;
-                if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
-                    tile.setFrontFacing(
-                        machine.getExtendedFacing()
-                            .getRelativeForwardInWorld());
-                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CONTAINMENT_TEXTURE);
-                }
-                return true;
-            }
-        };
-    }
-
     private static List<int[]> structureOffsets(char element) {
         List<int[]> offsets = new ArrayList<>();
         for (int z = 0; z < SHAPE.length; z++) {
@@ -431,45 +312,14 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         return offsets;
     }
 
-    private boolean hasConstructedCoolantInput() {
-        IGregTechTileEntity controller = getBaseMetaTileEntity();
-        if (controller == null) return false;
-        int[] worldOffset = new int[3];
-        for (int[] offset : COOLANT_OFFSETS) {
-            getExtendedFacing().getWorldOffset(offset, worldOffset);
-            if (controller.getWorld()
-                .getTileEntity(
-                    controller.getXCoord() + worldOffset[0],
-                    controller.getYCoord() + worldOffset[1],
-                    controller.getZCoord() + worldOffset[2]) instanceof IGregTechTileEntity tile) {
-                IMetaTileEntity hatch = tile.getMetaTileEntity();
-                if (!(hatch instanceof IDualInputHatch) && HatchElement.InputHatch.matchesHatch(hatch)) return true;
-            }
-        }
-        return false;
-    }
-
     private static boolean isServiceHatchCandidate(IMetaTileEntity hatch) {
         if (hatch == null || hatch instanceof IDualInputHatch) return false;
-        // .133 ExoticDynamo has no candidate classes; withMteClass still delegates matchesHatch to that empty list.
+        // .205 ExoticDynamo has no candidate classes; preserve already installed multi-amp dynamos.
         return HatchElement.InputBus.matchesHatch(hatch) || HatchElement.OutputBus.matchesHatch(hatch)
             || HatchElement.Dynamo.matchesHatch(hatch)
             || hatch instanceof MTEHatchDynamoMulti
             || HatchElement.LaserSource.matchesHatch(hatch)
             || HatchElement.Maintenance.matchesHatch(hatch);
-    }
-
-    private boolean isCoolantConstructionCandidate(ItemStack stack) {
-        if (!constructing) return true;
-        // Creative/NEI construction uses one ULV hatch of each kind; candidate queries remain tier-independent.
-        // Preview placement cannot rely on a complete structure recheck; inspect the two real A positions.
-        ItemStack representative = coolantConstructionStack();
-        return stack != null && stack.getItem() == representative.getItem()
-            && stack.getItemDamage() == representative.getItemDamage();
-    }
-
-    private ItemStack coolantConstructionStack() {
-        return (hasConstructedCoolantInput() ? ItemList.Hatch_Output_ULV : ItemList.Hatch_Input_ULV).get(1);
     }
 
     public int getFuelRodLimit() {
@@ -542,6 +392,7 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
 
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
+        needsWaterFill = false;
         expansionValidated = false;
         expansionState = "structure";
         resetMachineTier();
@@ -561,34 +412,41 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         if (errors.isEmpty()) {
             scanExpansion(tile, errors);
+            needsWaterFill = errors.isEmpty();
         }
-    }
-
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void onPreviewConstruct(ItemStack trigger) {
-        // ItemMachines assigns this owner before input hatches look up UUID-keyed default-mode preferences.
-        previewPlayer = Minecraft.getMinecraft().thePlayer;
-        previewConstruction = true;
-        if (previewPlayer != null && previewPlayer.getUniqueID() == null) previewPlayer = null;
     }
 
     @Override
     public void construct(ItemStack stack, boolean hintsOnly) {
-        constructing = true;
-        try {
-            buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
-            // The channel selects a convenient example layout, not the allowed module connections.
-            List<Position> examples = NuclearModuleStructure
-                .preview(ChannelDataAccessor.getChannelData(stack, StructureChannels.EXTRA.get()));
-            for (Position origin : examples) {
-                buildModule(stack, hintsOnly, origin);
-            }
-        } finally {
-            constructing = false;
-            previewConstruction = false;
-            previewPlayer = null;
+        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
+        // The channel selects a convenient example layout, not the allowed module connections.
+        List<Position> examples = NuclearModuleStructure
+            .preview(ChannelDataAccessor.getChannelData(stack, StructureChannels.EXTRA.get()));
+        for (Position origin : examples) {
+            buildModule(stack, hintsOnly, origin);
         }
+    }
+
+    @Override
+    public int survivalConstruct(ItemStack stack, int elementBudget, ISurvivalBuildEnvironment env) {
+        // Main formation does not imply that the extra channel's example modules have been built.
+        int built = survivalBuildPiece(PIECE, stack, OFFSET_X, OFFSET_Y, OFFSET_Z, elementBudget, env, false, true);
+        if (built >= 0) return built;
+        for (Position origin : NuclearModuleStructure
+            .preview(ChannelDataAccessor.getChannelData(stack, StructureChannels.EXTRA.get()))) {
+            built = survivalBuildPiece(
+                NuclearModuleStructure.MODULE,
+                stack,
+                -origin.x,
+                -origin.y,
+                -origin.z,
+                elementBudget,
+                env,
+                false,
+                true);
+            if (built >= 0) return built;
+        }
+        return -1;
     }
 
     private void buildModule(ItemStack stack, boolean hintsOnly, Position origin) {
@@ -1137,6 +995,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         super.onPostTick(tile, tick);
         if (!tile.isServerSide()) return;
         if (mStartUpCheck >= 0) return;
+        if (mMachine && needsWaterFill
+            && tick % 20 == 0
+            && GTStructureUtility
+                .fillStructureWithWater(tile, getExtendedFacing(), SHAPE, OFFSET_X, OFFSET_Y, OFFSET_Z, 'G')) {
+            needsWaterFill = false;
+        }
         if (!mMachine) {
             stoppedInputRate = stoppedOutputRate = 0;
             if (meltdownTimer.elapsedTicks() != 0) {
@@ -1228,6 +1092,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
         }
         stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.meltdown"));
         mMachine = false;
+        // Melting removes the structure water deliberately; never refill a destroyed core.
+        needsWaterFill = false;
         expansionValidated = false;
         expansionState = "structure";
         fuelRodTier = -1;
@@ -1272,46 +1138,8 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
     }
 
     @Override
-    public String[] displayKeys() {
-        // Keep sync identities stable while the same open GUI switches operating mode.
-        List<String> keys = new ArrayList<>(
-            Arrays.asList(
-                "status",
-                "mode",
-                "expansion_count",
-                "fuel_rod_tier",
-                "fuel_limit",
-                "fuel_batches",
-                "startup",
-                "full_load",
-                "fuel_count"));
-        for (int i = 1; i <= 1 + NuclearModuleStructure.MAX_MODULES; i++) {
-            keys.add("fuel_batch_" + i);
-            keys.add("fuel_batch_remaining_" + i);
-        }
-        keys.addAll(
-            Arrays.asList(
-                "heat",
-                "heat_capacity",
-                "heat_rate",
-                "coolant",
-                "heat_limit",
-                "water_limit",
-                "coolant_input",
-                "hot_output",
-                "water_input",
-                "steam_output",
-                "pending_spent",
-                "breeder_count",
-                "breeder_rate",
-                "breeder_progress"));
-        return keys.toArray(new String[0]);
-    }
-
-    @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
-        addGenerationInfo(info);
         info.put("mode", mode.translationKey());
         if (expansionValidated) {
             info.put("expansion_count", (expansionLevel - 1) + " / " + NuclearModuleStructure.moduleLimit(pipeTier));
@@ -1320,6 +1148,12 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             info.put("fuel_rod_tier", Integer.toString(getFuelRodTier()));
             info.put("fuel_limit", Integer.toString(getFuelRodLimit()));
         }
+        if (mode == NuclearOperatingMode.DIRECT_GENERATION) {
+            addGenerationInfo(info);
+        } else {
+            addStartupInfo(info);
+            addHeatSupplyInfo(info);
+        }
         info.put("fuel_batches", workingFuels.batches.size() + " / " + getFuelBatchLimit());
         info.put("fuel_count", Integer.toString(workingFuels.workingCount()));
         for (int i = 0; i < workingFuels.batches.size(); i++) {
@@ -1327,34 +1161,36 @@ public final class MTENuclearPowerPlant extends ThermonuclearMultiblockBase<MTEN
             info.put("fuel_batch_" + (i + 1), batch.fuel.stackSize + " x " + batch.fuel.getDisplayName());
             if (!batch.spent) info.put("fuel_batch_remaining_" + (i + 1), decimal(batch.remaining()));
         }
-        switch (mode) {
-            case DIRECT_GENERATION:
-                info.put("startup", decimal(100));
-                break;
-            case HEAT_SUPPLY:
-                addStartupInfo(info);
-                info.put("heat", Long.toString(reactorHeat.stored()));
-                info.put("heat_capacity", Long.toString(getHeatCapacity()));
-                info.put("heat_rate", decimalPerCycle(running ? fullLoadHeatRate : 0));
-                info.put(
-                    "coolant",
-                    selectedCoolingFluid == null ? "thermonuclear.recipe.none"
-                        : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
-                            : selectedCoolingFluid.coolant.nameKey());
-                boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
-                if (selectedCoolingFluid != null) {
-                    double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
-                        : selectedCoolingFluid.coolant.coolantPerHeat();
-                    info.put(water ? "water_limit" : "heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
-                    info.put(water ? "water_input" : "coolant_input", decimalPerCycle(inputLitresPerTick));
-                    info.put(water ? "steam_output" : "hot_output", decimalPerCycle(outputLitresPerTick));
-                }
-                break;
-        }
         if (workingFuels.spentCount() > 0) info.put("pending_spent", Integer.toString(workingFuels.spentCount()));
-        info.put("breeder_count", Integer.toString(breederPool.workingCount()));
-        info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
-        info.put("breeder_progress", Float.toString(breederPool.getHighestProgress()));
+        if (breederPool.workingCount() > 0) {
+            info.put("breeder_count", Integer.toString(breederPool.workingCount()));
+            info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
+            info.put("breeder_progress", Float.toString(breederPool.getHighestProgress()));
+        }
         return info;
+    }
+
+    private void addHeatSupplyInfo(Map<String, String> info) {
+        info.put("heat", Long.toString(reactorHeat.stored()));
+        info.put("heat_capacity", Long.toString(getHeatCapacity()));
+        info.put("heat_rate", decimalPerCycle(running ? fullLoadHeatRate : 0));
+        info.put(
+            "coolant",
+            selectedCoolingFluid == null ? "thermonuclear.recipe.none"
+                : selectedCoolingFluid == CoolingFluid.DISTILLED ? "thermonuclear.recipe.distilled"
+                    : selectedCoolingFluid.coolant.nameKey());
+        if (selectedCoolingFluid == null) return;
+        boolean water = selectedCoolingFluid == CoolingFluid.DISTILLED;
+        double litresPerHeat = water ? Config.nuclearPowerPlant.nuclearDistilledWaterPerHeat
+            : selectedCoolingFluid.coolant.coolantPerHeat();
+        if (water) {
+            info.put("water_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
+            info.put("water_input", decimalPerCycle(inputLitresPerTick));
+            info.put("steam_output", decimalPerCycle(outputLitresPerTick));
+        } else {
+            info.put("heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
+            info.put("coolant_input", decimalPerCycle(inputLitresPerTick));
+            info.put("hot_output", decimalPerCycle(outputLitresPerTick));
+        }
     }
 }

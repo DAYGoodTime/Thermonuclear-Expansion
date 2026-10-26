@@ -219,7 +219,6 @@ thermonuclear.gui.fuel_batches=Occupied batch slots / limit (including spent)
 thermonuclear.gui.fuel_batch=Batch %s
 thermonuclear.gui.fuel_batch_remaining=Batch %s remaining cycles
 thermonuclear.gui.fuel_rod_tier=Fuel rod block tier
-thermonuclear.gui.expansion_level=Confirmed expansion structure level
 thermonuclear.gui.expansion_count=Connected expansions / pipe limit
 thermonuclear.gui.expansion_scan=Last expansion scan
 thermonuclear.gui.expansion_scan.detail=Modules %s / candidates %s / edges %s / reads %s / unloaded batches %s / %s ms

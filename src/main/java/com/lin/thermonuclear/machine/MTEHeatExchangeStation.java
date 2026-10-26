@@ -5,21 +5,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.lin.thermonuclear.api.CoolantType;
 import com.lin.thermonuclear.api.HeatExchangeRule;
 import com.lin.thermonuclear.api.HeatExchangeRules;
@@ -31,12 +26,8 @@ import com.lin.thermonuclear.recipe.heatexchange.HeatExchangeRecipes;
 import com.lin.thermonuclear.registry.SteamType;
 import com.lin.thermonuclear.registry.WorkingFluids;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
-import gregtech.api.enums.ItemList;
-import gregtech.api.interfaces.INEIPreviewModifier;
 import gregtech.api.interfaces.IOutputHatch;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -47,11 +38,9 @@ import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
-public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MTEHeatExchangeStation>
-    implements INEIPreviewModifier {
+public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MTEHeatExchangeStation> {
 
     private static final String PIECE = "heat_exchange_station";
     private static final int WIDTH = 9;
@@ -90,72 +79,23 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
         .build();
 
     private static IStructureElement<MTEHeatExchangeStation> inputHatch(int hint, HatchAdder adder) {
-        return StructureUtility.ofChain(
-            GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
-                .anyOf(HatchElement.InputHatch)
-                .adder(adder::add)
-                .casingIndex(CASING.textureId)
-                .hint(hint)
-                .build(),
-            hatchPreviewPlacement(true));
+        return GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
+            .anyOf(HatchElement.InputHatch)
+            .adder(adder::add)
+            .casingIndex(CASING.textureId)
+            .hint(hint)
+            .exclusive()
+            .build();
     }
 
     private static IStructureElement<MTEHeatExchangeStation> outputHatch(int hint, HatchAdder adder) {
-        return StructureUtility.ofChain(
-            GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
-                .anyOf(HatchElement.OutputHatch)
-                .adder(adder::add)
-                .casingIndex(CASING.textureId)
-                .hint(hint)
-                .build(),
-            hatchPreviewPlacement(false));
-    }
-
-    private static IStructureElement<MTEHeatExchangeStation> hatchPreviewPlacement(boolean input) {
-        return new IStructureElement<>() {
-
-            @Override
-            public boolean check(MTEHeatExchangeStation machine, World world, int x, int y, int z) {
-                return false;
-            }
-
-            @Override
-            public boolean spawnHint(MTEHeatExchangeStation machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                return false;
-            }
-
-            @Override
-            public boolean placeBlock(MTEHeatExchangeStation machine, World world, int x, int y, int z,
-                ItemStack trigger) {
-                EntityPlayer player = machine.previewPlayer;
-                if (!machine.previewConstruction || !machine.constructing
-                    || player == null
-                    || player.getUniqueID() == null
-                    || world instanceof WorldServer
-                    || !world.isAirBlock(x, y, z)) return false;
-                ItemStack representative = (input ? ItemList.Hatch_Input_ULV : ItemList.Hatch_Output_ULV).get(1);
-                if (!(representative.getItem() instanceof ItemMachines item) || !item.placeBlockAt(
-                    representative,
-                    player,
-                    world,
-                    x,
-                    y,
-                    z,
-                    ForgeDirection.UP.ordinal(),
-                    0.5f,
-                    0.5f,
-                    0.5f,
-                    0)) return false;
-                if (world.getTileEntity(x, y, z) instanceof IGregTechTileEntity tile) {
-                    tile.setFrontFacing(
-                        machine.getExtendedFacing()
-                            .getRelativeForwardInWorld());
-                    if (tile.getMetaTileEntity() instanceof MTEHatch hatch) hatch.updateTexture(CASING.textureId);
-                }
-                return true;
-            }
-        };
+        return GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
+            .anyOf(HatchElement.OutputHatch)
+            .adder(adder::add)
+            .casingIndex(CASING.textureId)
+            .hint(hint)
+            .exclusive()
+            .build();
     }
 
     @FunctionalInterface
@@ -168,9 +108,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     private final List<MTEHatch> hotInputs = new ArrayList<>();
     private final List<IOutputHatch> coldOutputs = new ArrayList<>();
     private final List<IOutputHatch> hotOutputs = new ArrayList<>();
-    private boolean constructing;
-    private boolean previewConstruction;
-    private EntityPlayer previewPlayer;
 
     private boolean addColdInput(IGregTechTileEntity tile, int texture) {
         return addGrouped(tile, coldInputs, texture);
@@ -216,22 +153,13 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
 
     @Override
     public void construct(ItemStack stack, boolean hintsOnly) {
-        constructing = true;
-        try {
-            buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
-        } finally {
-            constructing = false;
-            previewConstruction = false;
-            previewPlayer = null;
-        }
+        buildPiece(PIECE, stack, hintsOnly, OFFSET_X, OFFSET_Y, OFFSET_Z);
     }
 
     @Override
-    @SideOnly(Side.CLIENT)
-    public void onPreviewConstruct(ItemStack trigger) {
-        previewPlayer = Minecraft.getMinecraft().thePlayer;
-        previewConstruction = previewPlayer != null && previewPlayer.getUniqueID() != null;
-        if (!previewConstruction) previewPlayer = null;
+    public int survivalConstruct(ItemStack stack, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (mMachine) return -1;
+        return survivalBuildPiece(PIECE, stack, OFFSET_X, OFFSET_Y, OFFSET_Z, elementBudget, env, false, true);
     }
 
     @Override
@@ -460,12 +388,6 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
     }
 
     @Override
-    public String[] displayKeys() {
-        return new String[] { "status", "steam_type", "recipe", "steam_multiplier", "hot_input", "water_input",
-            "steam_output", "coolant_return", "cycle" };
-    }
-
-    @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
         info.put(
@@ -478,9 +400,7 @@ public final class MTEHeatExchangeStation extends ThermonuclearMultiblockBase<MT
             selected == null ? "thermonuclear.recipe.none"
                 : selected.coolant()
                     .nameKey());
-        if (selected != null) {
-            info.put("steam_multiplier", decimal(selected.steamPerHotCoolant()) + " L/L");
-        }
+        if (selected != null) info.put("steam_multiplier", decimal(selected.steamPerHotCoolant()) + " L/L");
         info.put("hot_input", decimalPerCycle(inputLitresPerTick));
         info.put("water_input", decimalPerCycle(inputLitresPerTick > 0 ? waterRate : 0));
         info.put("steam_output", decimalPerCycle(outputLitresPerTick));

@@ -1,5 +1,7 @@
 package com.lin.thermonuclear.gui;
 
+import java.util.Map;
+
 import net.minecraft.util.EnumChatFormatting;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
@@ -35,9 +37,10 @@ public abstract class ThermonuclearMultiblockGui<T extends ThermonuclearMultiblo
         ListWidget<IWidget, ?> list = new ListWidget<>().fullWidth()
             .crossAxisAlignment(Alignment.CrossAxis.START)
             .collapseDisabledChild();
-        String[] keys = multiblock.displayKeys();
-        for (int i = 0; i < keys.length; i++) {
-            final String key = keys[i];
+        // Display order and line set both come from displayInfo(); a line that stops applying hides itself.
+        for (Map.Entry<String, String> entry : multiblock.displayInfo()
+            .entrySet()) {
+            final String key = entry.getKey();
             // Getter-only sync values remain S2C-only. No client setter can alter machine state.
             StringSyncValue value = new StringSyncValue(
                 () -> multiblock.displayInfo()

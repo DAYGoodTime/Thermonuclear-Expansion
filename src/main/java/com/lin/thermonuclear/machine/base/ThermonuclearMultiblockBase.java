@@ -26,6 +26,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.utils.StartupProgress;
 
@@ -55,7 +57,7 @@ import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
 public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultiblockBase<T>>
-    extends MTEEnhancedMultiBlockBase<T> {
+    extends MTEEnhancedMultiBlockBase<T> implements ISurvivalConstructable {
 
     public static final int CYCLE_TICKS = 20;
 
@@ -87,6 +89,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected ThermonuclearMultiblockBase(String name) {
         super(name);
     }
+
+    @Override
+    public abstract int survivalConstruct(ItemStack stack, int elementBudget, ISurvivalBuildEnvironment env);
 
     protected abstract boolean usesItemBusses();
 
@@ -139,8 +144,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected abstract int decayTicks();
 
     public abstract String nameKey();
-
-    public abstract String[] displayKeys();
 
     public abstract Map<String, String> displayInfo();
 
@@ -328,7 +331,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             for (var hatch : mInputHatches) if (hatch.isValid()) hatch.markDirty();
             for (var bus : mInputBusses) if (bus.isValid()) bus.markDirty();
             for (var hatch : mDualInputHatches) {
-                if (((MetaTileEntity) hatch).isValid()) ((MetaTileEntity) hatch).markDirty();
+                if (((MetaTileEntity) hatch).isValid()) hatch.markDirty();
             }
         } finally {
             outputCommits.clear();
@@ -645,8 +648,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected final Map<String, String> commonInfo() {
         Map<String, String> info = new LinkedHashMap<>();
-        boolean processingFailed = !running && (status.equals("running"))
-            && !checkRecipeResult.wasSuccessful();
+        boolean processingFailed = !running && (status.equals("running")) && !checkRecipeResult.wasSuccessful();
         info.put("status", "thermonuclear.status." + (processingFailed ? "processing_failed" : status));
         return info;
     }
