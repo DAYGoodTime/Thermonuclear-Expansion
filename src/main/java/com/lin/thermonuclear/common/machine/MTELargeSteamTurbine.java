@@ -207,8 +207,7 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     }
 
     private int condensationRemainderLitres;
-    private long effectiveSteamLimitLitresPerCycle;
-    private long steamLimitLitresPerCycle = Long.MAX_VALUE;
+    private long steamLimitLitresPerCycle = 0;
     private SteamTurbineFuel currentFuel;
 
     public MTELargeSteamTurbine(int id, String name, String regional) {
@@ -227,7 +226,6 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     protected boolean processCycle(CycleContext context) {
         currentFuel = null;
-        if (!checkWirelessOwner()) return false;
         if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
         boolean unsupportedSteam = false;
@@ -243,7 +241,7 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         }
         if (currentFuel == null) return fail(unsupportedSteam ? "shaft_steam_unsupported" : "steam");
         double effectiveEUPerLitre = currentFuel.euPerLitre();
-        effectiveSteamLimitLitresPerCycle = SteamTurbineMath
+        long effectiveSteamLimitLitresPerCycle = SteamTurbineMath
             .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
         double fullLoadSteamLitresPerTick = litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
         fullLoadEUt = SteamTurbineMath.generationEUt(fullLoadSteamLitresPerTick, effectiveEUPerLitre);
@@ -256,9 +254,9 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         FluidEjectionHelper outputs = prepareOutputs(
             new FluidStack(WorkingFluids.distilledWater, Math.max(1, waterLitresPerCycle)));
         if (outputs == null) return fail("output_full");
-        if (waterLitresPerCycle == 0) outputs = null;
         context.deferInput(() -> consume(currentFuel.getWorkingFluid(), steamLitresPerCycle));
-        if (outputs != null) context.onCommit(outputs::commit);
+        if (waterLitresPerCycle > 0)
+            queueFluidOutput(context, new FluidStack(WorkingFluids.distilledWater, waterLitresPerCycle));
         final int remainingSteamLitres = (int) ((steamLitresPerCycle + condensationRemainderLitres)
             % GTValues.STEAM_PER_WATER);
         context.onCommit(() -> condensationRemainderLitres = remainingSteamLitres);
@@ -282,24 +280,16 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
         nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
-        nbt.setLong("tnTurbineCycleLimit", effectiveSteamLimitLitresPerCycle);
         if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.nameKey());
         else nbt.removeTag("tnTurbineFuel");
-        nbt.removeTag("tnRotorIdentity");
     }
 
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        condensationRemainderLitres = Math.max(0, nbt.getInteger("tnCondensationRemainder")) % GTValues.STEAM_PER_WATER;
         steamLimitLitresPerCycle = nbt.hasKey("tnSteamLimitPerCycle") ? Math.max(0, nbt.getLong("tnSteamLimitPerCycle"))
             : Long.MAX_VALUE;
-        effectiveSteamLimitLitresPerCycle = SteamTurbineMath.steamLimitLitresPerCycle(
-            nbt.getLong("tnTurbineCycleLimit"),
-            GTValues.STEAM_PER_WATER,
-            condensationRemainderLitres);
         currentFuel = null;
         for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
             if (fuel.nameKey()
@@ -310,8 +300,6 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     public void setItemNBT(NBTTagCompound nbt) {
         super.setItemNBT(nbt);
-        // Preserve already-consumed steam's sub-litre water entitlement, but never startup or power.
-        nbt.setInteger("tnCondensationRemainder", condensationRemainderLitres);
         nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
     }
 

@@ -151,6 +151,7 @@ thermonuclear.gui.severity.warning=[WARN]
 thermonuclear.gui.severity.error=[ERROR]
 thermonuclear.gui.startup=Startup (%)
 thermonuclear.gui.full_load=Full-load output (EU/t)
+thermonuclear.gui.generated=Actual generation (EU/t, before dynamo limits)
 thermonuclear.gui.dynamo_limit=Dynamo rating (EU/t)
 thermonuclear.gui.sent=Delivered (EU/t)
 thermonuclear.gui.discarded=Discarded (EU/t)

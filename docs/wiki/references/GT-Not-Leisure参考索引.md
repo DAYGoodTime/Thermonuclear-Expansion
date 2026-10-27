@@ -82,6 +82,7 @@
 
 - 参考 `J/common/machine/multiblock/NaquadahReactor.java` 的 `checkProcessing()`、`onRunningTick()` 与 `outputAfterRecipe()`，并追至父类 `J/common/machine/multiMachineBase/MultiMachineBase.java`。采用输入处理与产物提交分离的思路，不复制其配方逻辑、批次无线输出或数值；这两个入口没有本项目所需的独立 `CycleContext` 实现。
 - API 按本地 GT5U `5.09.54.205` 的 `MTEMultiBlockBase.checkRecipe()`、`startRecipeProcessing()`、`endRecipeProcessing()` 核对：原生入口先开输入事务，再调用处理逻辑，末尾仓口结算仍可改变处理结果。本项目在原生结算成功后提交产物，失败时撤销内部状态与未执行动作；不能撤回其他仓口已经完成的外部扣料或已开始的产物提交。保留原周期与扩展 NBT 键；未运行参考库构建。
+- 周期交货按同版本 `runMachine()`、`addItemOutputs()`、`addFluidOutputs()` 与 `stopMachine()` 核对：事务提交只填充原生待产物，最终入口重新建立输出 helper，完成后由 GT 清空缓存；不采用 GTNL 自定义调度。GUI 参考 `J/common/gui/modularui/GTNLMultiBlockBaseGui.java` 的父类扩展方式，本项目直接复用 `.205` 的 `MTEMultiBlockBaseGui.createTerminalTextWidget()`，保留完整原生诊断与产量同步，不复制参考库布局或额外接口。
 
 ### 兼容与注入
 

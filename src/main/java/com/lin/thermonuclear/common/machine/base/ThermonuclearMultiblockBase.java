@@ -27,7 +27,6 @@ import net.minecraftforge.fluids.FluidStack;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.lin.thermonuclear.api.TNCItemList;
-import com.lin.thermonuclear.utils.StartupProgress;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.Textures;
@@ -39,7 +38,6 @@ import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.FluidEjectionHelper;
-import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
@@ -53,13 +51,9 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected boolean running;
     protected String status = "stopped";
     protected long producedEUt;
-    protected long sentEUt;
-    protected long discardedEUt;
-    protected boolean powerLimited;
-    private double energyFraction;
     private boolean wirelessUpgrade;
     private UUID wirelessOwner;
-    private final List<MTEHatch> cycleDynamos = new ArrayList<>();
+    private final List<MTEHatch> energyDynamo = new ArrayList<>();
 
     protected ThermonuclearMultiblockBase(int id, String name, String regional) {
         super(id, name, regional);
@@ -77,7 +71,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     protected abstract boolean usesDynamo();
 
     public final boolean isWirelessMode() {
-        // Hatch presence, not rating or free space, chooses the output path. Blocked wired output stays wired.
         return usesDynamo() && wirelessUpgrade && mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty();
     }
 
@@ -92,23 +85,21 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     @Override
     public boolean onRightclick(IGregTechTileEntity tile, EntityPlayer player) {
+        if (!tile.isServerSide()) return true;
         ItemStack held = player.getHeldItem();
-        if (!usesDynamo() || held == null
-            || held.stackSize <= 0
-            || held.getItem() != TNCItemList.WirelessUpgradeChip.getItem()) {
+        if (!usesDynamo() || TNCItemList.WirelessUpgradeChip.isStackEqual(held)) {
             return super.onRightclick(tile, player);
         }
-        if (!tile.isServerSide()) return true;
         if (wirelessUpgrade) {
             player.addChatComponentMessage(new ChatComponentTranslation("thermonuclear.chat.wireless.already"));
             return true;
         }
-        wirelessUpgrade = true;
         if (!player.capabilities.isCreativeMode) {
             held.stackSize--;
             if (held.stackSize == 0) player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
             player.inventory.markDirty();
         }
+        wirelessUpgrade = true;
         markDirty();
         // The turbine may currently be unformed solely because its dynamo is missing.
         onMachineBlockUpdate();
@@ -127,31 +118,12 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected abstract Casings casing();
 
-    protected boolean addMachineHatch(IGregTechTileEntity tile, int texture) {
-        if (tile == null || tile.getMetaTileEntity() == null) return false;
-        if (usesItemBusses() || tile.getMetaTileEntity() instanceof IDualInputHatch) {
-            if (addInputBusToMachineList(tile, texture)) return true;
-        }
-        if (usesItemBusses() && addOutputBusToMachineList(tile, texture)) return true;
-        if (addInputHatchToMachineList(tile, texture) || addOutputHatchToMachineList(tile, texture)) return true;
-        return usesDynamo() && (addDynamoToMachineList(tile, texture) || addExoticDynamoToMachineList(tile, texture)
-            || addLaserSourceToMachineList(tile, texture));
-    }
-
-    @Override
-    public void clearHatches() {
-        super.clearHatches();
-        // The .133 parent does not clear its exotic dynamo list during a structure rescan.
-        mExoticDynamoHatches.clear();
-        cycleDynamos.clear();
-    }
-
     @Override
     protected void onStructureCheckFinished(IGregTechTileEntity tile) {
         super.onStructureCheckFinished(tile);
-        cycleDynamos.clear();
-        cycleDynamos.addAll(mDynamoHatches);
-        cycleDynamos.addAll(mExoticDynamoHatches);
+        energyDynamo.clear();
+        energyDynamo.addAll(mDynamoHatches);
+        energyDynamo.addAll(mExoticDynamoHatches);
     }
 
     @Override
@@ -165,11 +137,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
                     : Textures.BlockIcons.OVERLAY_FRONT_LARGE_BOILER)
             .extFacing()
             .build() };
-    }
-
-    protected MultiblockTooltipBuilder machineTooltip() {
-        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addInfo(StatCollector.translateToLocal("thermonuclear.tooltip.prototype"));
     }
 
     @Override
@@ -280,15 +247,11 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     protected long dynamoRating() {
         long total = 0;
-        for (MTEHatch hatch : dynamos()) {
+        for (MTEHatch hatch : energyDynamo) {
             if (!hatch.isValid()) continue;
             total = saturatingAdd(total, rating(hatch));
         }
         return total;
-    }
-
-    private List<MTEHatch> dynamos() {
-        return cycleDynamos;
     }
 
     private static long rating(MTEHatch hatch) {
@@ -297,63 +260,33 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         return amps == 0 ? 0 : volts > Long.MAX_VALUE / amps ? Long.MAX_VALUE : volts * amps;
     }
 
-    protected void generate(double euPerTick) {
-        if (!Double.isFinite(euPerTick) || euPerTick <= 0) return;
-        // Called once per running tick: EU/t becomes this tick's EU, plus the sub-EU remainder.
-        double total = euPerTick + energyFraction;
-        producedEUt = (long) Math.min(total, Long.MAX_VALUE);
-        energyFraction = total < Long.MAX_VALUE ? StartupProgress.fraction(total - producedEUt) : 0;
+    protected void generate(long euPerOperation) {
+        if (euPerOperation <= 0) return;
+        producedEUt = euPerOperation;
         if (isWirelessMode()) {
             UUID owner = wirelessOwner();
             if (owner != null && !owner.equals(wirelessOwner)) {
                 WirelessNetworkManager.strongCheckOrAddUser(owner);
                 wirelessOwner = owner;
             }
-            // Credit only this running tick's actual output, never a prepaid cycle or both output paths.
-            sentEUt = owner != null
-                && (producedEUt == 0 || WirelessNetworkManager.addEUToGlobalEnergyMap(owner, producedEUt)) ? producedEUt
-                    : 0;
-            discardedEUt = producedEUt - sentEUt;
-            powerLimited = discardedEUt > 0;
-            if (powerLimited) energyFraction = 0;
+            if (owner != null) WirelessNetworkManager.addEUToGlobalEnergyMap(owner, euPerOperation);
             return;
         }
-        long[] before = storedDynamoEnergy();
-        boolean hadSpace = hasDynamoSpace();
-        // GT5U .133 uses int injection counters and explodes above the aggregate dynamo rating.
-        // The inherited entry point dispatches to addEnergyOutputMultipleDynamos(..., true).
-        long requested = Math.min(producedEUt, Math.min(dynamoRating(), Integer.MAX_VALUE));
-        if (requested > 0) addEnergyOutput(requested);
-        long[] after = storedDynamoEnergy();
-        sentEUt = 0;
-        for (int i = 0; i < before.length; i++) {
-            sentEUt = saturatingAdd(sentEUt, Math.max(0, after[i] - before[i]));
-        }
-        sentEUt = Math.min(producedEUt, sentEUt);
-        discardedEUt = producedEUt - sentEUt;
-        powerLimited = discardedEUt > 0 || !hadSpace;
-        // Even sub-EU output is forfeited when all dynamos are blocked; it is never banked for later.
-        if (powerLimited) energyFraction = 0;
-    }
-
-    private long[] storedDynamoEnergy() {
-        long[] stored = new long[cycleDynamos.size()];
-        for (int i = 0; i < cycleDynamos.size(); i++) {
-            MTEHatch hatch = cycleDynamos.get(i);
+        long remaining = euPerOperation;
+        // 无脑灌入全部能源仓
+        for (MTEHatch hatch : energyDynamo) {
             if (!hatch.isValid()) continue;
             IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
-            if (base != null) stored[i] = Math.max(0, base.getStoredEU());
+            if (base == null) continue;
+            long stored = Math.max(0, base.getStoredEU());
+            long capacity = base.getEUCapacity();
+            if (stored >= capacity) continue;
+            long amount = Math.min(remaining, Math.min(rating(hatch), capacity - stored));
+            if (amount > 0 && base.increaseStoredEnergyUnits(amount, false)) {
+                remaining -= amount;
+                if (remaining == 0) break;
+            }
         }
-        return stored;
-    }
-
-    private boolean hasDynamoSpace() {
-        for (MTEHatch hatch : dynamos()) {
-            if (!hatch.isValid() || rating(hatch) <= 0) continue;
-            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
-            if (base != null && base.getStoredEU() < base.getEUCapacity()) return true;
-        }
-        return false;
     }
 
     private static long saturatingAdd(long a, long b) {
@@ -364,7 +297,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setBoolean("tnWirelessUpgrade", wirelessUpgrade);
-        nbt.setDouble("tnEnergyFraction", energyFraction);
     }
 
     @Override
@@ -372,8 +304,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         super.loadNBTData(nbt);
         wirelessUpgrade = usesDynamo() && nbt.getBoolean("tnWirelessUpgrade");
         wirelessOwner = null;
-        energyFraction = StartupProgress.fraction(nbt.getDouble("tnEnergyFraction"));
-        fixAllIssues();
     }
 
     @Override
@@ -400,12 +330,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         if (tag.getBoolean("tnWirelessUpgrade")) {
             tooltip.add(StatCollector.translateToLocal("thermonuclear.gui.wireless"));
         }
-    }
-
-    @Override
-    public void onRemoval() {
-        energyFraction = 0;
-        super.onRemoval();
     }
 
     @Override
@@ -502,6 +426,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     @Override
     public boolean showRecipeTextInGUI() {
-        return false;
+        return true;
     }
 }

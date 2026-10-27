@@ -150,6 +150,7 @@ thermonuclear.gui.severity.warning=[警告]
 thermonuclear.gui.severity.error=[错误]
 thermonuclear.gui.startup=启动进度（%）
 thermonuclear.gui.full_load=理论满负荷（EU/t）
+thermonuclear.gui.generated=实际发电（EU/t，限流前）
 thermonuclear.gui.dynamo_limit=动力仓额定上限（EU/t）
 thermonuclear.gui.sent=成功送出（EU/t）
 thermonuclear.gui.discarded=作废电力（EU/t）

@@ -13,6 +13,9 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
+import org.jetbrains.annotations.NotNull;
+
+import com.lin.thermonuclear.Thermonuclear;
 import com.lin.thermonuclear.utils.StartupProgress;
 
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -22,6 +25,7 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.util.GTUtility;
+import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 
@@ -39,6 +43,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     private boolean hadStructure;
     private CycleContext cycle;
     private boolean prepared;
+    private boolean productionCycle;
 
     protected TNCCycleMachineBase(int id, String name, String regional) {
         super(id, name, regional);
@@ -63,8 +68,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         boolean formed = mMachine || hadStructure;
         double previousStartup = startup.get();
         running = false;
-        producedEUt = sentEUt = discardedEUt = 0;
-        powerLimited = false;
+        producedEUt = 0;
         super.onPostTick(tile, tick);
         if (mStartUpCheck >= 0) {
             status = "checking";
@@ -92,33 +96,45 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         mEfficiencyIncrease = 0;
     }
 
+    // Native scheduling finishes prepaid work even when the ordinary work switch is off.
+    protected void clearCycleOutputRoutes() {}
+
     @Override
-    protected void runMachine(IGregTechTileEntity tile, long tick) {
-        if (!tile.isAllowedToWork()) {
-            mMaxProgresstime = mProgresstime = 0;
-            operatingEUt = 0;
+    protected void outputAfterRecipe() {
+        super.outputAfterRecipe();
+        clearCycleOutputRoutes();
+    }
+
+    @Override
+    public void stopMachine(ShutDownReason reason) {
+        super.stopMachine(reason);
+        clearCycleOutputRoutes();
+        operatingEUt = 0;
+        running = false;
+        producedEUt = 0;
+    }
+
+    protected final void queueFluidOutput(CycleContext context, FluidStack output) {
+        FluidStack pending = output.copy();
+        if (!productionCycle) {
+            // Idle cooling has no completion tick; discard preflight reservations and eject now.
+            context.onCommit(() -> addFluidOutputs(new FluidStack[] { pending }));
             return;
         }
-        super.runMachine(tile, tick);
+        context.onCommit(() -> {
+            int size = mOutputFluids == null ? 0 : mOutputFluids.length;
+            mOutputFluids = mOutputFluids == null ? new FluidStack[1] : Arrays.copyOf(mOutputFluids, size + 1);
+            mOutputFluids[size] = pending;
+        });
     }
 
-    @Override
-    public boolean onRunningTick(ItemStack stack) {
-        if (operatingEUt > 0 && !checkWirelessOwner()) return false;
-        running = true;
-        status = "running";
-        if (operatingEUt > 0) generate(operatingEUt * startup.next(startupTicks()));
-        if (startupTicks() > 0) {
-            if (cycleAdvancesStartup) startup.advance(startupTicks());
-            else startup.decay(decayTicks());
-        }
-        return true;
-    }
-
-    @Override
-    public long getEUtForDamageCalc() {
-        // Wear is calculated before onRunningTick, so the reset display counter cannot be used.
-        return (long) Math.min(Long.MAX_VALUE, operatingEUt * startup.next(startupTicks()));
+    protected final void queueItemOutput(CycleContext context, ItemStack output) {
+        ItemStack pending = output.copy();
+        context.onCommit(() -> {
+            int size = mOutputItems == null ? 0 : mOutputItems.length;
+            mOutputItems = mOutputItems == null ? new ItemStack[1] : Arrays.copyOf(mOutputItems, size + 1);
+            mOutputItems[size] = pending;
+        });
     }
 
     @Override
@@ -127,7 +143,6 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         nbt.setDouble("tnStartup", startup.get());
         nbt.setBoolean("tnHadStructure", mMachine || hadStructure);
         nbt.setInteger("tnCycleVersion", 1);
-        // Retain the existing save keys and their tick-based units.
         nbt.setDouble("tnCycleEUt", operatingEUt);
         nbt.setBoolean("tnCycleAdvancesStartup", cycleAdvancesStartup);
         nbt.setDouble("tnFullLoadEUt", fullLoadEUt);
@@ -140,9 +155,8 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         super.loadNBTData(nbt);
         startup.restore(nbt.getDouble("tnStartup"));
         hadStructure = nbt.getBoolean("tnHadStructure");
-        mOutputItems = null;
-        mOutputFluids = null;
         mEUt = 0;
+        // GT restores pending stacks and progress; never reconstruct products from consumed inputs.
         if (nbt.getInteger("tnCycleVersion") == 1 && mMaxProgresstime == CYCLE_TICKS
             && mProgresstime >= 0
             && mProgresstime < CYCLE_TICKS) {
@@ -153,6 +167,9 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
             outputLitresPerTick = finiteRate(nbt.getDouble("tnOutputRate"));
         } else {
             mMaxProgresstime = mProgresstime = 0;
+            mOutputItems = null;
+            mOutputFluids = null;
+            clearCycleOutputRoutes();
             operatingEUt = fullLoadEUt = inputLitresPerTick = outputLitresPerTick = 0;
             cycleAdvancesStartup = true;
         }
@@ -161,6 +178,24 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
 
     private static double finiteRate(double value) {
         return Double.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    @Override
+    public boolean onRunningTick(ItemStack stack) {
+        running = true;
+        status = "running";
+        generate((long) (operatingEUt * startup.next(startupTicks())));
+        if (startupTicks() > 0) {
+            if (cycleAdvancesStartup) startup.advance(startupTicks());
+            else startup.decay(decayTicks());
+        }
+        return true;
+    }
+
+    @Override
+    public long getEUtForDamageCalc() {
+        // Wear is calculated before onRunningTick, so the reset display counter cannot be used.
+        return (long) Math.min(Long.MAX_VALUE, operatingEUt * (long) startup.next(startupTicks()));
     }
 
     @Override
@@ -176,6 +211,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
 
     protected final void addGenerationInfo(Map<String, String> info) {
         info.put("full_load", decimal(fullLoadEUt));
+        info.put("generated", Long.toString(running ? producedEUt : 0));
     }
 
     protected static String decimalPerCycle(double valuePerTick) {
@@ -203,7 +239,10 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
 
     @Override
     public final void startRecipeProcessing() {
-        if (cycle != null) throw new IllegalStateException("A processing cycle is already open");
+        if (cycle != null) {
+            Thermonuclear.LOG.warn("CYCLES already started,skip this");
+            return;
+        }
         super.startRecipeProcessing();
         try {
             List<FluidStack> fluids = new ArrayList<>(getStoredFluids());
@@ -238,7 +277,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     }
 
     @Override
-    public final CheckRecipeResult checkProcessing() {
+    public final @NotNull CheckRecipeResult checkProcessing() {
         if (cycle == null) return executeCycle(this::processCycle, true);
         checkRecipeResult = prepareCycle(this::processCycle, true);
         return checkRecipeResult;
@@ -247,6 +286,12 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     private CheckRecipeResult prepareCycle(Predicate<CycleContext> processor, boolean advancesStartup) {
         if (prepared) throw new IllegalStateException("Processing cycle was already prepared");
         prepared = true;
+        productionCycle = advancesStartup;
+        if (productionCycle) {
+            mOutputItems = null;
+            mOutputFluids = null;
+            clearCycleOutputRoutes();
+        }
         operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
         cycleAdvancesStartup = advancesStartup;
         try {
@@ -258,8 +303,6 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
                 mProgresstime = 0;
                 mEUt = 0;
                 syncStartupEfficiency();
-                mOutputItems = null;
-                mOutputFluids = null;
                 status = "running";
             }
             return operatingEUt > 0 ? CheckRecipeResultRegistry.GENERATING : CheckRecipeResultRegistry.SUCCESSFUL;
@@ -332,10 +375,14 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
                 // A rollback callback may throw too; never leave a prepaid cycle or its context alive.
                 if (!committed) {
                     mMaxProgresstime = mProgresstime = 0;
+                    mOutputItems = null;
+                    mOutputFluids = null;
+                    clearCycleOutputRoutes();
                     operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
                 }
                 cycle = null;
                 prepared = false;
+                productionCycle = false;
             }
         }
     }

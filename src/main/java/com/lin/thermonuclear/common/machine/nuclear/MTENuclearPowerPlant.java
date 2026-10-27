@@ -567,28 +567,28 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         return new MTENuclearPowerPlant(mName);
     }
 
-    public boolean requestModeChange() {
+    public void requestModeChange() {
         IGregTechTileEntity tile = getBaseMetaTileEntity();
-        if (tile == null || !tile.isServerSide() || tile.isAllowedToWork() || running) return false;
+        if (tile == null || !tile.isServerSide() || tile.isAllowedToWork() || running || mMaxProgresstime > 0) return;
         mode = mode.next();
         // Work fuel, durability and all material fractions belong to the machine, not to its mode.
         markDirty();
-        return true;
     }
 
     public int getFuelBatchLimit() {
         return expansion.batchLimit();
     }
 
-    public boolean requestFuelEjection() {
+    public void requestFuelEjection() {
         IGregTechTileEntity tile = getBaseMetaTileEntity();
         if (tile == null || !tile.isServerSide()
             || !mMachine
             || tile.isAllowedToWork()
             || running
+            || mMaxProgresstime > 0
             || isProcessingCycle()
             || workingFuels.workingCount() == 0
-            || getOutputBusses().isEmpty()) return false;
+            || getOutputBusses().isEmpty()) return;
 
         ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true);
         List<WorkingFuelPool.Batch> batches = new ArrayList<>();
@@ -601,7 +601,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             batches.add(batch);
             amounts.add(ejected);
         }
-        if (batches.isEmpty()) return false;
+        if (batches.isEmpty()) return;
         outputs.commit();
         for (int i = 0; i < batches.size(); i++) {
             WorkingFuelPool.Batch batch = batches.get(i);
@@ -610,7 +610,31 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         }
         updateSlots();
         markDirty();
-        return true;
+    }
+
+    private int breederOutputStart = -1;
+
+    @Override
+    protected void clearCycleOutputRoutes() {
+        breederOutputStart = -1;
+    }
+
+    @Override
+    public boolean addItemOutputs(ItemStack[] outputItems) {
+        if (breederOutputStart < 0) return super.addItemOutputs(outputItems);
+        boolean complete = true;
+        if (breederOutputStart > 0) {
+            complete = super.addItemOutputs(java.util.Arrays.copyOfRange(outputItems, 0, breederOutputStart));
+        }
+        List<IOutputBus> outputs = new ArrayList<>();
+        for (MTEBreederOutputBus bus : breederOutputs) if (bus.isValid()) outputs.add(bus);
+        // Rebuild the helper against current inventories, never commit a cycle-start reservation.
+        ItemEjectionHelper helper = new ItemEjectionHelper(outputs, protectsExcessItem());
+        int ejected = helper.ejectItems(
+            java.util.Arrays.asList(java.util.Arrays.copyOfRange(outputItems, breederOutputStart, outputItems.length)),
+            1);
+        helper.commit();
+        return complete && ejected == 1;
     }
 
     private boolean flushDepleted(CycleContext context) {
@@ -623,10 +647,12 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             if (ejected <= 0) continue;
             batches.add(batch);
             amounts.add(ejected);
+            ItemStack pending = batch.fuel.copy();
+            pending.stackSize = ejected;
+            queueItemOutput(context, pending);
         }
         if (batches.isEmpty()) return false;
         context.onCommit(() -> {
-            outputs.commit();
             for (int i = 0; i < batches.size(); i++) {
                 WorkingFuelPool.Batch batch = batches.get(i);
                 batch.fuel.stackSize -= amounts.get(i);
@@ -665,12 +691,20 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         ItemEjectionHelper helper = new ItemEjectionHelper(outputs, true);
         List<ItemStack> remaining = breederPool.copyCompleted();
         int ejected = 0;
-        for (ItemStack stack : remaining) ejected += helper.ejectStack(stack);
+        List<ItemStack> pending = new ArrayList<>();
+        for (ItemStack stack : remaining) {
+            ItemStack product = stack.copy();
+            int amount = helper.ejectStack(stack);
+            if (amount <= 0) continue;
+            product.stackSize = amount;
+            pending.add(product);
+            ejected += amount;
+        }
         if (ejected == 0) return false;
-        context.onCommit(() -> {
-            helper.commit();
-            breederPool.finishOutput(remaining);
-        });
+        // Ordinary products are queued first; this boundary survives GT's item-array NBT round trip.
+        context.onCommit(() -> breederOutputStart = mOutputItems == null ? 0 : mOutputItems.length);
+        for (ItemStack product : pending) queueItemOutput(context, product);
+        context.onCommit(() -> breederPool.finishOutput(remaining));
         return true;
     }
 
@@ -700,6 +734,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         if (getOutputBusses().isEmpty() || (mInputBusses.isEmpty() && mDualInputHatches.isEmpty())) {
             return fail("hatches");
         }
+        // 每周期开始前先进行冷却
         long heatBeforeCooling = reactorHeat.stored();
         double remainderBeforeCooling = reactorHeat.remainder();
         if (mode == NuclearOperatingMode.HEAT_SUPPLY && !coolReactor(context)) return false;
@@ -709,6 +744,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         if (workingFuels.exceeds(getFuelBatchLimit(), getMaxParallel())) {
             return coolingOnly(cooled, "fuel_limit");
         }
+
         workingFuels.prepareLoad(context.availableItems(), getFuelBatchLimit(), getFuelRodLimit());
         if (workingFuels.workingCount() == 0)
             return coolingOnly(cooled, workingFuels.spentCount() > 0 ? "spent_full" : "fuel");
@@ -716,8 +752,6 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             case DIRECT_GENERATION -> Config.nuclearPowerPlant.nuclearDirectEfficiency;
             case HEAT_SUPPLY -> Config.nuclearPowerPlant.nuclearHeatEfficiency;
         };
-        if (!Double.isFinite(efficiency) || efficiency <= 0 || efficiency > 1)
-            return coolingOnly(cooled, "invalid_value");
         double ramp = startup.averageNext(Config.nuclearPowerPlant.nuclearStartupTicks, CYCLE_TICKS);
         boolean direct = mode == NuclearOperatingMode.DIRECT_GENERATION;
         if (direct) {
@@ -800,7 +834,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             distilled ? Config.nuclearPowerPlant.nuclearSteamPerDistilledWater : 0,
             distilledSteamRemainder);
         if (limit == 0) return true;
-        // Each probe is a fresh simulation; only the final accepted reservation is committed.
+        // Each probe is a fresh simulation; completion will check current output inventories again.
         int amount = NuclearCoolingMath.acceptedAmount(limit, candidate -> {
             int produced = distilled ? NuclearCoolingMath
                 .steamOutput(candidate, Config.nuclearPowerPlant.nuclearSteamPerDistilledWater, distilledSteamRemainder)
@@ -818,7 +852,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         if (distilled) distilledSteamRemainder = NuclearCoolingMath
             .steamRemainder(amount, Config.nuclearPowerPlant.nuclearSteamPerDistilledWater, distilledSteamRemainder);
         context.deferInput(() -> consume(input, amount));
-        if (accepted != null) context.onCommit(accepted::commit);
+        if (produced > 0) queueFluidOutput(context, new FluidStack(output, produced));
         inputLitresPerTick = amount / (double) CYCLE_TICKS;
         outputLitresPerTick = produced / (double) CYCLE_TICKS;
         return true;
@@ -895,6 +929,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         saveFuelState(nbt);
         nbt.setInteger("tnOverheatTicks", meltdownTimer.elapsedTicks());
         nbt.setDouble("tnFullLoadHeatRate", fullLoadHeatRate);
+        nbt.setInteger("tnBreederOutputStart", breederOutputStart);
     }
 
     @Override
@@ -908,6 +943,10 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
+        int savedOutputStart = nbt.hasKey("tnBreederOutputStart") ? nbt.getInteger("tnBreederOutputStart") : -1;
+        breederOutputStart = mMaxProgresstime > 0 && mOutputItems != null
+            && savedOutputStart >= 0
+            && savedOutputStart < mOutputItems.length ? savedOutputStart : -1;
         expansion.load(nbt);
         loadFuelState(nbt);
         meltdownTimer.restore(nbt.getInteger("tnOverheatTicks"));

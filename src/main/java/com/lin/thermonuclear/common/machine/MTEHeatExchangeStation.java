@@ -256,8 +256,9 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
             consume(coolant.hot(), hot, hotInputs);
             if (water > 0) consume(WorkingFluids.distilledWater, water, coldInputs);
         });
-        context.onCommit(coldOutput::commit);
-        if (steam > 0) context.onCommit(steamOutput::commit);
+        // Stable slot order is the route metadata, including after GT restores the pending array.
+        queueFluidOutput(context, new FluidStack(coolant.cold(), hot));
+        if (steam > 0) queueFluidOutput(context, new FluidStack(steamType.fluid(), steam));
         final String steamId = steamType.id();
         context.onCommit(() -> {
             waterCredit = batch.waterCredit();
@@ -267,6 +268,15 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         waterRate = water / (double) CYCLE_TICKS;
         outputLitresPerTick = steam / (double) CYCLE_TICKS;
         return true;
+    }
+
+    @Override
+    protected boolean addFluidOutputs(FluidStack[] outputFluids) {
+        boolean complete = true;
+        for (int i = 0; i < outputFluids.length; i++) {
+            complete &= addFluidOutputs(new FluidStack[] { outputFluids[i] }, i == 0 ? coldOutputs : hotOutputs);
+        }
+        return complete;
     }
 
     private HeatExchangeRule selectRecipe() {
@@ -299,7 +309,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         while (lower < upper) {
             int hot = lower + (int) (((long) upper - lower + 1) / 2);
             HeatExchangeBatch batch = exchangeBatch(recipe, hot);
-            // Each probe has independent reservations. Only the final batch is committed.
+            // Each probe has independent reservations; completion will simulate output again.
             boolean fits = batch != null && batch.water() <= waterAvailable
                 && prepareOutputs(coldOutputs, new FluidStack(coldFluid, hot)) != null
                 && (batch.steam() == 0

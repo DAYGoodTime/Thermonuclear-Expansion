@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
-import net.minecraft.util.EnumChatFormatting;
-
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.network.NetworkUtils;
@@ -48,7 +46,10 @@ public abstract class ThermonuclearMultiblockGui<T extends ThermonuclearMultiblo
             .getter(() -> {
                 List<Map.Entry<String, String>> entries = new ArrayList<>();
                 multiblock.displayInfo()
-                    .forEach((key, value) -> entries.add(new AbstractMap.SimpleImmutableEntry<>(key, value)));
+                    .forEach((key, value) -> {
+                        // Other displays retain the full snapshot; only the terminal delegates these rows to GT.
+                        if (!isNativeTerminalInfo(key)) entries.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
+                    });
                 return entries;
             })
             .serializer((buffer, entry) -> {
@@ -68,10 +69,20 @@ public abstract class ThermonuclearMultiblockGui<T extends ThermonuclearMultiblo
                 .fullWidth()
                 .textAlign(Alignment.TopLeft)
                 .marginBottom(2));
-        list.child(createShutdownDurationWidget(manager))
-            .child(createShutdownReasonWidget(manager))
-            .child(createStructureErrorWidget(manager));
+        // Build the full native terminal once: its output widgets own the sync change listeners.
+        list.child(
+            super.createTerminalTextWidget(manager, parent).coverChildrenHeight(0)
+                .collapseDisabledChild());
         return list;
+    }
+
+    private boolean isNativeTerminalInfo(String key) {
+        return switch (key) {
+            case "cycle" -> true;
+            // Stopped cooling is immediate and has no native recipe output readout.
+            case "steam_output", "coolant_return", "water_output", "hot_output" -> multiblock.mMaxProgresstime > 0;
+            default -> false;
+        };
     }
 
     private String formatTerminalInfo(List<Map.Entry<String, String>> entries) {
@@ -80,14 +91,6 @@ public abstract class ThermonuclearMultiblockGui<T extends ThermonuclearMultiblo
             if (entry.getValue()
                 .isEmpty()) continue;
             lines.add(ThermonuclearMultiblockBase.formatInfo(entry.getKey(), entry.getValue()));
-            if (entry.getKey()
-                .equals("status")
-                && entry.getValue()
-                    .equals("thermonuclear.status.processing_failed")) {
-                lines.add(
-                    EnumChatFormatting.RED + multiblock.getCheckRecipeResult()
-                        .getDisplayString() + EnumChatFormatting.RESET);
-            }
         }
         return lines.toString();
     }
