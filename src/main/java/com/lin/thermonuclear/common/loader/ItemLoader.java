@@ -13,9 +13,16 @@ import com.lin.thermonuclear.common.item.ItemNaquadahFuelRod;
 import com.lin.thermonuclear.common.item.ItemRareEarthBreederRod;
 import com.lin.thermonuclear.common.item.ItemWirelessUpgradeChip;
 import com.lin.thermonuclear.common.nuclear.breeding.RareEarthBreedingRoute;
-import com.lin.thermonuclear.common.registry.NaquadahFuelTier;
 
 public final class ItemLoader {
+
+    private static final TNCItemList[] NAQUADAH_FUEL_RODS = { TNCItemList.NaquadahFuelRodMkI,
+        TNCItemList.NaquadahFuelRodMkII, TNCItemList.NaquadahFuelRodMkIII, TNCItemList.NaquadahFuelRodMkIV,
+        TNCItemList.NaquadahFuelRodMkV, TNCItemList.NaquadahFuelRodMkVI };
+    private static final TNCItemList[] DEPLETED_NAQUADAH_FUEL_RODS = { TNCItemList.DepletedNaquadahFuelRodMkI,
+        TNCItemList.DepletedNaquadahFuelRodMkII, TNCItemList.DepletedNaquadahFuelRodMkIII,
+        TNCItemList.DepletedNaquadahFuelRodMkIV, TNCItemList.DepletedNaquadahFuelRodMkV,
+        TNCItemList.DepletedNaquadahFuelRodMkVI };
 
     private ItemLoader() {}
 
@@ -28,18 +35,16 @@ public final class ItemLoader {
         Map<RareEarthBreedingRoute, ItemRareEarthBreederRod> bredRareEarthRods = ItemRareEarthBreederRod
             .registerVariants(true);
         for (RareEarthBreedingRoute route : RareEarthBreedingRoute.values()) {
-            TNCItemList.rareEarthRod(route, false)
+            route.workingRod()
                 .set(rareEarthBreederRods.get(route));
-            TNCItemList.rareEarthRod(route, true)
+            route.bredRod()
                 .set(bredRareEarthRods.get(route));
         }
-        Map<NaquadahFuelTier, ItemNaquadahFuelRod> naquadahFuelRods = ItemNaquadahFuelRod.registerVariants();
-        for (NaquadahFuelTier tier : NaquadahFuelTier.values()) {
-            ItemNaquadahFuelRod rod = naquadahFuelRods.get(tier);
-            TNCItemList.naquadahFuelRod(tier, false)
-                .set(rod);
-            TNCItemList.naquadahFuelRod(tier, true)
-                .set(rod.depletedStack());
+        for (int tier = 1; tier <= ItemNaquadahFuelRod.TIER_COUNT; tier++) {
+            ItemNaquadahFuelRod rod = new ItemNaquadahFuelRod(tier);
+            register(new ItemStack(rod));
+            NAQUADAH_FUEL_RODS[tier - 1].set(rod);
+            DEPLETED_NAQUADAH_FUEL_RODS[tier - 1].set(rod.depletedStack());
         }
     }
 
@@ -54,13 +59,19 @@ public final class ItemLoader {
         return stack;
     }
 
-    public static ItemNaquadahFuelRod naquadahFuelRod(NaquadahFuelTier tier) {
-        return (ItemNaquadahFuelRod) TNCItemList.naquadahFuelRod(tier, false)
-            .getItem();
+    public static ItemNaquadahFuelRod naquadahFuelRod(int tier) {
+        checkNaquadahFuelTier(tier);
+        return (ItemNaquadahFuelRod) NAQUADAH_FUEL_RODS[tier - 1].getItem();
     }
 
-    public static Item depletedNaquadahFuelRod(NaquadahFuelTier tier) {
-        return TNCItemList.naquadahFuelRod(tier, true)
-            .getItem();
+    public static Item depletedNaquadahFuelRod(int tier) {
+        checkNaquadahFuelTier(tier);
+        return DEPLETED_NAQUADAH_FUEL_RODS[tier - 1].getItem();
+    }
+
+    private static void checkNaquadahFuelTier(int tier) {
+        if (tier < 1 || tier > ItemNaquadahFuelRod.TIER_COUNT) {
+            throw new IllegalArgumentException("Unknown naquadah fuel rod tier: " + tier);
+        }
     }
 }

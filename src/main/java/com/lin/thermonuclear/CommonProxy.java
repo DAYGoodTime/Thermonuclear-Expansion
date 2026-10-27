@@ -3,7 +3,6 @@ package com.lin.thermonuclear;
 import com.lin.thermonuclear.api.FuelRodAdapters;
 import com.lin.thermonuclear.api.HeatExchangeRules;
 import com.lin.thermonuclear.api.SteamTurbineFuels;
-import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.common.loader.BlockLoader;
 import com.lin.thermonuclear.common.loader.ItemLoader;
 import com.lin.thermonuclear.common.loader.MachineLoader;
@@ -41,7 +40,6 @@ public class CommonProxy {
         FuelRodAdapters.register(new NaquadahFuelRodAdapter());
         FuelRodAdapters.register(new GTFuelRodAdapter());
         MachineLoader.register();
-        TNCItemList.validateAllBound();
         // After block registration so indicator stacks resolve and the channels appear in the projector autocomplete.
         StructureChannels.register();
     }

@@ -18,12 +18,41 @@ public abstract class ItemFuelBase extends ItemRadioactiveCellIC {
 
     private final String displayNameKey;
     private final String texture;
+    private final int maxCycles;
+    private final long directEUt;
+    private final long baseHeatPerCycle;
 
-    protected ItemFuelBase(String name, String texture, int cycles, float energy, float heat, ItemStack depleted) {
+    protected ItemFuelBase(String name, String texture, int maxCycles, long directEUt, long baseHeatPerCycle,
+        ItemStack depleted) {
         // GT registers working fuel under its historical namespace and creates the native NEI recipe.
-        super(Thermonuclear.MODID + "." + name, name, 1, cycles, energy, 0, heat, depleted, false, 0);
+        super(
+            Thermonuclear.MODID + "." + name,
+            name,
+            1,
+            maxCycles,
+            directEUt / 2.0F,
+            0,
+            baseHeatPerCycle,
+            depleted,
+            false,
+            0);
         displayNameKey = "item." + Thermonuclear.MODID + "." + name + ".name";
         this.texture = texture;
+        this.maxCycles = maxCycles;
+        this.directEUt = directEUt;
+        this.baseHeatPerCycle = baseHeatPerCycle;
+    }
+
+    public final int maxCycles() {
+        return maxCycles;
+    }
+
+    public final long directEUt() {
+        return directEUt;
+    }
+
+    public final long baseHeatPerCycle() {
+        return baseHeatPerCycle;
     }
 
     protected static ItemStack registerDepleted(String name, String texture) {
@@ -40,14 +69,11 @@ public abstract class ItemFuelBase extends ItemRadioactiveCellIC {
     public void processChamber(IReactor reactor, ItemStack stack, int x, int y, boolean heatRun) {
         int previousHeat = reactor.getHeat();
         super.processChamber(reactor, stack, x, y, heatRun);
-        // Single-cell GT heat is capped to int; IC2's unchecked hull addition can still wrap.
         if (heatRun && previousHeat >= 0 && reactor.getHeat() < 0) reactor.setHeat(Integer.MAX_VALUE);
     }
 
     @Override
     public boolean isDamaged(ItemStack stack) {
-        // Lifetime is stored in advDmg; normal NBT equality keeps different lifetimes apart.
-        // Vanilla otherwise rejects stacking damaged items even with identical NBT.
         return false;
     }
 
@@ -69,7 +95,6 @@ public abstract class ItemFuelBase extends ItemRadioactiveCellIC {
 
     @Override
     public void addInformation(ItemStack stack, EntityPlayer player, List<String> tooltip, boolean advanced) {
-        // Display advDmg rather than the generic 100-point visual damage bar.
         addAdditionalToolTips(tooltip, stack, player);
     }
 

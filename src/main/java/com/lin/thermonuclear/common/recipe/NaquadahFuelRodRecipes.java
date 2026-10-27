@@ -6,8 +6,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.lin.thermonuclear.api.ModRecipeLoader;
-import com.lin.thermonuclear.api.TNCItemList;
-import com.lin.thermonuclear.common.registry.NaquadahFuelTier;
+import com.lin.thermonuclear.common.item.ItemNaquadahFuelRod;
+import com.lin.thermonuclear.common.loader.ItemLoader;
 
 import bartworks.system.material.Werkstoff;
 import goodgenerator.items.GGMaterial;
@@ -20,11 +20,9 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
 
     @Override
     public void loadRecipes() {
-        for (NaquadahFuelTier tier : NaquadahFuelTier.values()) {
-            ItemStack workingRod = TNCItemList.naquadahFuelRod(tier, false)
-                .get(1);
-            ItemStack depletedRod = TNCItemList.naquadahFuelRod(tier, true)
-                .get(1);
+        for (int tier = 1; tier <= ItemNaquadahFuelRod.TIER_COUNT; tier++) {
+            ItemStack workingRod = new ItemStack(ItemLoader.naquadahFuelRod(tier));
+            ItemStack depletedRod = new ItemStack(ItemLoader.depletedNaquadahFuelRod(tier));
             FluidStack fuel = fluid(tier, false);
             FluidStack depletedFuel = fluid(tier, true);
 
@@ -49,16 +47,17 @@ public final class NaquadahFuelRodRecipes implements ModRecipeLoader {
         }
     }
 
-    private static FluidStack fluid(NaquadahFuelTier tier, boolean depleted) {
+    private static FluidStack fluid(int tier, boolean depleted) {
         Werkstoff material = switch (tier) {
-            case MK_I -> depleted ? GGMaterial.naquadahBasedFuelMkIDepleted : GGMaterial.naquadahBasedFuelMkI;
-            case MK_II -> depleted ? GGMaterial.naquadahBasedFuelMkIIDepleted : GGMaterial.naquadahBasedFuelMkII;
-            case MK_III -> depleted ? GGMaterial.naquadahBasedFuelMkIIIDepleted : GGMaterial.naquadahBasedFuelMkIII;
-            case MK_IV -> depleted ? GGMaterial.naquadahBasedFuelMkIVDepleted : GGMaterial.naquadahBasedFuelMkIV;
-            case MK_V -> depleted ? GGMaterial.naquadahBasedFuelMkVDepleted : GGMaterial.naquadahBasedFuelMkV;
-            case MK_VI -> depleted ? GGMaterial.naquadahBasedFuelMkVIDepleted : GGMaterial.naquadahBasedFuelMkVI;
+            case 1 -> depleted ? GGMaterial.naquadahBasedFuelMkIDepleted : GGMaterial.naquadahBasedFuelMkI;
+            case 2 -> depleted ? GGMaterial.naquadahBasedFuelMkIIDepleted : GGMaterial.naquadahBasedFuelMkII;
+            case 3 -> depleted ? GGMaterial.naquadahBasedFuelMkIIIDepleted : GGMaterial.naquadahBasedFuelMkIII;
+            case 4 -> depleted ? GGMaterial.naquadahBasedFuelMkIVDepleted : GGMaterial.naquadahBasedFuelMkIV;
+            case 5 -> depleted ? GGMaterial.naquadahBasedFuelMkVDepleted : GGMaterial.naquadahBasedFuelMkV;
+            case 6 -> depleted ? GGMaterial.naquadahBasedFuelMkVIDepleted : GGMaterial.naquadahBasedFuelMkVI;
+            default -> throw new IllegalArgumentException("Unknown naquadah fuel rod tier: " + tier);
         };
-        FluidStack stack = material.getFluidOrGas(NaquadahFuelTier.FUEL_LITRES);
+        FluidStack stack = material.getFluidOrGas(ItemNaquadahFuelRod.FUEL_LITRES);
         if (stack == null || stack.getFluid() == null)
             throw new IllegalStateException("Missing naquadah fuel fluid for " + tier + ", depleted=" + depleted);
         return stack;

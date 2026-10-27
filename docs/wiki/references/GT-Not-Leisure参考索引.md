@@ -54,7 +54,7 @@
 ### 物品引用与方块注册
 
 - 方块／物品注册分层：`J/common/block/casings/{base,column}/` 与 `J/common/item/items/fuelRod/RadioactiveItem.java`。只采用职责划分，不复制其元数据表、构造时注册或辐射机制。
-- 统一物品引用：`J/utils/enums/GTNLItemList.java` 与 `J/loader/MachineLoader.java` 的 Loader 绑定与副本读取。本项目同样由 Loader 绑定统一枚举，但拒绝备用物品、公开模板与未绑定读取，不新增 GT API。
+- 统一物品引用：`J/utils/enums/GTNLItemList.java` 与 `J/loader/{MachineLoader,ItemLoader}.java` 的简单枚举、Loader 绑定、副本读取与物品比对。本项目按 GT5U `.205` 核对并使用 `GTUtility.copyAmountUnsafe`／`areUnificationsEqual`：允许重新绑定，无效绑定记警告；不引入备用物品、公开模板或额外注册逻辑，未绑定读取仍报错。燃料等级与增殖路线维护业务映射，不放入 ItemList。
 - 方块提示列表：`J/common/block/casings/base/ItemBlockBase.java` 与 `J/utils/item/MetaTooltipUtils.java`。本项目按语言键存储说明，不复制其预翻译字符串和元数据映射。
 - 扳手采集与机器更新：`J/common/block/casings/casing/MetaBlockCasingBase.java`。实际采用 GT5U `.205` 的 `BlockCasingsAbstract` 二级采集要求，以及 `BehaviourWrench` 调用 Forge 旋转接口的原生路径，不复制工具交互逻辑。
 
