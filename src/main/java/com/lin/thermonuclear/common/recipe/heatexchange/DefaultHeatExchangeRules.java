@@ -13,9 +13,9 @@ public enum DefaultHeatExchangeRules implements HeatExchangeRule {
 
     private final CoolantType coolant;
     private final SteamType steam;
-    private final double steamPerHotCoolant;
+    private final int steamPerHotCoolant;
 
-    DefaultHeatExchangeRules(CoolantType coolant, SteamType steam, double steamPerHotCoolant) {
+    DefaultHeatExchangeRules(CoolantType coolant, SteamType steam, int steamPerHotCoolant) {
         this.coolant = coolant;
         this.steam = steam;
         this.steamPerHotCoolant = steamPerHotCoolant;
@@ -37,7 +37,7 @@ public enum DefaultHeatExchangeRules implements HeatExchangeRule {
     }
 
     @Override
-    public double steamPerHotCoolant() {
+    public int steamPerHotCoolant() {
         return steamPerHotCoolant;
     }
 

@@ -52,7 +52,6 @@ public class SteamTurbineRecipes implements ModRecipeLoader {
         for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
             Fluid fuelFluid = fuel.getWorkingFluid();
             if (fuelFluid == null) continue;
-            // This map is documentation only; the turbine's transactional cycle performs the conversion.
             GTValues.RA.stdBuilder()
                 .fluidInputs(new FluidStack(fuelFluid, DISPLAY_LITRES))
                 .eut(0)

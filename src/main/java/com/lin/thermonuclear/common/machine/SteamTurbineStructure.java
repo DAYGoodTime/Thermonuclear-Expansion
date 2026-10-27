@@ -9,7 +9,7 @@ final class SteamTurbineStructure {
     static final int OFFSET_X = 7;
     static final int OFFSET_Y = 13;
     static final int OFFSET_Z = 1;
-
+    // spotless:off
     // Normal scan order: SHAPE[z][y].charAt(x); '~' is the real controller anchor.
     static final String[][] SHAPE = { { // z = 0
         "               ", "               ", "               ", "               ", "               ",
@@ -119,6 +119,6 @@ final class SteamTurbineStructure {
             "               ", "               ", "               ", "               ", "               ",
             "               ", "       E       ", "      EAE      ", "       E       ", "               ",
             "               ", "               ", "               ", "               ", "               ", }, };
-
+    // spotless:on
     private SteamTurbineStructure() {}
 }

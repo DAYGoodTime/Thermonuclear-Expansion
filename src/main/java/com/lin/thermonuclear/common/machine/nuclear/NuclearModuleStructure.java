@@ -23,7 +23,7 @@ final class NuclearModuleStructure {
     // Both entrances share the same grid, including their common back-right neighbour.
     static final Position BACK = new Position(MAIN.max.x - WIDTH + 1, MAIN.min.y, MAIN.max.z + 1);
     static final Position RIGHT = new Position(MAIN.max.x + 1, MAIN.min.y, BACK.z - LENGTH);
-
+    // spotless:off
     // Exact Normal Scan body from dev/nuc-child.txt, with A/B/C mapped to P/F/D.
     private static final String[][] TEMPLATE = {
         { "                    ", "                    ", "                    ", "                    ",
@@ -146,6 +146,7 @@ final class NuclearModuleStructure {
             "     FFFFFFFFF      ", "     FFFFFFFFF      ", "     FFFFFFFFF      ", "     FFFFFFFFF      ",
             "     FFFFFFFFF      ", "     FFFFFFFFF      ", "     FFFFFFFFF      ", "     FFFFFFFFF      ",
             "     FFFFFFFFF      ", "     FFFFFFFFF      ", "     FFFFFFFFF      ", "   FFFFFFFFFFFFF    " } };
+    // spotless:on
     private static final List<Position> FUEL_RODS = createFuelRods();
 
     private NuclearModuleStructure() {}

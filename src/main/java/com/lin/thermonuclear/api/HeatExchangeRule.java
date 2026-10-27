@@ -10,5 +10,5 @@ public interface HeatExchangeRule {
 
     SteamType steam();
 
-    double steamPerHotCoolant();
+    int steamPerHotCoolant();
 }

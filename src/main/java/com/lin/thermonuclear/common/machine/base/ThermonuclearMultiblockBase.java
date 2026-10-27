@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import gregtech.api.metatileentity.implementations.MTEHatchInputDebug;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -87,7 +88,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     public boolean onRightclick(IGregTechTileEntity tile, EntityPlayer player) {
         if (!tile.isServerSide()) return true;
         ItemStack held = player.getHeldItem();
-        if (!usesDynamo() || TNCItemList.WirelessUpgradeChip.isStackEqual(held)) {
+        if (!usesDynamo() || !TNCItemList.WirelessUpgradeChip.isStackEqual(held)) {
             return super.onRightclick(tile, player);
         }
         if (wirelessUpgrade) {
@@ -202,7 +203,15 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
                 }
             } else if (hatch instanceof MTEHatchMultiInput multiInputHatch) {
                 fluids.addAll(Arrays.asList(multiInputHatch.getStoredFluid()));
-            } else {
+            } else if(hatch instanceof MTEHatchInputDebug debugHatch){
+                for (FluidStack template : debugHatch.getFluidList()) {
+                    if (template == null) continue;
+                    FluidStack stack = template.copy();
+                    stack.amount = Integer.MAX_VALUE;
+                    fluids.add(stack);
+                }
+            }
+            else {
                 fluids.add(hatch.getDrainableStack());
             }
         }

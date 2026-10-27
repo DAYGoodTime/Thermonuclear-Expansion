@@ -114,10 +114,11 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         producedEUt = 0;
     }
 
+    //TODO output support long
     protected final void queueFluidOutput(CycleContext context, FluidStack output) {
         FluidStack pending = output.copy();
         if (!productionCycle) {
-            // Idle cooling has no completion tick; discard preflight reservations and eject now.
+            // 待机状态下不会处理输出，需要自行进行输出
             context.onCommit(() -> addFluidOutputs(new FluidStack[] { pending }));
             return;
         }

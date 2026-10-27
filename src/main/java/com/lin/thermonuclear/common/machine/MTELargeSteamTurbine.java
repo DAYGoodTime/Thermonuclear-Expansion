@@ -226,7 +226,6 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     protected boolean processCycle(CycleContext context) {
         currentFuel = null;
-        if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
         boolean unsupportedSteam = false;
         for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {

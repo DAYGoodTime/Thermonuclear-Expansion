@@ -22,6 +22,7 @@ import gregtech.api.recipe.RecipeMapBuilder;
 public final class HeatExchangeRecipes implements ModRecipeLoader {
 
     public static final int DISPLAY_HOT_LITRES = 1000;
+
     public static final RecipeMap<RecipeMapBackend> DISPLAY = RecipeMapBuilder.of("thermonuclear.recipe.heat_exchange")
         .maxIO(0, 0, 2, 2)
         .minInputs(0, 2)
@@ -39,27 +40,22 @@ public final class HeatExchangeRecipes implements ModRecipeLoader {
                     "thermonuclear.nei.heat_exchange_water",
                     HeatExchangeBatch.STEAM_PER_WATER)))
         .build();
-    private static boolean registered;
+
 
     @Override
     public void loadRecipes() {
-        if (registered) return;
-        registered = true;
-        if (WorkingFluids.distilledWater == null) return;
         for (HeatExchangeRule recipe : HeatExchangeRules.getAllRules()) {
             CoolantType coolant = recipe.coolant();
             SteamType steam = recipe.steam();
-            // Preview a fresh 1000 L batch using the same rounding and prepaid-water logic as the machine.
-            HeatExchangeBatch batch = HeatExchangeBatch.forHot(DISPLAY_HOT_LITRES, recipe.steamPerHotCoolant(), 0, 0);
+            HeatExchangeBatch batch = HeatExchangeBatch.calcUsage(DISPLAY_HOT_LITRES,Long.MAX_VALUE,recipe);
             if (batch == null) continue;
             GTValues.RA.stdBuilder()
                 .fluidInputs(
                     new FluidStack(coolant.hot(), batch.hot()),
                     new FluidStack(WorkingFluids.distilledWater, batch.water()))
                 .fluidOutputs(new FluidStack(coolant.cold(), batch.hot()), new FluidStack(steam.fluid(), batch.steam()))
-                .eut(0)
                 .duration(20)
-                .specialValue(batch.waterCredit())
+                .eut(0)
                 .fake()
                 .addTo(DISPLAY);
         }

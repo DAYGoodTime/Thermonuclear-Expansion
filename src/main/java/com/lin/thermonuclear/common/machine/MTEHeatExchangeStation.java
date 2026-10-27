@@ -1,7 +1,6 @@
 package com.lin.thermonuclear.common.machine;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -9,7 +8,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
-import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.google.common.collect.ImmutableMap;
@@ -51,12 +49,11 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     private static final int WIDTH = 9;
     private static final int HEIGHT = 14;
     private static final int LENGTH = 7;
-    // G is at (4, 12, 1) in the scanner export. It faces the preceding slice, which is the outside.
     private static final int OFFSET_X = 4;
     private static final int OFFSET_Y = 12;
     private static final int OFFSET_Z = 1;
     private static final Casings CASING = Casings.SolidSteelMachineCasing;
-    // StructureLib order: [depth][top-to-bottom row]. Empty spaces retain the scanner's skip semantics.
+    // spotless:off
     private static final String[][] SHAPE = {
         { "         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
             "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD" },
@@ -72,15 +69,16 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
             "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D   D  ", "DDDDDDDDD" },
         { "         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
             "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD" } };
+    // spotless:on
     private static final IStructureDefinition<MTEHeatExchangeStation> STRUCTURE = StructureDefinition
         .<MTEHeatExchangeStation>builder()
         .addShape(PIECE, SHAPE)
-        .addElement('A', inputHatch(1, MTEHeatExchangeStation::addColdInput))
+        .addElement('A', inputHatch(1, MTEHeatExchangeStation::addWaterInput))
         .addElement('B', outputHatch(2, MTEHeatExchangeStation::addColdOutput))
         .addElement('C', inputHatch(3, MTEHeatExchangeStation::addHotInput))
         .addElement('D', Casings.SolidSteelMachineCasing.asElement())
         .addElement('E', Casings.BronzePipeCasing.asElement())
-        .addElement('F', outputHatch(4, MTEHeatExchangeStation::addHotOutput))
+        .addElement('F', outputHatch(4, MTEHeatExchangeStation::addSteamOutput))
         .build();
 
     private static IStructureElement<MTEHeatExchangeStation> inputHatch(int hint, HatchAdder adder) {
@@ -109,13 +107,13 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         boolean add(MTEHeatExchangeStation machine, IGregTechTileEntity tile, int texture);
     }
 
-    private final List<MTEHatch> coldInputs = new ArrayList<>();
+    private final List<MTEHatch> waterInputs = new ArrayList<>();
     private final List<MTEHatch> hotInputs = new ArrayList<>();
     private final List<IOutputHatch> coldOutputs = new ArrayList<>();
-    private final List<IOutputHatch> hotOutputs = new ArrayList<>();
+    private final List<IOutputHatch> steamOutputs = new ArrayList<>();
 
-    private boolean addColdInput(IGregTechTileEntity tile, int texture) {
-        return addGrouped(tile, coldInputs, texture);
+    private boolean addWaterInput(IGregTechTileEntity tile, int texture) {
+        return addGrouped(tile, waterInputs, texture);
     }
 
     private boolean addHotInput(IGregTechTileEntity tile, int texture) {
@@ -126,8 +124,8 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         return addOutputGrouped(tile, coldOutputs, texture);
     }
 
-    private boolean addHotOutput(IGregTechTileEntity tile, int texture) {
-        return addOutputGrouped(tile, hotOutputs, texture);
+    private boolean addSteamOutput(IGregTechTileEntity tile, int texture) {
+        return addOutputGrouped(tile, steamOutputs, texture);
     }
 
     private boolean addGrouped(IGregTechTileEntity tile, List<MTEHatch> group, int texture) {
@@ -150,9 +148,9 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     @Override
     public void checkMachine(IGregTechTileEntity tile, ItemStack stack, List<StructureError> errors) {
         if (!checkPiece(PIECE, OFFSET_X, OFFSET_Y, OFFSET_Z, errors)) return;
-        if (coldInputs.isEmpty() || hotInputs.isEmpty())
+        if (waterInputs.isEmpty() || hotInputs.isEmpty())
             errors.add(StructureErrors.missingHatch(HatchElement.InputHatch));
-        if (coldOutputs.isEmpty() || hotOutputs.isEmpty())
+        if (coldOutputs.isEmpty() || steamOutputs.isEmpty())
             errors.add(StructureErrors.missingHatch(HatchElement.OutputHatch));
     }
 
@@ -175,10 +173,10 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     @Override
     public void clearHatches() {
         super.clearHatches();
-        coldInputs.clear();
+        waterInputs.clear();
         hotInputs.clear();
         coldOutputs.clear();
-        hotOutputs.clear();
+        steamOutputs.clear();
     }
 
     @Override
@@ -198,10 +196,14 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
             .addController(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.controller"))
             .addCasing("253", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.casings"), false)
             .addCasing("55", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.pipes"), false)
-            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"), 1)
-            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_output"), 2)
-            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_input"), 3)
-            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_output"), 4)
+//            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"), 1)
+//            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_output"), 2)
+//            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_input"), 3)
+//            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_output"), 4)
+            .addStructureHint("thermonuclear.structure.heat_exchange.water",1)
+            .addStructureHint("thermonuclear.structure.heat_exchange.coolant",2)
+            .addStructureHint("thermonuclear.structure.heat_exchange.hot_coolant",3)
+            .addStructureHint("thermonuclear.structure.heat_exchange.steam",4)
             .toolTipFinisher();
     }
 
@@ -211,8 +213,6 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     }
 
     private HeatExchangeRule selected;
-    private final Map<String, Double> steamRemainders = new HashMap<>();
-    private int waterCredit;
     private double waterRate;
 
     public MTEHeatExchangeStation(int id, String name, String regional) {
@@ -230,43 +230,32 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
 
     @Override
     protected boolean processCycle(CycleContext context) {
-        if (WorkingFluids.distilledWater == null) return fail("fluids_missing");
         selected = selectRecipe();
         if (selected == null) return fail("hot_fluid");
         HeatExchangeRule recipe = selected;
         CoolantType coolant = recipe.coolant();
         SteamType steamType = recipe.steam();
-        long waterAvailable = available(WorkingFluids.distilledWater, coldInputs);
-        HeatExchangeBatch minimum = exchangeBatch(recipe, 1);
-        if (minimum == null) return fail("output_full");
+        long waterAvailable = available(WorkingFluids.distilledWater, waterInputs);
+        HeatExchangeBatch minimum = HeatExchangeBatch.calcUsage(1, waterAvailable, recipe);
+        if (minimum == null) return fail("invalid_value");
         if (minimum.water() > waterAvailable) return fail("water");
-        int hotLimit = (int) Math.min(available(coolant.hot(), hotInputs), Integer.MAX_VALUE);
-        int hot = acceptedHot(recipe, hotLimit, waterAvailable);
-        if (hot == 0) return fail("output_full");
-        HeatExchangeBatch batch = exchangeBatch(recipe, hot);
-        int water = batch.water();
-        int steam = batch.steam();
-        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(coolant.cold(), hot));
-        FluidEjectionHelper steamOutput = steam > 0
-            ? prepareOutputs(hotOutputs, new FluidStack(steamType.fluid(), steam))
-            : null;
-        if (coldOutput == null || (steam > 0 && steamOutput == null)) return fail("output_full");
-        // All capacity reservations and both input checks precede any real mutation.
+        HeatExchangeBatch result = HeatExchangeBatch.calcUsage(available(coolant.hot(), hotInputs),
+            waterAvailable, recipe);
+        if (result == null) return fail("invalid_value");
+        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(coolant.cold(), result.hot()));
+        FluidEjectionHelper steamOutput = prepareOutputs(steamOutputs, new FluidStack(steamType.fluid(), result.steam()));
+        if (coldOutput == null || steamOutput == null) return fail("output_full");
+        // 准备处理输入消费
         context.deferInput(() -> {
-            consume(coolant.hot(), hot, hotInputs);
-            if (water > 0) consume(WorkingFluids.distilledWater, water, coldInputs);
+            consume(coolant.hot(), result.hot(), hotInputs);
+            consume(WorkingFluids.distilledWater, result.water(), waterInputs);
         });
-        // Stable slot order is the route metadata, including after GT restores the pending array.
-        queueFluidOutput(context, new FluidStack(coolant.cold(), hot));
-        if (steam > 0) queueFluidOutput(context, new FluidStack(steamType.fluid(), steam));
-        final String steamId = steamType.id();
-        context.onCommit(() -> {
-            waterCredit = batch.waterCredit();
-            steamRemainders.put(steamId, batch.steamRemainder());
-        });
-        inputLitresPerTick = hot / (double) CYCLE_TICKS;
-        waterRate = water / (double) CYCLE_TICKS;
-        outputLitresPerTick = steam / (double) CYCLE_TICKS;
+        //TODO output support long
+        queueFluidOutput(context, new FluidStack(coolant.cold(), result.hot()));
+        queueFluidOutput(context, new FluidStack(steamType.fluid(), result.steam()));
+        inputLitresPerTick = result.hot() / (double) CYCLE_TICKS;
+        waterRate = result.water() / (double) CYCLE_TICKS;
+        outputLitresPerTick = result.steam() / (double) CYCLE_TICKS;
         return true;
     }
 
@@ -274,13 +263,12 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     protected boolean addFluidOutputs(FluidStack[] outputFluids) {
         boolean complete = true;
         for (int i = 0; i < outputFluids.length; i++) {
-            complete &= addFluidOutputs(new FluidStack[] { outputFluids[i] }, i == 0 ? coldOutputs : hotOutputs);
+            complete &= addFluidOutputs(new FluidStack[]{outputFluids[i]}, i == 0 ? coldOutputs : steamOutputs);
         }
         return complete;
     }
 
     private HeatExchangeRule selectRecipe() {
-        // Keep the previous hot fluid while available; never pool different fluids within one cycle.
         if (selected != null && hasHotFluid(selected)) return selected;
         for (HeatExchangeRule rule : HeatExchangeRules.getAllRules()) {
             if (hasHotFluid(rule)) return rule;
@@ -293,70 +281,21 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         return available(coolant.hot(), hotInputs) >= 1;
     }
 
-    private HeatExchangeBatch exchangeBatch(HeatExchangeRule recipe, int hot) {
-        SteamType steam = recipe.steam();
-        return HeatExchangeBatch
-            .forHot(hot, recipe.steamPerHotCoolant(), steamRemainders.getOrDefault(steam.id(), 0.0), waterCredit);
-    }
-
-    private int acceptedHot(HeatExchangeRule recipe, int limit, long waterAvailable) {
-        CoolantType coolant = recipe.coolant();
-        Fluid coldFluid = coolant.cold();
-        Fluid steamFluid = recipe.steam()
-            .fluid();
-        int lower = 0;
-        int upper = limit;
-        while (lower < upper) {
-            int hot = lower + (int) (((long) upper - lower + 1) / 2);
-            HeatExchangeBatch batch = exchangeBatch(recipe, hot);
-            // Each probe has independent reservations; completion will simulate output again.
-            boolean fits = batch != null && batch.water() <= waterAvailable
-                && prepareOutputs(coldOutputs, new FluidStack(coldFluid, hot)) != null
-                && (batch.steam() == 0
-                    || prepareOutputs(hotOutputs, new FluidStack(steamFluid, batch.steam())) != null);
-            if (fits) lower = hot;
-            else upper = hot - 1;
-        }
-        return lower;
-    }
-
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setString("tnExchangeRecipe", selected == null ? "" : selected.id());
-        saveExchangeCredit(nbt);
-        nbt.setDouble("tnExchangeWaterRate", waterRate);
     }
 
     @Override
     public void setItemNBT(NBTTagCompound nbt) {
         super.setItemNBT(nbt);
-        saveExchangeCredit(nbt);
-    }
-
-    private void saveExchangeCredit(NBTTagCompound nbt) {
-        nbt.setInteger("tnExchangeWaterCredit", waterCredit);
-        for (SteamType steam : SteamType.values()) {
-            nbt.setDouble("tnExchangeSteamRemainder_" + steam.id(), steamRemainders.getOrDefault(steam.id(), 0.0));
-        }
     }
 
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        int savedCredit = nbt.getInteger("tnExchangeWaterCredit");
-        waterCredit = savedCredit >= 0 && savedCredit < HeatExchangeBatch.STEAM_PER_WATER ? savedCredit : 0;
-        double savedRate = nbt.getDouble("tnExchangeWaterRate");
-        waterRate = Double.isFinite(savedRate) && savedRate >= 0 ? savedRate : 0;
         selected = HeatExchangeRules.find(nbt.getString("tnExchangeRecipe"));
-        steamRemainders.clear();
-        // Old steam modes no longer select a path. Keep each steam's credit without converting ordinary to superheated.
-        for (SteamType steam : SteamType.values()) {
-            double remainder = nbt.getDouble("tnExchangeSteamRemainder_" + steam.id());
-            if (Double.isFinite(remainder) && remainder >= 0 && remainder < 1) {
-                steamRemainders.put(steam.id(), remainder);
-            }
-        }
     }
 
     @Override
@@ -392,22 +331,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
-        info.put(
-            "steam_type",
-            selected == null ? "thermonuclear.recipe.none"
-                : selected.steam()
-                    .translationKey());
-        info.put(
-            "recipe",
-            selected == null ? "thermonuclear.recipe.none"
-                : selected.coolant()
-                    .nameKey());
-        if (selected != null) info.put("steam_multiplier", decimal(selected.steamPerHotCoolant()) + " L/L");
-        info.put("hot_input", decimalPerCycle(inputLitresPerTick));
-        info.put("water_input", decimalPerCycle(inputLitresPerTick > 0 ? waterRate : 0));
-        info.put("steam_output", decimalPerCycle(outputLitresPerTick));
-        info.put("coolant_return", decimalPerCycle(inputLitresPerTick));
-        if (mMaxProgresstime > 0) info.put("cycle", decimal(mProgresstime / (double) CYCLE_TICKS) + " / 1");
+        info.put("water_input",decimal(waterRate));
         return info;
     }
 
