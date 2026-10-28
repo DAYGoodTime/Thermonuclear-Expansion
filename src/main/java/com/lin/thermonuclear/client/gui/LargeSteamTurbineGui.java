@@ -10,7 +10,7 @@ import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.lin.thermonuclear.common.machine.MTELargeSteamTurbine;
-import com.lin.thermonuclear.utils.SteamTurbineMath;
+import com.lin.thermonuclear.utils.MathUtil;
 
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.common.gui.modularui.widget.settings.SettingsPanel;
@@ -25,7 +25,7 @@ public final class LargeSteamTurbineGui extends ThermonuclearMultiblockGui<MTELa
     protected Flow createLeftPanelGapRow(ModularPanel parent, PanelSyncManager manager) {
         IPanelHandler parameters = manager.syncedPanel("tnTurbineParameters", true, (sync, handler) -> {
             StringSyncValue limit = new StringSyncValue(
-                () -> Long.toString(multiblock.getSteamLimitLitresPerCycle()),
+                () -> Long.toString(multiblock.getSteamLimitPerCycle()),
                 multiblock::setSteamLimitFromGui).allowC2S();
             sync.syncValue("tnSteamLimit", limit);
             ModularPanel panel = new ModularPanel("tnTurbineParameters").coverChildrenWidth(80)
@@ -49,21 +49,9 @@ public final class LargeSteamTurbineGui extends ThermonuclearMultiblockGui<MTELa
                                 limit,
                                 (p, sm, field) -> field.setMaxLength(19)
                                     .setPattern(Pattern.compile("[0-9]*"))
-                                    .setValidator(
-                                        text -> Long.toString(
-                                            SteamTurbineMath.parseLimit(
-                                                text,
-                                                SteamTurbineMath.parseLimit(limit.getStringValue(), Long.MAX_VALUE))))
+                                    .setValidator(text -> Long.toString(MathUtil.parseLongSafe(text)))
                                     .width(125))
-                            .build(panel, sync, getBasePanelHeight() - 8))
-                    .child(
-                        IKey.lang("thermonuclear.gui.steam_limit_help.0")
-                            .asWidget()
-                            .width(200))
-                    .child(
-                        IKey.lang("thermonuclear.gui.steam_limit_help.1")
-                            .asWidget()
-                            .width(200)));
+                            .build(panel, sync, getBasePanelHeight() - 8)));
         });
         return super.createLeftPanelGapRow(parent, manager).child(
             new ButtonWidget<>().size(18)

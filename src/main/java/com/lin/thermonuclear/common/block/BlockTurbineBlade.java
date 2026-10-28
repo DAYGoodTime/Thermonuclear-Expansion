@@ -21,7 +21,6 @@ public final class BlockTurbineBlade extends BlockMachineComponent {
 
     public BlockTurbineBlade() {
         super("turbine_blade");
-        addInfo("thermonuclear.tooltip.turbine_blade.0");
     }
 
     @Override

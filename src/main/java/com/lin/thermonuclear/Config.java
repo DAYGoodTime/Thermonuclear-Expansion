@@ -160,6 +160,11 @@ public class Config {
         @DefaultInt(300)
         @RangeInt(min = 1, max = 720000)
         public int turbineDecayTicks;
+
+        @Comment("蒸汽涡轮发电倍率")
+        @DefaultInt(1)
+        @RangeInt(min = 1, max = Integer.MAX_VALUE)
+        public int turbineGenerationMultiple;
     }
 
     /** Migrates saved categories before GTNHLib loads fields or removes undeclared categories. */

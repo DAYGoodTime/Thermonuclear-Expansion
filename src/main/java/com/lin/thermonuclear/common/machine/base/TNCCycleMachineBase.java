@@ -114,7 +114,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         producedEUt = 0;
     }
 
-    //TODO output support long
+    // TODO output support long
     protected final void queueFluidOutput(CycleContext context, FluidStack output) {
         FluidStack pending = output.copy();
         if (!productionCycle) {
@@ -212,7 +212,6 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
 
     protected final void addGenerationInfo(Map<String, String> info) {
         info.put("full_load", decimal(fullLoadEUt));
-        info.put("generated", Long.toString(running ? producedEUt : 0));
     }
 
     protected static String decimalPerCycle(double valuePerTick) {

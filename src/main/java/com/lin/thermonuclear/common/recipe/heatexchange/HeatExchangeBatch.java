@@ -20,7 +20,7 @@ public final class HeatExchangeBatch {
         this.steam = steam;
     }
 
-    //TODO long support
+    // TODO long support
     public int hot() {
         return MathUtil.getIntClamp(hot);
     }
@@ -33,12 +33,12 @@ public final class HeatExchangeBatch {
         return MathUtil.getIntClamp(steam);
     }
 
-    public static HeatExchangeBatch calcUsage(long hot,long waterAvailable ,HeatExchangeRule recipe){
-        if(recipe.steamPerHotCoolant() <= 0) return null;
-        long waterHotCost = waterAvailable*STEAM_PER_WATER / recipe.steamPerHotCoolant();
-        long hotUsed = Math.min(hot,waterHotCost);
-        long steam = hotUsed*recipe.steamPerHotCoolant();
-        long waterUsed = (steam/STEAM_PER_WATER);
-        return new HeatExchangeBatch(hotUsed,waterUsed,steam);
+    public static HeatExchangeBatch calcUsage(long hot, long waterAvailable, HeatExchangeRule recipe) {
+        if (recipe.steamPerHotCoolant() <= 0) return null;
+        long waterHotCost = waterAvailable * STEAM_PER_WATER / recipe.steamPerHotCoolant();
+        long hotUsed = Math.min(hot, waterHotCost);
+        long steam = hotUsed * recipe.steamPerHotCoolant();
+        long waterUsed = (steam / STEAM_PER_WATER);
+        return new HeatExchangeBatch(hotUsed, waterUsed, steam);
     }
 }

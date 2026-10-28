@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import gregtech.api.metatileentity.implementations.MTEHatchInputDebug;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -35,6 +34,7 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEHatch;
+import gregtech.api.metatileentity.implementations.MTEHatchInputDebug;
 import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
@@ -203,15 +203,14 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
                 }
             } else if (hatch instanceof MTEHatchMultiInput multiInputHatch) {
                 fluids.addAll(Arrays.asList(multiInputHatch.getStoredFluid()));
-            } else if(hatch instanceof MTEHatchInputDebug debugHatch){
+            } else if (hatch instanceof MTEHatchInputDebug debugHatch) {
                 for (FluidStack template : debugHatch.getFluidList()) {
                     if (template == null) continue;
                     FluidStack stack = template.copy();
                     stack.amount = Integer.MAX_VALUE;
                     fluids.add(stack);
                 }
-            }
-            else {
+            } else {
                 fluids.add(hatch.getDrainableStack());
             }
         }

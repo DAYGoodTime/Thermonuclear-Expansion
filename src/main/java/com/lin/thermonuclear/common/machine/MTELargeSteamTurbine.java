@@ -31,11 +31,12 @@ import com.lin.thermonuclear.common.block.BlockTurbineShaft;
 import com.lin.thermonuclear.common.loader.BlockLoader;
 import com.lin.thermonuclear.common.machine.base.CycleContext;
 import com.lin.thermonuclear.common.machine.base.TNCCycleMachineBase;
+import com.lin.thermonuclear.common.recipe.heatexchange.HeatExchangeBatch;
 import com.lin.thermonuclear.common.recipe.steamturbine.DefaultSteamTurbineFuels;
 import com.lin.thermonuclear.common.recipe.steamturbine.SteamTurbineRecipes;
 import com.lin.thermonuclear.common.registry.StructureChannels;
 import com.lin.thermonuclear.common.registry.WorkingFluids;
-import com.lin.thermonuclear.utils.SteamTurbineMath;
+import com.lin.thermonuclear.utils.MathUtil;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.GTValues;
@@ -151,11 +152,6 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         return survivalBuildPiece(PIECE, stack, OFFSET_X, OFFSET_Y, OFFSET_Z, elementBudget, env, false, true);
     }
 
-    public static double litresPerTick(long litresPerCycle, int cycleTicks) {
-        if (litresPerCycle <= 0 || cycleTicks <= 0) return 0;
-        return litresPerCycle / (double) cycleTicks;
-    }
-
     @Override
     protected Casings casing() {
         return CASING;
@@ -173,10 +169,8 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
                     .put(
                         "ultra_supercritical_energy",
                         decimal(DefaultSteamTurbineFuels.ULTRA_SUPERCRITICAL_STEAM.euPerLitre()))
-                    .put("startup_ticks", NumberFormatUtil.formatNumber(Config.largeSteamTurbine.turbineStartupTicks))
-                    .put("decay_ticks", NumberFormatUtil.formatNumber(Config.largeSteamTurbine.turbineDecayTicks))
                     .put("steam_per_water", NumberFormatUtil.formatNumber(GTValues.STEAM_PER_WATER))
-                    .put("cycle_ticks", NumberFormatUtil.formatNumber(CYCLE_TICKS))
+                    .put("multiple", Config.largeSteamTurbine.turbineGenerationMultiple)
                     .build())
             .beginStructureBlock(
                 SteamTurbineStructure.WIDTH,
@@ -196,7 +190,6 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
                 StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.quantity"),
                 StatCollector.translateToLocal("thermonuclear.structure.turbine.dynamo.location"),
                 3)
-            .addStructureInfo("")
             .addSubChannel(StructureChannels.TURBINE_SHAFT)
             .toolTipFinisher();
     }
@@ -206,8 +199,7 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         return new LargeSteamTurbineGui(this);
     }
 
-    private int condensationRemainderLitres;
-    private long steamLimitLitresPerCycle = 0;
+    private long steamLimitPerCycle = 0;
     private SteamTurbineFuel currentFuel;
 
     public MTELargeSteamTurbine(int id, String name, String regional) {
@@ -226,7 +218,7 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     protected boolean processCycle(CycleContext context) {
         currentFuel = null;
-        if (steamLimitLitresPerCycle == 0) return fail("steam_limit_zero");
+        if (steamLimitPerCycle == 0) return fail("steam_limit_zero");
         boolean unsupportedSteam = false;
         for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
             if (fuel.getWorkingFluid() != null && available(fuel.getWorkingFluid()) > 0) {
@@ -239,36 +231,28 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
             }
         }
         if (currentFuel == null) return fail(unsupportedSteam ? "shaft_steam_unsupported" : "steam");
-        double effectiveEUPerLitre = currentFuel.euPerLitre();
-        long effectiveSteamLimitLitresPerCycle = SteamTurbineMath
-            .steamLimitLitresPerCycle(steamLimitLitresPerCycle, GTValues.STEAM_PER_WATER, condensationRemainderLitres);
-        double fullLoadSteamLitresPerTick = litresPerTick(effectiveSteamLimitLitresPerCycle, CYCLE_TICKS);
-        fullLoadEUt = SteamTurbineMath.generationEUt(fullLoadSteamLitresPerTick, effectiveEUPerLitre);
-        long steamLitresPerCycle = Math
-            .min(effectiveSteamLimitLitresPerCycle, available(currentFuel.getWorkingFluid()));
-        if (steamLitresPerCycle <= 0) return fail("steam");
-        int waterLitresPerCycle = (int) ((steamLitresPerCycle + condensationRemainderLitres)
-            / GTValues.STEAM_PER_WATER);
-        // Reserve a water path even before the first integer litre accumulates.
+        long steamAvailable = available(currentFuel.getWorkingFluid());
+        long steamUsed = Math.min(steamLimitPerCycle, steamAvailable);
+        double euFullLoad = steamUsed * currentFuel.euPerLitre()
+            * Config.largeSteamTurbine.turbineGenerationMultiple
+            * ((shaftTier >= 2) ? 1.5 : 1);
+        // 发电按tick算
+        fullLoadEUt = euFullLoad / CYCLE_TICKS;
+        long waterOutput = steamUsed / HeatExchangeBatch.STEAM_PER_WATER;
+        if (waterOutput <= 0) return fail("steam");
+        // TODO long support
         FluidEjectionHelper outputs = prepareOutputs(
-            new FluidStack(WorkingFluids.distilledWater, Math.max(1, waterLitresPerCycle)));
+            new FluidStack(WorkingFluids.distilledWater, MathUtil.getIntClamp(waterOutput)));
         if (outputs == null) return fail("output_full");
-        context.deferInput(() -> consume(currentFuel.getWorkingFluid(), steamLitresPerCycle));
-        if (waterLitresPerCycle > 0)
-            queueFluidOutput(context, new FluidStack(WorkingFluids.distilledWater, waterLitresPerCycle));
-        final int remainingSteamLitres = (int) ((steamLitresPerCycle + condensationRemainderLitres)
-            % GTValues.STEAM_PER_WATER);
-        context.onCommit(() -> condensationRemainderLitres = remainingSteamLitres);
-        // Integer batches stay at the fluid transaction boundary; all operating rates use ticks.
-        inputLitresPerTick = litresPerTick(steamLitresPerCycle, CYCLE_TICKS);
-        outputLitresPerTick = litresPerTick(waterLitresPerCycle, CYCLE_TICKS);
-        operatingEUt = SteamTurbineMath.generationEUt(inputLitresPerTick, effectiveEUPerLitre);
+        context.deferInput(() -> consume(currentFuel.getWorkingFluid(), steamUsed));
+        queueFluidOutput(context, new FluidStack(WorkingFluids.distilledWater, MathUtil.getIntClamp(waterOutput)));
+        inputLitresPerTick = (double) steamUsed / CYCLE_TICKS;
+        operatingEUt = fullLoadEUt;
         return true;
     }
 
     @Override
     public boolean onRunningTick(ItemStack stack) {
-        // A structure downgrade must not resume prepaid ultra-supercritical generation on low-pressure shafts.
         if (currentFuel != null && !currentFuel.supportShaftTier(shaftTier)) {
             stopMachine(SimpleShutDownReason.ofCritical("thermonuclear.status.shaft_steam_unsupported"));
             return fail("shaft_steam_unsupported");
@@ -279,15 +263,14 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
-        nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
+        nbt.setLong("tnSteamLimitPerCycle", steamLimitPerCycle);
         if (currentFuel != null) nbt.setString("tnTurbineFuel", currentFuel.nameKey());
-        else nbt.removeTag("tnTurbineFuel");
     }
 
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
-        steamLimitLitresPerCycle = nbt.hasKey("tnSteamLimitPerCycle") ? Math.max(0, nbt.getLong("tnSteamLimitPerCycle"))
+        steamLimitPerCycle = nbt.hasKey("tnSteamLimitPerCycle") ? Math.max(0, nbt.getLong("tnSteamLimitPerCycle"))
             : Long.MAX_VALUE;
         currentFuel = null;
         for (SteamTurbineFuel fuel : SteamTurbineFuels.getAllFuels()) {
@@ -299,19 +282,17 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     @Override
     public void setItemNBT(NBTTagCompound nbt) {
         super.setItemNBT(nbt);
-        nbt.setLong("tnSteamLimitPerCycle", steamLimitLitresPerCycle);
     }
 
-    public long getSteamLimitLitresPerCycle() {
-        return steamLimitLitresPerCycle;
+    public long getSteamLimitPerCycle() {
+        return steamLimitPerCycle;
     }
 
     public void setSteamLimitFromGui(String text) {
         if (getBaseMetaTileEntity() == null || !getBaseMetaTileEntity().isServerSide()) return;
-        long limitLitresPerCycle = SteamTurbineMath.parseLimit(text, steamLimitLitresPerCycle);
-        if (limitLitresPerCycle != steamLimitLitresPerCycle) {
-            // Already-prepaid generation is unchanged; the new cap starts with the next cycle.
-            steamLimitLitresPerCycle = limitLitresPerCycle;
+        long limitLitresPerCycle = MathUtil.parseLongSafe(text);
+        if (limitLitresPerCycle != steamLimitPerCycle) {
+            steamLimitPerCycle = limitLitresPerCycle;
             markDirty();
         }
     }
@@ -353,9 +334,8 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         addStartupInfo(info);
         addGenerationInfo(info);
         info.put("turbine_steam_type", currentFuel == null ? "thermonuclear.recipe.none" : currentFuel.nameKey());
-        info.put("steam_cycle_limit", Long.toString(steamLimitLitresPerCycle));
+        info.put("steam_cycle_limit", Long.toString(steamLimitPerCycle));
         info.put("steam_input", decimalPerCycle(inputLitresPerTick));
-        info.put("water_output", decimalPerCycle(outputLitresPerTick));
         return info;
     }
 }

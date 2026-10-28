@@ -55,20 +55,20 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     private static final Casings CASING = Casings.SolidSteelMachineCasing;
     // spotless:off
     private static final String[][] SHAPE = {
-        { "         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
-            "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD" },
-        { "         ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ",
-            "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D ~ D  ", "DDDDDDDDD" },
-        { "     EEE ", "  DDDEDE ", "  D   DE ", "  DEE DE ", "  D  EDE ", "  D   DE ", "  D   DE ", "  DEE DE ",
-            "  D  EDE ", "  D   DE ", "  DE  DE ", "  DEDDDE ", "   E   E ", "CDDDDDDDA" },
-        { "         ", "  DDDDD  ", "  DE  D  ", "  D   D  ", "  D  ED  ", "  D   D  ", "  DE  D  ", "  D   D  ",
-            "  D  ED  ", "  D   D  ", "  DE  D  ", "  DDDDD  ", "         ", "DDDDDDDDD" },
-        { " EEE     ", " EDEDDD  ", " EDE  D  ", " ED   D  ", " ED   D  ", " ED EED  ", " EDE  D  ", " ED   D  ",
-            " ED   D  ", " ED EED  ", " EDE  D  ", " EDDDED  ", " E   E   ", "BDDDDDDDF" },
-        { "         ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ",
-            "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D   D  ", "DDDDDDDDD" },
-        { "         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
-            "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD" } };
+        {"         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
+            "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD"},
+        {"         ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ",
+            "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D ~ D  ", "DDDDDDDDD"},
+        {"     EEE ", "  DDDEDE ", "  D   DE ", "  DEE DE ", "  D  EDE ", "  D   DE ", "  D   DE ", "  DEE DE ",
+            "  D  EDE ", "  D   DE ", "  DE  DE ", "  DEDDDE ", "   E   E ", "CDDDDDDDA"},
+        {"         ", "  DDDDD  ", "  DE  D  ", "  D   D  ", "  D  ED  ", "  D   D  ", "  DE  D  ", "  D   D  ",
+            "  D  ED  ", "  D   D  ", "  DE  D  ", "  DDDDD  ", "         ", "DDDDDDDDD"},
+        {" EEE     ", " EDEDDD  ", " EDE  D  ", " ED   D  ", " ED   D  ", " ED EED  ", " EDE  D  ", " ED   D  ",
+            " ED   D  ", " ED EED  ", " EDE  D  ", " EDDDED  ", " E   E   ", "BDDDDDDDF"},
+        {"         ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ",
+            "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  DDDDD  ", "  D   D  ", "DDDDDDDDD"},
+        {"         ", "         ", "         ", "         ", "         ", "         ", "         ", "         ",
+            "         ", "         ", "         ", "         ", "         ", "DDDDDDDDD"}};
     // spotless:on
     private static final IStructureDefinition<MTEHeatExchangeStation> STRUCTURE = StructureDefinition
         .<MTEHeatExchangeStation>builder()
@@ -196,14 +196,10 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
             .addController(StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.controller"))
             .addCasing("253", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.casings"), false)
             .addCasing("55", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.pipes"), false)
-//            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_input"), 1)
-//            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.cold_output"), 2)
-//            .addInputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_input"), 3)
-//            .addOutputHatch("1", StatCollector.translateToLocal("thermonuclear.structure.heat_exchange.hot_output"), 4)
-            .addStructureHint("thermonuclear.structure.heat_exchange.water",1)
-            .addStructureHint("thermonuclear.structure.heat_exchange.coolant",2)
-            .addStructureHint("thermonuclear.structure.heat_exchange.hot_coolant",3)
-            .addStructureHint("thermonuclear.structure.heat_exchange.steam",4)
+            .addStructureHint("thermonuclear.structure.heat_exchange.water", 1)
+            .addStructureHint("thermonuclear.structure.heat_exchange.coolant", 2)
+            .addStructureHint("thermonuclear.structure.heat_exchange.hot_coolant", 3)
+            .addStructureHint("thermonuclear.structure.heat_exchange.steam", 4)
             .toolTipFinisher();
     }
 
@@ -239,18 +235,20 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         HeatExchangeBatch minimum = HeatExchangeBatch.calcUsage(1, waterAvailable, recipe);
         if (minimum == null) return fail("invalid_value");
         if (minimum.water() > waterAvailable) return fail("water");
-        HeatExchangeBatch result = HeatExchangeBatch.calcUsage(available(coolant.hot(), hotInputs),
-            waterAvailable, recipe);
+        HeatExchangeBatch result = HeatExchangeBatch
+            .calcUsage(available(coolant.hot(), hotInputs), waterAvailable, recipe);
         if (result == null) return fail("invalid_value");
         FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(coolant.cold(), result.hot()));
-        FluidEjectionHelper steamOutput = prepareOutputs(steamOutputs, new FluidStack(steamType.fluid(), result.steam()));
+        FluidEjectionHelper steamOutput = prepareOutputs(
+            steamOutputs,
+            new FluidStack(steamType.fluid(), result.steam()));
         if (coldOutput == null || steamOutput == null) return fail("output_full");
         // 准备处理输入消费
         context.deferInput(() -> {
             consume(coolant.hot(), result.hot(), hotInputs);
             consume(WorkingFluids.distilledWater, result.water(), waterInputs);
         });
-        //TODO output support long
+        // TODO output support long
         queueFluidOutput(context, new FluidStack(coolant.cold(), result.hot()));
         queueFluidOutput(context, new FluidStack(steamType.fluid(), result.steam()));
         inputLitresPerTick = result.hot() / (double) CYCLE_TICKS;
@@ -263,7 +261,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     protected boolean addFluidOutputs(FluidStack[] outputFluids) {
         boolean complete = true;
         for (int i = 0; i < outputFluids.length; i++) {
-            complete &= addFluidOutputs(new FluidStack[]{outputFluids[i]}, i == 0 ? coldOutputs : steamOutputs);
+            complete &= addFluidOutputs(new FluidStack[] { outputFluids[i] }, i == 0 ? coldOutputs : steamOutputs);
         }
         return complete;
     }
@@ -331,7 +329,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     @Override
     public Map<String, String> displayInfo() {
         Map<String, String> info = commonInfo();
-        info.put("water_input",decimal(waterRate));
+        info.put("water_input", decimal(waterRate));
         return info;
     }
 

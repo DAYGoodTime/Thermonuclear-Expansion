@@ -41,19 +41,20 @@ public final class HeatExchangeRecipes implements ModRecipeLoader {
                     HeatExchangeBatch.STEAM_PER_WATER)))
         .build();
 
-
     @Override
     public void loadRecipes() {
         for (HeatExchangeRule recipe : HeatExchangeRules.getAllRules()) {
             CoolantType coolant = recipe.coolant();
             SteamType steam = recipe.steam();
-            HeatExchangeBatch batch = HeatExchangeBatch.calcUsage(DISPLAY_HOT_LITRES,Long.MAX_VALUE,recipe);
+            HeatExchangeBatch batch = HeatExchangeBatch.calcUsage(DISPLAY_HOT_LITRES,Integer.MAX_VALUE, recipe);
             if (batch == null) continue;
             GTValues.RA.stdBuilder()
                 .fluidInputs(
                     new FluidStack(coolant.hot(), batch.hot()),
                     new FluidStack(WorkingFluids.distilledWater, batch.water()))
-                .fluidOutputs(new FluidStack(coolant.cold(), batch.hot()), new FluidStack(steam.fluid(), batch.steam()))
+                .fluidOutputs(
+                    new FluidStack(coolant.cold(), batch.hot()),
+                    new FluidStack(steam.fluid(), batch.steam()))
                 .duration(20)
                 .eut(0)
                 .fake()

@@ -261,7 +261,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         }, System::nanoTime, NuclearModuleStructure.moduleLimit(pipeTier)).scan();
         if (expansionScan.timedOut) {
             expansion.timeOut();
-            errors.add(StructureErrors.of("thermonuclear.structure.nuclear.expansion_timeout"));
+            errors.add(StructureErrors.of("thermonuclear.status.expansion_timeout"));
             stopExpansion("expansion_timeout");
             return;
         }
@@ -456,8 +456,8 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return new MultiblockTooltipBuilder().addMachineType(StatCollector.translateToLocal(nameKey()))
-            .addMachineType(StatCollector.translateToLocal("thermonuclear.structure.machine"))
+        return new MultiblockTooltipBuilder()
+            .addMachineType(StatCollector.translateToLocal("thermonuclear.machine.nuclear.name.type"))
             .addMarkdown(
                 new ResourceLocation(Thermonuclear.MODID, "nuclear-power-plant"),
                 ImmutableMap.<String, Object>builder()
@@ -469,6 +469,8 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
                     .put("capacity_2", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(2)))
                     .put("capacity_3", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(3)))
                     .put("capacity_4", NumberFormatUtil.formatNumber(BlockFuelRod.heatCapacity(4)))
+                    .put("multiple", Config.nuclearPowerPlant.nuclearDirectOutputMultiplier)
+                    .put("efficiency", Config.nuclearPowerPlant.nuclearDirectEfficiency)
                     .put("meltdown_seconds", decimal(NuclearMeltdownTimer.DELAY_TICKS / 20.0))
                     .put("cycle_ticks", NumberFormatUtil.formatNumber(CYCLE_TICKS))
                     .put("steel_modules", NumberFormatUtil.formatNumber(NuclearModuleStructure.moduleLimit(1)))
@@ -482,14 +484,10 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
                 true)
             .addController(StatCollector.translateToLocal("thermonuclear.structure.nuclear.controller"))
             .addCasing("52", StatCollector.translateToLocal("thermonuclear.structure.nuclear.fuel_rods"), true)
-            .addCasing("1805", StatCollector.translateToLocal("thermonuclear.structure.nuclear.concrete"), false)
+            .addCasing("1805", StatCollector.translateToLocal("thermonuclear.structure.nuclear.blocks.3"), false)
             .addCasing("122", StatCollector.translateToLocal("thermonuclear.structure.nuclear.steel_casings"), false)
-            .addCasing("353", StatCollector.translateToLocal("thermonuclear.structure.nuclear.water"), false)
-            .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipe_casings"), false)
-            .addCasing("7", StatCollector.translateToLocal("thermonuclear.structure.nuclear.outlet"), false)
+            .addCasing("21", StatCollector.translateToLocal("thermonuclear.structure.nuclear.pipe_casings"), false)
             .addCasing("14", StatCollector.translateToLocal("thermonuclear.structure.nuclear.frames"), false)
-            .addStructureHint(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.1"))
-            .addStructureHint(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.2"))
             .addStructureHint(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.3"))
             .addStructureHint(StatCollector.translateToLocal("thermonuclear.tooltip.nuclear.expansion.4"))
             .addStructureHint("thermonuclear.structure.nuclear.blocks.3", 1)
@@ -1170,8 +1168,6 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             info.put("steam_output", decimalPerCycle(outputLitresPerTick));
         } else {
             info.put("heat_limit", decimalPerCycle(fullLoadHeatRate * litresPerHeat));
-            info.put("coolant_input", decimalPerCycle(inputLitresPerTick));
-            info.put("hot_output", decimalPerCycle(outputLitresPerTick));
         }
     }
 }
