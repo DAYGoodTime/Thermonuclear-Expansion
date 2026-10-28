@@ -1,7 +1,5 @@
 package com.lin.thermonuclear.client.gui;
 
-import java.util.regex.Pattern;
-
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.screen.ModularPanel;
@@ -10,7 +8,6 @@ import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.lin.thermonuclear.common.machine.MTELargeSteamTurbine;
-import com.lin.thermonuclear.utils.MathUtil;
 
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.common.gui.modularui.widget.settings.SettingsPanel;
@@ -48,8 +45,8 @@ public final class LargeSteamTurbineGui extends ThermonuclearMultiblockGui<MTELa
                                 IKey.lang("thermonuclear.gui.steam_cycle_limit"),
                                 limit,
                                 (p, sm, field) -> field.setMaxLength(19)
-                                    .setPattern(Pattern.compile("[0-9]*"))
-                                    .setValidator(text -> Long.toString(MathUtil.parseLongSafe(text)))
+                                    .numbersLong(value -> Math.max(0L, value))
+                                    .formatAsInteger(true)
                                     .width(125))
                             .build(panel, sync, getBasePanelHeight() - 8)));
         });

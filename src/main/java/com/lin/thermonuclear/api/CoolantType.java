@@ -12,5 +12,5 @@ public interface CoolantType {
 
     Fluid hot();
 
-    double coolantPerHeat();
+    int heatPreCoolant();
 }

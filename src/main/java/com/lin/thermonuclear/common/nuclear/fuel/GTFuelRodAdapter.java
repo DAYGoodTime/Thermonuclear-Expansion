@@ -9,6 +9,8 @@ import gregtech.api.items.ItemRadioactiveCellIC;
 
 public final class GTFuelRodAdapter implements FuelRodAdapter {
 
+    private static int IC2_NATIVE_MULTIPLIER = 5;
+
     @Override
     public boolean accepts(ItemStack stack) {
         if (stack == null || !(stack.getItem() instanceof ItemRadioactiveCellIC rod)) return false;
@@ -37,7 +39,7 @@ public final class GTFuelRodAdapter implements FuelRodAdapter {
         ItemRadioactiveCellIC rod = (ItemRadioactiveCellIC) stack.getItem();
         int pulsesPerCell = 1 + rod.numberOfCells / 2
             + (stack.stackSize > 4 ? Config.nuclearPowerPlant.nuclearMaxReflectorCount : 0);
-        return rod.sEnergy * (double) rod.numberOfCells * pulsesPerCell;
+        return rod.sEnergy * (double) rod.numberOfCells * pulsesPerCell * IC2_NATIVE_MULTIPLIER;
     }
 
     @Override

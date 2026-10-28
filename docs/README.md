@@ -7,6 +7,7 @@
 | [项目知识库](wiki/development/项目知识库.md) | 项目现状、技术基线、`api`／`common`／`client` 目录职责、TNCItemList 统一物品引用与未定事项；从这里开始 |
 | [仓库开发上下文](../AGENTS.md) | 编码约束与文档维护规则 |
 | [机器 Tooltip 编写规范](wiki/development/机器Tooltip编写规范.md) | 三台主机中英文 Markdown 模板、Java 数值变量、结构页原生 Builder、数值着色与绿色支持提示置底 |
+| [GUI 数值输入框规范](wiki/development/GUI数值输入框规范.md) | 设置面板数值框的整数表达式解析、SI 后缀、`setPattern`／`setValidator` 覆盖陷阱与显示格式选项 |
 | [核电站模块结构](wiki/development/核电站模块结构.md) | 贴墙双入口、统一模板与几何、原生主结构检查与扩展匹配、NEI extra 三级预览及游戏验收边界 |
 | [Gradle 开发指南](wiki/development/Gradle开发指南.md) | 构建、格式化、依赖核验与排障 |
 | [Mixin 开发指南](wiki/development/Mixin开发指南.md) | early / late 加载入口与注入流程；当前无实际注入 |

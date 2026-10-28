@@ -82,32 +82,34 @@ public class Config {
         public double nuclearHeatEfficiency;
 
         @Comment("停机且未完成流体冷却时的自然散热，单位：热量/秒。设为 0 关闭自然散热。")
-        @DefaultDouble(100)
-        @RangeDouble(min = 0, max = Integer.MAX_VALUE)
-        public double nuclearPassiveCoolingPerSecond;
+        @DefaultInt(2000)
+        @RangeInt(min = 0)
+        public int passiveCoolingPerCycle;
 
-        @Comment("核燃料每秒消耗的寿命周期数；供热启动阶段还受启动进度影响。")
+        @Comment("燃料棒消耗速率")
         @DefaultDouble(1)
         @RangeDouble(min = 0.001, max = 100)
         public double fuelCyclesPerSecond;
 
-        @Name("ic2CoolantLitresPerFuelHeatUnit")
-        @Comment("核电站每单位缓存热量加热的 IC2 冷却液，单位：L/热量。")
-        @DefaultDouble(1)
-        @RangeDouble(min = 0.001, max = 1000)
-        public double ic2CoolantPerHeat;
+        @Comment("核电站每升 IC2 冷却液消耗的热量")
+        @DefaultInt(10)
+        @RangeInt(min = 1)
+        public int heatPreIc2Coolant;
 
-        @Name("superCoolantLitresPerFuelHeatUnit")
-        @Comment("核电站每单位缓存热量加热的超级冷却液，单位：L/热量。")
-        @DefaultDouble(0.25)
-        @RangeDouble(min = 0.001, max = 1000)
-        public double superCoolantPerHeat;
+        @Comment("核电站每升超级冷却液消耗的热量")
+        @DefaultInt(25)
+        @RangeInt(min = 1)
+        public int heatPreSuperCoolant;
 
-        @Name("nakCompositeCoolantLitresPerFuelHeatUnit")
-        @Comment("核电站每单位缓存热量加热的钾钠合金复合冷却液，单位：L/热量；原型默认每升带走 8 点热量。")
-        @DefaultDouble(0.125)
-        @RangeDouble(min = 0.001, max = 1000)
-        public double nakCompositeCoolantPerHeat;
+        @Comment("核电站每升钾钠合金复合冷却液消耗的热量")
+        @DefaultInt(50)
+        @RangeInt(min = 1)
+        public int heatPreNakCompositeCoolant;
+
+        @Comment("核电站每升蒸馏水消耗多少热量")
+        @DefaultInt(5)
+        @RangeInt(min = 1)
+        public int heatPerDistilledWater;
 
         @Comment("燃料代表堆栈数量大于4时追加的反射脉冲数")
         @DefaultInt(4)
@@ -123,16 +125,6 @@ public class Config {
         @DefaultDouble(50)
         @RangeDouble(min = 0.001, max = 100)
         public double nuclearHeatOutputMultiplier;
-
-        @Comment("核电站每单位缓存热量加热的蒸馏水，单位：L/热量；默认每升带走 5 点热量。")
-        @DefaultDouble(0.2)
-        @RangeDouble(min = 0.001, max = 1000)
-        public double nuclearDistilledWaterPerHeat;
-
-        @Comment("核电站每升蒸馏水产生的普通蒸汽，单位：L/L；不用于热交换站。")
-        @DefaultDouble(160)
-        @RangeDouble(min = 0.001, max = 1000000)
-        public double nuclearSteamPerDistilledWater;
 
         @Comment("核电站供热模式预热需求时长,单位tick")
         @DefaultInt(1200)

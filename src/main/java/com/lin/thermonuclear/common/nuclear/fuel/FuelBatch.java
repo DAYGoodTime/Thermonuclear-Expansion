@@ -14,17 +14,11 @@ import com.lin.thermonuclear.api.FuelRodAdapter;
 
 public final class FuelBatch {
 
-    public static final int MAX_RODS = 2048;
-
     private FuelBatch() {}
-
-    public static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods) {
-        return prepare(inputs, adapters, maxRods, new IdentityHashMap<>());
-    }
 
     static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods,
         Map<ItemStack, Integer> reserved) {
-        if (maxRods <= 0 || maxRods > MAX_RODS) throw new IllegalArgumentException("Invalid fuel batch limit");
+        if (maxRods <= 0) throw new IllegalArgumentException("Invalid fuel batch limit");
         ItemStack selected = null;
         int lowestLifetime = Integer.MAX_VALUE;
         for (ItemStack stack : inputs) {
@@ -78,10 +72,6 @@ public final class FuelBatch {
             this.amounts = amounts;
         }
 
-        public void consumeInputs() {
-            consumeInputs(Collections.singletonList(this));
-        }
-
         static void consumeInputs(List<Plan> plans) {
             Map<ItemStack, Integer> totals = new IdentityHashMap<>();
             for (Plan plan : plans) {
@@ -116,7 +106,6 @@ public final class FuelBatch {
             nbt.removeTag(countKey);
             return;
         }
-        // Minecraft 1.7.10 serializes Count as a signed byte; keep the batch count separately.
         ItemStack representative = stack.copy();
         representative.stackSize = 1;
         nbt.setTag(key, representative.writeToNBT(new NBTTagCompound()));
@@ -128,7 +117,7 @@ public final class FuelBatch {
         ItemStack stack = ItemStack.loadItemStackFromNBT(nbt.getCompoundTag(key));
         if (stack == null) return null;
         int count = nbt.hasKey(countKey) ? nbt.getInteger(countKey) : stack.stackSize;
-        if (count <= 0 || count > MAX_RODS) return null;
+        if (count <= 0) return null;
         stack.stackSize = count;
         return stack;
     }

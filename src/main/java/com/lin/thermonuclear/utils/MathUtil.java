@@ -14,4 +14,8 @@ public class MathUtil {
             return 0L;
         }
     }
+
+    public static long saturatingAdd(long a, long b) {
+        return a > Long.MAX_VALUE - b ? Long.MAX_VALUE : a + b;
+    }
 }

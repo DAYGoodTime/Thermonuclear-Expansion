@@ -27,6 +27,7 @@ import net.minecraftforge.fluids.FluidStack;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.lin.thermonuclear.api.TNCItemList;
+import com.lin.thermonuclear.utils.MathUtil;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.Textures;
@@ -177,7 +178,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (FluidStack stack : fluids) {
             if (stack != null && stack.isFluidEqual(requested) && seen.add(stack)) {
-                amount = saturatingAdd(amount, Math.max(0, stack.amount));
+                amount = MathUtil.saturatingAdd(amount, Math.max(0, stack.amount));
             }
         }
         return amount;
@@ -257,7 +258,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
         long total = 0;
         for (MTEHatch hatch : energyDynamo) {
             if (!hatch.isValid()) continue;
-            total = saturatingAdd(total, rating(hatch));
+            total = MathUtil.saturatingAdd(total, rating(hatch));
         }
         return total;
     }
@@ -295,10 +296,6 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
                 if (remaining == 0) break;
             }
         }
-    }
-
-    private static long saturatingAdd(long a, long b) {
-        return a > Long.MAX_VALUE - b ? Long.MAX_VALUE : a + b;
     }
 
     @Override

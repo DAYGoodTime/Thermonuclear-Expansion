@@ -99,7 +99,7 @@ public final class WorkingFuelPool {
         }
     }
 
-    public boolean exceeds(int slots, int rodsPerBatch) {
+    public boolean checkSlots(int slots, int rodsPerBatch) {
         if (batches.size() > slots) return true;
         for (Batch batch : batches) if (!batch.spent && batch.fuel.stackSize > rodsPerBatch) return true;
         return false;
