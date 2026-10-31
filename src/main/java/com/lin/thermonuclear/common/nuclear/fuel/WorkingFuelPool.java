@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ObjLongConsumer;
+import java.util.function.ToLongFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -61,10 +63,10 @@ public final class WorkingFuelPool {
         }
     }
 
-    public void prepareLoad(List<ItemStack> inputs, int slots, int rodsPerBatch) {
-        Map<ItemStack, Integer> reserved = new IdentityHashMap<>();
+    public void prepareLoad(List<ItemStack> inputs, int slots, int rodsPerBatch, ToLongFunction<ItemStack> available) {
+        Map<ItemStack, Long> reserved = new IdentityHashMap<>();
         while (batches.size() < slots) {
-            FuelBatch.Plan plan = FuelBatch.prepare(inputs, FuelRodAdapters.all(), rodsPerBatch, reserved);
+            FuelBatch.Plan plan = FuelBatch.prepare(inputs, FuelRodAdapters.all(), rodsPerBatch, reserved, available);
             if (plan == null) break;
             Batch batch = new Batch(plan.fuel, 0, false);
             batches.add(batch);
@@ -73,8 +75,8 @@ public final class WorkingFuelPool {
         }
     }
 
-    public void consumeInputs() {
-        FuelBatch.Plan.consumeInputs(plans);
+    public void reserveInputs(ObjLongConsumer<ItemStack> reserve) {
+        FuelBatch.Plan.reserveInputs(plans, reserve);
         clearPlans();
     }
 
@@ -105,14 +107,14 @@ public final class WorkingFuelPool {
         return false;
     }
 
-    public int workingCount() {
-        int count = 0;
+    public long workingCount() {
+        long count = 0;
         for (Batch batch : batches) if (!batch.spent) count += batch.fuel.stackSize;
         return count;
     }
 
-    public int spentCount() {
-        int count = 0;
+    public long spentCount() {
+        long count = 0;
         for (Batch batch : batches) if (batch.spent) count += batch.fuel.stackSize;
         return count;
     }

@@ -1,7 +1,9 @@
 package com.lin.thermonuclear.common.machine.base;
 
+import static com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil.formatNumber;
+
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -15,13 +17,13 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -29,23 +31,27 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.utils.MathUtil;
 
+import gregtech.GTMod;
 import gregtech.api.casing.Casings;
+import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEHatch;
-import gregtech.api.metatileentity.implementations.MTEHatchInputDebug;
-import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
-import gregtech.api.util.FluidEjectionHelper;
+import gregtech.api.util.GTClientPreference;
+import gregtech.api.util.GTUtility;
+import gregtech.api.util.shutdown.ShutDownReason;
+import gregtech.common.blocks.ItemMachines;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
-import gregtech.common.tileentities.machines.MTEHatchInputME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
+import mcp.mobius.waila.overlay.tooltiprenderers.TTRenderStack;
 
 public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultiblockBase<T>>
     extends MTEEnhancedMultiBlockBase<T> implements ISurvivalConstructable {
@@ -56,6 +62,10 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     private boolean wirelessUpgrade;
     private UUID wirelessOwner;
     private final List<MTEHatch> energyDynamo = new ArrayList<>();
+    private final Set<IDualInputHatch> fluidOnlyDualInputs = Collections.newSetFromMap(new IdentityHashMap<>());
+    private ItemStack[] displayItems;
+    private FluidStack[] displayFluids;
+    private OutputDisplaySnapshot outputDisplay = OutputDisplaySnapshot.EMPTY;
 
     protected ThermonuclearMultiblockBase(int id, String name, String regional) {
         super(id, name, regional);
@@ -113,6 +123,34 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
 
     public abstract Map<String, String> displayInfo();
 
+    public final OutputDisplaySnapshot outputDisplaySnapshot() {
+        // Cycle commits replace these arrays; native completion consumes and clears them in the same tick.
+        if (displayItems != mOutputItems || displayFluids != mOutputFluids) {
+            outputDisplay = OutputDisplaySnapshot.capture(mOutputItems, mOutputFluids);
+            displayItems = mOutputItems;
+            displayFluids = mOutputFluids;
+        }
+        return outputDisplay;
+    }
+
+    private void clearOutputDisplay() {
+        displayItems = null;
+        displayFluids = null;
+        outputDisplay = OutputDisplaySnapshot.EMPTY;
+    }
+
+    @Override
+    protected void outputAfterRecipe() {
+        super.outputAfterRecipe();
+        clearOutputDisplay();
+    }
+
+    @Override
+    public void stopMachine(ShutDownReason reason) {
+        super.stopMachine(reason);
+        clearOutputDisplay();
+    }
+
     @Override
     public String getLocalName() {
         return StatCollector.translateToLocal(nameKey());
@@ -166,92 +204,42 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
             .anyMatch(IDualInputHatch::supportsFluids);
     }
 
+    protected static boolean isFluidInputCandidate(IMetaTileEntity hatch) {
+        if (hatch instanceof IDualInputHatch dual) return hatch instanceof MTEHatch && dual.supportsFluids();
+        return hatch != null && HatchElement.InputHatch.matchesHatch(hatch)
+            && !HatchElement.InputHatch.mteBlacklist()
+                .contains(hatch.getClass());
+    }
+
+    protected static boolean isFluidInputItem(ItemStack stack) {
+        return isFluidInputCandidate(ItemMachines.getMetaTileEntity(stack));
+    }
+
+    @Override
+    public boolean addInputHatchToMachineList(IGregTechTileEntity tile, int texture) {
+        if (tile == null || !isFluidInputCandidate(tile.getMetaTileEntity())) return false;
+        if (!super.addInputHatchToMachineList(tile, texture)) return false;
+        if (tile.getMetaTileEntity() instanceof IDualInputHatch dual) fluidOnlyDualInputs.add(dual);
+        return true;
+    }
+
+    protected final boolean isFluidOnlyDualInput(IDualInputHatch hatch) {
+        return fluidOnlyDualInputs.contains(hatch);
+    }
+
+    protected final int fluidInputHatchCount() {
+        return mInputHatches.size() + fluidOnlyDualInputs.size();
+    }
+
+    @Override
+    public void clearHatches() {
+        super.clearHatches();
+        fluidOnlyDualInputs.clear();
+    }
+
     protected boolean fail(String reason) {
         status = reason;
         return false;
-    }
-
-    protected final long availableFromStacks(Fluid fluid, List<FluidStack> fluids) {
-        if (fluid == null) return 0;
-        FluidStack requested = new FluidStack(fluid, 1);
-        long amount = 0;
-        Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (FluidStack stack : fluids) {
-            if (stack != null && stack.isFluidEqual(requested) && seen.add(stack)) {
-                amount = MathUtil.saturatingAdd(amount, Math.max(0, stack.amount));
-            }
-        }
-        return amount;
-    }
-
-    protected long available(Fluid fluid, List<MTEHatch> hatches) {
-        return availableFromStacks(fluid, hatchFluids(hatches));
-    }
-
-    private List<FluidStack> hatchFluids(List<MTEHatch> hatches) {
-        List<FluidStack> fluids = new ArrayList<>();
-        List<FluidStack> meFluids = new ArrayList<>();
-        for (MTEHatch hatch : hatches) {
-            if (hatch == null || !hatch.isValid()) continue;
-            if (hatch instanceof MTEHatchInputME meHatch) {
-                for (FluidStack stack : meHatch.getStoredFluids()) {
-                    // ME hatches can expose the same network stock; retain one original transaction stack.
-                    if (stack != null && meFluids.stream()
-                        .noneMatch(stack::isFluidEqual)) {
-                        meFluids.add(stack);
-                        fluids.add(stack);
-                    }
-                }
-            } else if (hatch instanceof MTEHatchMultiInput multiInputHatch) {
-                fluids.addAll(Arrays.asList(multiInputHatch.getStoredFluid()));
-            } else if (hatch instanceof MTEHatchInputDebug debugHatch) {
-                for (FluidStack template : debugHatch.getFluidList()) {
-                    if (template == null) continue;
-                    FluidStack stack = template.copy();
-                    stack.amount = Integer.MAX_VALUE;
-                    fluids.add(stack);
-                }
-            } else {
-                fluids.add(hatch.getDrainableStack());
-            }
-        }
-        return fluids;
-    }
-
-    protected final void consumeFromStacks(Fluid fluid, long amount, List<FluidStack> fluids) {
-        if (amount < 0) throw new IllegalArgumentException("Negative fluid consumption");
-        FluidStack requested = fluid == null ? null : new FluidStack(fluid, 1);
-        Set<FluidStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (FluidStack stack : fluids) {
-            if (stack == null || !stack.isFluidEqual(requested) || !seen.add(stack)) continue;
-            int used = (int) Math.min(amount, Math.max(0, stack.amount));
-            stack.amount -= used;
-            amount -= used;
-            if (amount == 0) return;
-        }
-        if (amount > 0) throw new IllegalStateException("Cycle input changed during recipe processing");
-    }
-
-    protected void consume(Fluid fluid, int amount, List<MTEHatch> hatches) {
-        consumeFromStacks(fluid, amount, hatchFluids(hatches));
-    }
-
-    protected FluidEjectionHelper prepareOutputs(FluidStack... outputs) {
-        for (FluidStack output : outputs) {
-            if (output == null || output.amount <= 0) return null;
-        }
-        FluidEjectionHelper helper = new FluidEjectionHelper(getOutputHatches(), true);
-        // One shared transaction set reserves each output slot only once for the entire batch.
-        return helper.ejectFluids(Arrays.asList(outputs), 1) == 1 ? helper : null;
-    }
-
-    protected FluidEjectionHelper prepareOutputs(List<? extends gregtech.api.interfaces.IOutputHatch> hatches,
-        FluidStack... outputs) {
-        for (FluidStack output : outputs) {
-            if (output == null || output.amount <= 0) return null;
-        }
-        FluidEjectionHelper helper = new FluidEjectionHelper(hatches, true);
-        return helper.ejectFluids(Arrays.asList(outputs), 1) == 1 ? helper : null;
     }
 
     protected long dynamoRating() {
@@ -307,6 +295,7 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
+        clearOutputDisplay();
         wirelessUpgrade = usesDynamo() && nbt.getBoolean("tnWirelessUpgrade");
         wirelessOwner = null;
     }
@@ -320,11 +309,81 @@ public abstract class ThermonuclearMultiblockBase<T extends ThermonuclearMultibl
     @Override
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z) {
-        super.getWailaNBTData(player, tile, tag, world, x, y, z);
-        tag.setBoolean("tnWirelessUpgrade", usesDynamo() && wirelessUpgrade);
-        if (usesDynamo()) {
-            tag.setLong("energyUsage", running ? -producedEUt : 0);
+        // GT .264 serializes every pending fragment in super. Supply its scalar contract directly instead.
+        tag.setBoolean("hasProblems", getRepairStatus() < getIdealStatus());
+        tag.setFloat("efficiency", mEfficiency / 100.0F);
+        tag.setInteger("progress", mProgresstime);
+        tag.setInteger("maxProgress", mMaxProgresstime);
+        tag.setBoolean("incompleteStructure", (getErrorDisplayID() & 64) != 0);
+        tag.setInteger("maxParallelRecipes", getMaxParallelRecipes());
+        if (getTrueParallel() != getMaxParallelRecipes()) tag.setInteger("powerPanelMaxParallel", getTrueParallel());
+        tag.setBoolean("isLockedToRecipe", false);
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null) {
+            tag.setBoolean("isActive", base.isActive());
+            tag.setBoolean("isAllowedToWork", base.isAllowedToWork());
+            tag.setLong("energyTier", getInputVoltageTier());
+            tag.setLong("energyUsage", usesDynamo() && running ? -producedEUt : 0);
+            GTClientPreference preference = GTMod.proxy.getClientPreference(player.getUniqueID());
+            if (preference != null && preference.isWailaAverageNSEnabled()) {
+                base.startTimeStatistics();
+                long sum = 0;
+                int count = 0;
+                for (int time : base.getTimeStatistics()) {
+                    if (time != 0) {
+                        sum += time;
+                        count++;
+                    }
+                }
+                if (count > 0) tag.setInteger("averageNS", (int) (sum / count));
+            }
         }
+        outputDisplaySnapshot().writeWailaPreview(tag);
+        tag.setBoolean("tnWirelessUpgrade", usesDynamo() && wirelessUpgrade);
+        getExtraWailaNBT(player, tile, tag, world, x, y, z);
+    }
+
+    @Override
+    public void getExtraWailaBody(ItemStack stack, List<String> tooltip, NBTTagCompound tag,
+        IWailaDataAccessor accessor, IWailaConfigHandler config) {
+        super.getExtraWailaBody(stack, tooltip, tag, accessor, config);
+        if (!tag.getBoolean("isActive") || tag.getInteger("tnOutputKinds") == 0) return;
+        tooltip.add(StatCollector.translateToLocal("GT5U.waila.producing"));
+        NBTTagList preview = tag.getTagList("tnOutputPreview", 10);
+        int shown = Math.min(3, preview.tagCount());
+        for (int i = 0; i < shown; i++) {
+            try {
+                OutputDisplaySnapshot.Entry entry = OutputDisplaySnapshot.decode(
+                    preview.getCompoundTagAt(i)
+                        .getByteArray("data"));
+                String icon = entry.item != null ? TTRenderStack.create(entry.item, true)
+                    : entry.fluid != null
+                        ? TTRenderStack.create(GTUtility.getFluidDisplayStack(entry.fluid, false), true)
+                        : "";
+                tooltip.add(
+                    "  " + icon
+                        + EnumChatFormatting.AQUA
+                        + outputDisplayName(entry)
+                        + EnumChatFormatting.RESET
+                        + " x "
+                        + EnumChatFormatting.GOLD
+                        + formatNumber(entry.amount)
+                        + (entry.fluidKind ? " L" : ""));
+                if (entry.detailsOmitted)
+                    tooltip.add(StatCollector.translateToLocal("thermonuclear.gui.output_details_omitted"));
+            } catch (IOException invalidRecord) {
+                tooltip.add(StatCollector.translateToLocal("thermonuclear.gui.output_unavailable"));
+            }
+        }
+        int remaining = tag.getInteger("tnOutputKinds") - shown;
+        if (remaining > 0) tooltip
+            .add(StatCollector.translateToLocalFormatted("GT5U.waila.producing.andmore", formatNumber(remaining)));
+    }
+
+    public static String outputDisplayName(OutputDisplaySnapshot.Entry entry) {
+        if (entry.item != null) return entry.item.getDisplayName();
+        if (entry.fluid != null) return entry.fluid.getLocalizedName();
+        return StatCollector.translateToLocal("thermonuclear.gui.output_unavailable");
     }
 
     @Override

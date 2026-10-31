@@ -15,7 +15,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -108,7 +107,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             'B',
             GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
                 .atLeast(
-                    HatchElement.InputBus,
+                    HatchElement.InputBus.<MTENuclearPowerPlant>withCount(machine -> machine.mInputBusses.size()),
                     HatchElement.OutputBus,
                     HatchElement.Dynamo.or(HatchElement.ExoticDynamo)
                         .or(HatchElement.LaserSource),
@@ -129,8 +128,15 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             GTStructureUtility.buildHatchAdder(MTENuclearPowerPlant.class)
                 .atLeast(HatchElement.InputHatch, HatchElement.OutputHatch)
                 .adder(MTENuclearPowerPlant::addCoolantHatch)
-                .hatchItemFilterAnd(
-                    machine -> stack -> !(ItemMachines.getMetaTileEntity(stack) instanceof IDualInputHatch))
+                .hatchItemFilter(machine -> stack -> {
+                    IMetaTileEntity hatch = ItemMachines.getMetaTileEntity(stack);
+                    return (machine.fluidInputHatchCount() < 1 && isFluidInputCandidate(hatch))
+                        || (machine.mOutputHatches.isEmpty() && HatchElement.OutputHatch.matchesHatch(hatch));
+                })
+                .shouldSkip(
+                    (machine,
+                        tile) -> tile != null && (isFluidInputCandidate(tile.getMetaTileEntity())
+                            || HatchElement.OutputHatch.matchesHatch(tile.getMetaTileEntity())))
                 .casingIndex(CONTAINMENT_TEXTURE)
                 .hint(2)
                 .exclusive()
@@ -375,8 +381,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
     }
 
     private boolean addCoolantHatch(IGregTechTileEntity tile, int texture) {
-        if (tile == null || tile.getMetaTileEntity() == null || tile.getMetaTileEntity() instanceof IDualInputHatch)
-            return false;
+        if (tile == null || tile.getMetaTileEntity() == null) return false;
         return addInputHatchToMachineList(tile, texture) || addOutputHatchToMachineList(tile, texture);
     }
 
@@ -401,7 +406,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         if (breederInputs.isEmpty() != breederOutputs.isEmpty()) {
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.breeder_io"));
         }
-        if (mInputHatches.size() != 1 || mOutputHatches.size() != 1) {
+        if (fluidInputHatchCount() != 1 || mOutputHatches.size() != 1) {
             errors.add(StructureErrors.of("thermonuclear.structure.nuclear.coolant_io"));
         }
         if (errors.isEmpty()) {
@@ -626,7 +631,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
     }
 
     private boolean flushDepleted(CycleContext context) {
-        ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true);
+        ItemEjectionHelper outputs = new ItemEjectionHelper(getOutputBusses(), true, true);
         List<WorkingFuelPool.Batch> batches = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         for (WorkingFuelPool.Batch batch : workingFuels.batches) {
@@ -658,9 +663,9 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             if (!bus.isValid()) continue;
             for (int slot = 0; slot < bus.getCircuitSlot(); slot++) inputs.add(bus.getStackInSlot(slot));
         }
-        Runnable consumeBreeders = breederPool.prepareLoad(inputs, getFuelRodLimit());
-        context.deferInput(() -> {
-            consumeBreeders.run();
+        context.addItemInputs(inputs);
+        breederPool.prepareLoad(inputs, getFuelRodLimit(), context::availableItem, context::reserveItem);
+        context.onClose(() -> {
             for (MTEBreederInputBus bus : breederInputs) {
                 if (!bus.isValid()) continue;
                 bus.updateSlots();
@@ -676,9 +681,9 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         for (MTEBreederOutputBus bus : breederOutputs) if (bus.isValid()) outputs.add(bus);
         if (outputs.isEmpty()) return false;
         // One helper reserves all products together, including partial output of different rod types.
-        ItemEjectionHelper helper = new ItemEjectionHelper(outputs, true);
+        ItemEjectionHelper helper = new ItemEjectionHelper(outputs, true, true);
         List<ItemStack> remaining = breederPool.copyCompleted();
-        int ejected = 0;
+        long ejected = 0;
         List<ItemStack> pending = new ArrayList<>();
         for (ItemStack stack : remaining) {
             ItemStack product = stack.copy();
@@ -719,7 +724,7 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
     }
 
     private boolean checkHatches() {
-        if (getOutputBusses().isEmpty() || (mInputBusses.isEmpty() && mDualInputHatches.isEmpty())) return true;
+        if (getOutputBusses().isEmpty() || mInputBusses.isEmpty()) return true;
         return mode == NuclearOperatingMode.HEAT_SUPPLY && (!hasFluidInputs() || mOutputHatches.isEmpty());
     }
 
@@ -738,7 +743,8 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         // 检查是否有空闲批次
         if (workingFuels.checkSlots(getFuelBatchLimit(), getMaxParallel())) return coolingOnly(cooled, "fuel_limit");
         // 装载到燃料池中
-        workingFuels.prepareLoad(context.availableItems(), getFuelBatchLimit(), getFuelRodLimit());
+        workingFuels
+            .prepareLoad(context.availableItems(), getFuelBatchLimit(), getFuelRodLimit(), context::availableItem);
         if (workingFuels.workingCount() == 0)
             return coolingOnly(cooled, workingFuels.spentCount() > 0 ? "spent_full" : "fuel");
         double efficiency = direct ? Config.nuclearPowerPlant.nuclearDirectEfficiency
@@ -780,13 +786,16 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             operatingEUt = actualOutput;
         } else {
             fullLoadHeatRate = fullOutput / CYCLE_TICKS;
-            reactorHeat = MathUtil.saturatingAdd(reactorHeat, actualHeat.longValue());
+            reactorHeat = MathUtil.saturatingAdd(
+                reactorHeat,
+                actualHeat.min(BigDecimal.valueOf(Long.MAX_VALUE))
+                    .longValue());
         }
+        workingFuels.reserveInputs(context::reserveItem);
         processBreeders(context, pulses);
         for (int i = 0; i < active.size(); i++) active.get(i)
             .advance(advances.get(i));
         workingFuels.finishSpent();
-        context.deferInput(workingFuels::consumeInputs);
         return true;
     }
 
@@ -801,27 +810,22 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
         if (selectedCooling == null) return true;
         if (reactorHeat == 0) return true;
         CoolantType coolant = selectedCooling;
-        int inputUsed = MathUtil.getIntClamp(reactorHeat / coolant.heatPreCoolant());
-        inputUsed = Math.min(inputUsed, MathUtil.getIntClamp(available(coolant.cold())));
+        long inputUsed = Math.min(reactorHeat / coolant.heatPreCoolant(), available(coolant.cold()));
+        long outputMultiplier = coolant.cold()
+            .equals(WorkingFluids.distilledWater) ? HeatExchangeBatch.STEAM_PER_WATER : 1;
+        inputUsed = Math.min(inputUsed, MAX_FLUID_OUTPUT / outputMultiplier);
         if (inputUsed == 0) return true;// 待输出的热流体太少了，当成没有热量
-        int output = inputUsed;
-        if (coolant.cold()
-            .equals(WorkingFluids.distilledWater)) {
-            long tempOutput = (long) inputUsed * HeatExchangeBatch.STEAM_PER_WATER;
-            if (tempOutput >= Integer.MAX_VALUE) {
-                inputUsed = Integer.MAX_VALUE / HeatExchangeBatch.STEAM_PER_WATER;
-                output = inputUsed * HeatExchangeBatch.STEAM_PER_WATER;
-            } else output = MathUtil.getIntClamp(tempOutput);
-        }
+        long output = inputUsed * outputMultiplier;
         // 检查是否可输出
-        FluidEjectionHelper checkResult = prepareOutputs(new FluidStack(coolant.hot(), output));
+        FluidEjectionHelper checkResult = prepareOutputs(getOutputHatches(), coolant.hot(), output);
         if (checkResult == null) return fail("output_full");
-        reactorHeat = Math.max(0, reactorHeat - (long) inputUsed * coolant.heatPreCoolant());
         inputLitresPerTick = (double) inputUsed / CYCLE_TICKS;
         outputLitresPerTick = (double) output / CYCLE_TICKS;
-        final int finalInputUsed = inputUsed;
-        context.deferInput(() -> consume(coolant.cold(), finalInputUsed));
-        queueFluidOutput(context, new FluidStack(coolant.hot(), output));
+        consume(coolant.cold(), inputUsed);
+        queueFluidOutput(context, coolant.hot(), output);
+        long heatRemoved = MathUtil.saturatingMultiply(inputUsed, coolant.heatPreCoolant());
+        // The cycle snapshot rolls this back on failure; subsequent fuel calculations need the cooled state.
+        reactorHeat = Math.max(0, reactorHeat - heatRemoved);
         return true;
     }
 
@@ -1056,13 +1060,13 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
             addHeatSupplyInfo(info);
         }
         info.put("fuel_batches", workingFuels.batches.size() + " / " + getFuelBatchLimit());
-        info.put("fuel_count", Integer.toString(workingFuels.workingCount()));
+        info.put("fuel_count", Long.toString(workingFuels.workingCount()));
         for (int i = 0; i < workingFuels.batches.size(); i++) {
             WorkingFuelPool.Batch batch = workingFuels.batches.get(i);
             info.put("fuel_batch_" + (i + 1), batch.fuel.stackSize + " x " + batch.fuel.getDisplayName());
             if (!batch.spent) info.put("fuel_batch_remaining_" + (i + 1), decimal(batch.remaining()));
         }
-        if (workingFuels.spentCount() > 0) info.put("pending_spent", Integer.toString(workingFuels.spentCount()));
+        if (workingFuels.spentCount() > 0) info.put("pending_spent", Long.toString(workingFuels.spentCount()));
         if (breederPool.workingCount() > 0) {
             info.put("breeder_count", Integer.toString(breederPool.workingCount()));
             info.put("breeder_rate", Long.toString(running ? breederPulses * 4 : 0));
@@ -1072,14 +1076,15 @@ public final class MTENuclearPowerPlant extends TNCCycleMachineBase<MTENuclearPo
     }
 
     private void addHeatSupplyInfo(Map<String, String> info) {
-        info.put("heat", Long.toString(reactorHeat));
-        info.put("heat_capacity", Long.toString(getHeatCapacity()));
+        info.put("heat", decimal(reactorHeat));
+        info.put("heat_capacity", decimal(getHeatCapacity()));
         info.put("heat_rate", decimalPerCycle(fullLoadHeatRate));
-        info.put(
-            "coolant",
-            selectedCooling == null ? "thermonuclear.recipe.none"
-                : selectedCooling.cold().getName());
-        if (selectedCooling == null) return;
+//        info.put(
+//            "coolant",
+//            selectedCooling == null ? "thermonuclear.recipe.none"
+//                : selectedCooling.cold()
+//                    .getName());
+//        if (selectedCooling == null) return;
         info.put("input_rate", decimalPerCycle(inputLitresPerTick));
         info.put("heat_limit", decimalPerCycle(fullLoadHeatRate / selectedCooling.heatPreCoolant()));
     }

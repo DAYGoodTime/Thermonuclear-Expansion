@@ -1,11 +1,15 @@
 package com.lin.thermonuclear.common.machine.base;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+
+import gregtech.api.interfaces.IOutputHatch;
+import gregtech.api.util.FluidEjectionHelper;
 
 public final class CycleContext {
 
@@ -16,30 +20,56 @@ public final class CycleContext {
         ROLLED_BACK
     }
 
-    private final List<FluidStack> availableFluids;
-    private final List<ItemStack> availableItems;
-    private final List<Runnable> inputs = new ArrayList<>();
+    private final FluidInputInventory fluidInputs;
+    private final ItemInputInventory itemInputs = new ItemInputInventory();
+    private final Map<List<? extends IOutputHatch>, FluidEjectionHelper> fluidOutputChecks = new HashMap<>();
     private final List<Runnable> commits = new ArrayList<>();
     private final List<Runnable> rollbacks = new ArrayList<>();
     private final List<Runnable> cleanups = new ArrayList<>();
     private Phase phase = Phase.PREPARING;
+    private int fluidOutputStacks;
+    private int itemOutputStacks;
 
-    CycleContext(List<FluidStack> fluids, List<ItemStack> items) {
-        availableFluids = Collections.unmodifiableList(new ArrayList<>(fluids));
-        availableItems = Collections.unmodifiableList(new ArrayList<>(items));
+    CycleContext(FluidInputInventory fluids, List<ItemStack> items) {
+        fluidInputs = fluids;
+        itemInputs.add(items);
     }
 
-    public List<FluidStack> availableFluids() {
-        return availableFluids;
+    FluidInputInventory fluidInputs() {
+        return fluidInputs;
     }
 
     public List<ItemStack> availableItems() {
-        return availableItems;
+        return itemInputs.inputs();
     }
 
-    public void deferInput(Runnable action) {
+    public void addItemInputs(Collection<ItemStack> items) {
         require(Phase.PREPARING);
-        inputs.add(action);
+        itemInputs.add(items);
+    }
+
+    public long availableItem(ItemStack source) {
+        return itemInputs.available(source);
+    }
+
+    public long availableItems(ItemStack template, Collection<ItemStack> scope) {
+        return itemInputs.available(template, scope);
+    }
+
+    public void reserveItem(ItemStack source, long amount) {
+        require(Phase.PREPARING);
+        itemInputs.reserve(source, amount);
+    }
+
+    public void reserveItems(ItemStack template, long amount, Collection<ItemStack> scope) {
+        require(Phase.PREPARING);
+        itemInputs.reserve(template, amount, scope);
+    }
+
+    FluidEjectionHelper fluidOutputCheck(List<? extends IOutputHatch> hatches) {
+        require(Phase.PREPARING);
+        return fluidOutputChecks
+            .computeIfAbsent(new ArrayList<>(hatches), key -> new FluidEjectionHelper(key, true, true));
     }
 
     public void onCommit(Runnable action) {
@@ -57,10 +87,26 @@ public final class CycleContext {
         cleanups.add(action);
     }
 
-    void applyInputs() {
+    void reserveFluidOutputs(int count, int limit) {
         require(Phase.PREPARING);
+        if (count < 0 || (long) fluidOutputStacks + count > limit) throw new OutputLimitException(true);
+        fluidOutputStacks += count;
+    }
+
+    void reserveItemOutputs(int count, int limit) {
+        require(Phase.PREPARING);
+        if (count < 0 || (long) itemOutputStacks + count > limit) throw new OutputLimitException(false);
+        itemOutputStacks += count;
+    }
+
+    boolean applyInputs() {
+        require(Phase.PREPARING);
+        // Both plans must pass before either kind of original stack is modified.
+        if (!fluidInputs.validate() || !itemInputs.validate()) return false;
+        fluidInputs.apply();
+        itemInputs.apply();
         phase = Phase.INPUTS_APPLIED;
-        for (Runnable input : inputs) input.run();
+        return true;
     }
 
     void commit() {
@@ -85,7 +131,7 @@ public final class CycleContext {
     }
 
     private void close() {
-        inputs.clear();
+        fluidOutputChecks.clear();
         commits.clear();
         rollbacks.clear();
         try {
@@ -97,5 +143,15 @@ public final class CycleContext {
 
     private void require(Phase expected) {
         if (phase != expected) throw new IllegalStateException("Cycle is " + phase + ", expected " + expected);
+    }
+
+    static final class OutputLimitException extends RuntimeException {
+
+        final boolean fluid;
+
+        OutputLimitException(boolean fluid) {
+            super("Too many pending " + (fluid ? "fluid" : "item") + " stacks");
+            this.fluid = fluid;
+        }
     }
 }

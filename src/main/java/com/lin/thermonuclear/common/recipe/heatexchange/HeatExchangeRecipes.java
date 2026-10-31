@@ -13,6 +13,7 @@ import com.lin.thermonuclear.api.TNCItemList;
 import com.lin.thermonuclear.client.nei.NEIFluidDisplays;
 import com.lin.thermonuclear.common.registry.SteamType;
 import com.lin.thermonuclear.common.registry.WorkingFluids;
+import com.lin.thermonuclear.utils.MathUtil;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.recipe.RecipeMap;
@@ -50,9 +51,11 @@ public final class HeatExchangeRecipes implements ModRecipeLoader {
             if (batch == null) continue;
             GTValues.RA.stdBuilder()
                 .fluidInputs(
-                    new FluidStack(coolant.hot(), batch.hot()),
-                    new FluidStack(WorkingFluids.distilledWater, batch.water()))
-                .fluidOutputs(new FluidStack(coolant.cold(), batch.hot()), new FluidStack(steam.fluid(), batch.steam()))
+                    new FluidStack(coolant.hot(), MathUtil.getIntClamp(batch.hot())),
+                    new FluidStack(WorkingFluids.distilledWater, MathUtil.getIntClamp(batch.water())))
+                .fluidOutputs(
+                    new FluidStack(coolant.cold(), MathUtil.getIntClamp(batch.hot())),
+                    new FluidStack(steam.fluid(), MathUtil.getIntClamp(batch.steam())))
                 .duration(20)
                 .eut(0)
                 .fake()

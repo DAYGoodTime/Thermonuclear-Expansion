@@ -37,7 +37,7 @@
 | 锅炉案例 | `J/common/machine/multiblock/structuralReconstructionPlan/LargeBoiler.java` | 包含多个材料等级子类、工作处理与蒸汽输出；不等同于 IC2 热冷却液热交换设备 | — |
 | 太阳能锅炉案例 | `J/common/machine/multiblock/steam/MegaSolarBoiler.java`、`J/common/gui/modularui/MegaSolarBoilerGui.java` | 锅炉与界面实现参考；太阳能不是本项目规划的主热源 | — |
 | 蒸汽分类 | `J/utils/enums/SteamTypes.java` | 流体识别和网络转换映射；其倍率不代表 Thermonuclear 的 EU/L 设计 | — |
-| 仓口 | `J/common/machine/hatch/` | 根据输入、输出、并行、维护等功能继续限定检索 | — |
+| 仓口 | `J/common/machine/hatch/` | 根据输入、输出、并行、维护等功能继续限定检索 | [大数量流体输入与双仓事务](#大数量流体输入与双仓事务) |
 | 配方注册与处理逻辑 | `J/loader/RecipeLoader.java`、`J/loader/LoadCompleteRecipeScheduler.java`、`J/common/material/GTNLRecipeMaps.java`、`J/utils/recipes/GTNLProcessingLogic.java` | 追踪配方池、注册调用、处理逻辑与注册时机 | [配方注册](#配方注册) |
 | 配方实现 | `J/common/recipe/gtnl/`、`J/common/recipe/gregtech/` | 分别检索附属模组配方和上游相关配方 | [配方注册](#配方注册) |
 | 多方块 GUI | `J/common/gui/modularui/GTNLMultiBlockBaseGui.java`、`J/common/gui/modularui/GTNLSteamMultiBlockBaseGui.java` | 基类界面和同步组织；同时核验 GTNL 自有组件依赖 | — |
@@ -82,13 +82,34 @@
 
 - 参考 `J/common/machine/multiblock/NaquadahReactor.java` 的 `checkProcessing()`、`onRunningTick()` 与 `outputAfterRecipe()`，并追至父类 `J/common/machine/multiMachineBase/MultiMachineBase.java`。采用输入处理与产物提交分离的思路，不复制其配方逻辑、批次无线输出或数值；这两个入口没有本项目所需的独立 `CycleContext` 实现。
 - API 按本地 GT5U `5.09.54.205` 的 `MTEMultiBlockBase.checkRecipe()`、`startRecipeProcessing()`、`endRecipeProcessing()` 核对：原生入口先开输入事务，再调用处理逻辑，末尾仓口结算仍可改变处理结果。本项目在原生结算成功后提交产物，失败时撤销内部状态与未执行动作；不能撤回其他仓口已经完成的外部扣料或已开始的产物提交。保留原周期与扩展 NBT 键；未运行参考库构建。
-- 周期交货按同版本 `runMachine()`、`addItemOutputs()`、`addFluidOutputs()` 与 `stopMachine()` 核对：事务提交只填充原生待产物，最终入口重新建立输出 helper，完成后由 GT 清空缓存；不采用 GTNL 自定义调度。GUI 参考 `J/common/gui/modularui/GTNLMultiBlockBaseGui.java` 的父类扩展方式，本项目直接复用 `.205` 的 `MTEMultiBlockBaseGui.createTerminalTextWidget()`，保留完整原生诊断与产量同步，不复制参考库布局或额外接口。
+- 周期交货按同版本 `runMachine()`、`addItemOutputs()`、`addFluidOutputs()` 与 `stopMachine()` 核对：事务提交只填充原生待产物，最终入口重新建立输出 helper，完成后由 GT 清空缓存；不采用 GTNL 自定义调度。GUI 参考 `J/common/gui/modularui/GTNLMultiBlockBaseGui.java` 的父类扩展方式；当前产物显示改用本模组有界摘要，诊断与按钮继续使用 GT 接口，见[GUI 产物显示与网络边界](#gui-产物显示与网络边界)。
 
 ### 兼容与注入
 
 - 加载入口：`J/asm/GTNLEarlyCoreMod.java` 提供 early；`J/mixins/LateMixinLoader.java`（`@LateMixin`／`ILateMixinLoader`）与 `J/mixins/Mixins.java`（带目标模组过滤的注册表）提供 late。
 - 资源配置：`R/mixins.sciencenotleisure.json`、`.early`、`.late`，另有 `.early.j17`／`.late.j17`／`.late.j21` 等 Java 版本变体。
 - 本项目只采用 early / late 分离与空引导模式，不复制功能注入、ASM 补丁、注册／配置体系或 Java 17/21 分支。
+
+### 大数量流体输入与双仓事务
+
+- 参考 `J/common/machine/hatch/SuperInputHatchME.java` 的配置限额、原始影子栈与差值结算，以及 `SuperDualInputHatchME.java` 的事务开启、`inventories()` 和结束结算；`J/utils/machine/FluidTankG.java` 将大数量拆成多个原始流体栈。本项目仅采用来源适配与保留原始事务引用的思路，不复制其实现、资源或机器注册；参考仓库许可证为 GPL-3.0。
+- `J/api/IRecipeProcessingAwareDualHatch.java` 不继承 GT 的 `IRecipeProcessingAwareHatch`，但 `J/mixins/late/gregtech/MixinMTEMultiBlockBaseRecipeProcessing.java` 已在 GT 父类开始／结束方法的 RETURN 注入双仓回调，注册入口为 `J/mixins/Mixins.java`。本模组调用父类即可沿该路径执行，不能重复反射开关事务；运行版本须实际包含并启用该注入。
+- 本项目 `2.9.0` 本地清单指定 GT5U `.264`；参考仓库声明 `.205`。按[本地同版本源码](README.md#本地-gt5u-源码)读取 GT 周期、双仓库存和输出 helper 入口，不把源码比对视为实际运行版本验收。本轮不运行依赖解析、构建或测试。
+- 大数量沿用 `IDualInputHatch` 暴露的原始物品／流体分片；本模组按 long 汇总并递减原始引用，真实外部提取归仓口结束回调。不使用 GTNL 专用反射、公开来源注册 API 或直接 AE 扣料路径，保留原生可见量和限额。普通 ME 网络身份仅用于重复视图识别，不代替仓口决定可提取量。
+- `SuperDualInputHatchME.endRecipeProcessing()` 的本地实现将提取返回量与自身比较，无法拒绝非空的部分提取；该上游缺陷未在本项目修补，也不修改参考仓库。原生结束结果不能被视为跨仓口原子扣料保证。
+- 库存候选按 GT5U `.264` 的 `MTEMultiBlockBase.doCheckRecipe()`、`IDualInputHatch.inventories()`／`getSharedItems()` 和 `IDualInputInventory` 核对：同一分区不合并双仓缓冲区，机器的独立流体分区分别选择候选。GTNL `DualInputHatch.inventories()`、`SuperDualInputHatchME.getItr()` 和 `FluidTankG.flat()` 用于核对原始分片引用；不以 `getProxy()` 推断所有双仓都是网络影子库存。
+- 普通 ME 物品槽位按 `.264` 的 `MTEHatchInputBusME.getStackInSlot()` 和 `CommonMetaTileEntity.getRealInventory()` 核对；通过原生 `isValidSlot()`／`getCircuitSlot()` 标识实体引用，避免写死虚拟槽偏移，手动／电路槽不参与网络去重。GTNL `SuperInputBusME` 的扩展槽位用于交叉核对，不调用其专用方法。输出按同版 `ItemEjectionHelper`／`FluidEjectionHelper` 的 recipe-check 构造参数及 `GTUtility.saveItem()`／`loadItem()` 核对，大数量物品 Count 由 GT 原生整数协议保存。
+- 流体位置的双仓不参与物品收集，也不计入核电站普通燃料总线。候选隔离和统一预留已接入代码，方案见[原生大数量输入输出设计](../../features/2026-10-31-原生大数量输入输出/1-设计.md)；测试及游戏验证由用户执行。
+
+### GUI 产物显示与网络边界
+
+- GTNL 只读参考：`J/utils/machine/FluidTankG.java` 使用多个 int 流体栈承载大数量，`J/common/gui/modularui/GTNLMultiBlockBaseGui.java` 继续委托 GT 父类注册同步；没有本项目所需的产物摘要协议。参考仓库声明 GT5U `.205`，本次运行日志确认本项目使用 `.264`／ModularUI2 `2.3.92`。
+- 按本地 GT5U `.264` 核对 `ParallelHelper.addItemsLong()`／`addFluidsLong()`、`FluidEjectionHelper`，原生输出也使用 int 分片；`MTEMultiBlockBaseGui.registerSyncValues()` 传完整数组，`createRecipeInfoWidget()`／`notifyRecipeHandler()` 在显示汇总前再次序列化完整列表。
+- 按缓存 ModularUI2 同版本源码核对 `GenericListSyncHandler.read()`、`GenericCollectionSyncHandler.onSetCache()`、`ValueSyncHandler.onValueChanged()` 与 `DynamicSyncHandler.notifyUpdate()`：客户端收到同步也触发变更监听器，启用 C2S 的动态组件会回传列表。GT 该文件使用旧 ModularUI 的 `NetworkUtils` 编解码产物；本模组新协议不依赖这条序列化路径。
+- 本地 Forge/Minecraft 源码的 `C17PacketCustomPayload` 在 payload 长度达到 `32767` 字节时抛出 32k 异常，S2C 使用不同上限；不能把栈数预算当作网络字节预算。
+- Waila 的 `MTEMultiBlockBase.getWailaNBTData()` 无条件逐片写产物，而正文仅展示前三项。当前本模组通过公开接口维护标量契约，GUI／Waila 共用有界摘要；不迁入 GTNL 代码，不修改上游或增加 Mixin。GT 公开许可为 LGPL-3.0，参考实现只用于核对接口与行为。
+- 本次原生接口核对及实现边界见[产物显示摘要同步](../../features/2026-10-31-产物显示摘要同步/1-设计.md)。
+- 动态空列参考 `J/common/gui/modularui/EnergyMonitorGui.java` 的 `MonitoringListWidget.dynamicRows`，使用 `coverChildrenHeight(1)`。按 ModularUI2 `2.3.92` 的 `Flow.shouldIgnoreChildSize()` 与 `StandardResizer.applyPosSizeLayout()` 核对：所有子行被折叠时，没有独立高度来源且最小高度为零，会持续报告 SIZING 错误。
 
 ## 与当前热核规划相关的边界
 
@@ -98,7 +119,7 @@
 
 | 项目 | GT5U 基线 | 证据 |
 | --- | --- | --- |
-| Thermonuclear | 已重跑解析，选中 `5.09.54.205` | [项目技术基线](../development/项目知识库.md#当前技术基线)；依赖清单对齐 GTNH `2.9.0-RC-2` 后由 `compileClasspath`／`runtimeClasspath` 确认 |
+| Thermonuclear | 声明 GTNH `2.9.0`；本地对应清单指定 GT5U `5.09.54.264` | [项目技术基线](../development/项目知识库.md#当前技术基线)；本轮按清单对应源码静态核对，未重跑 `compileClasspath`／`runtimeClasspath` 解析 |
 | GTNL 本地参考 | 声明并强制 `5.09.54.205` | 参考仓库 `dependencies.gradle`（`rc2` 提交起）；本次未运行其依赖解析 |
 
-两个项目的依赖清单现同为 GTNH `2.9.0-RC-2` 基线，参考库还强制 ModularUI2 `2.3.92-1.7.10`、GTNHLib `0.11.52`。类／签名／结构／GUI 差异仍先查最终依赖，不升级全依赖掩盖问题。其他来源边界见[迁入资料使用说明](迁入资料使用说明.md)。
+两个项目当前声明基线不同，参考库还强制 ModularUI2 `2.3.92-1.7.10`、GTNHLib `0.11.52`。类／签名／结构／GUI 差异仍先查最终依赖，不升级全依赖掩盖问题。其他来源边界见[迁入资料使用说明](迁入资料使用说明.md)。

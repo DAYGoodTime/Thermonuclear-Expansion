@@ -85,6 +85,8 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         return GTStructureUtility.buildHatchAdder(MTEHeatExchangeStation.class)
             .anyOf(HatchElement.InputHatch)
             .adder(adder::add)
+            .hatchItemFilter(machine -> stack -> isFluidInputItem(stack))
+            .shouldSkip((machine, tile) -> tile != null && isFluidInputCandidate(tile.getMetaTileEntity()))
             .casingIndex(CASING.textureId)
             .hint(hint)
             .exclusive()
@@ -210,6 +212,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
 
     private HeatExchangeRule selected;
     private double waterRate;
+    private int coldOutputCount = -1;
 
     public MTEHeatExchangeStation(int id, String name, String regional) {
         super(id, name, regional);
@@ -225,6 +228,11 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     }
 
     @Override
+    protected List<List<MTEHatch>> fluidInputPartitions() {
+        return java.util.Arrays.asList(hotInputs, waterInputs);
+    }
+
+    @Override
     protected boolean processCycle(CycleContext context) {
         selected = selectRecipe();
         if (selected == null) return fail("hot_fluid");
@@ -232,25 +240,22 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
         CoolantType coolant = recipe.coolant();
         SteamType steamType = recipe.steam();
         long waterAvailable = available(WorkingFluids.distilledWater, waterInputs);
-        HeatExchangeBatch minimum = HeatExchangeBatch.calcUsage(1, waterAvailable, recipe);
-        if (minimum == null) return fail("invalid_value");
-        if (minimum.water() > waterAvailable) return fail("water");
+        // Two outputs share the pending-stack budget. Leave one stack for the two ceiling divisions.
+        long outputBudget = (MAX_PENDING_STACKS - 1L) * Integer.MAX_VALUE;
+        long steamPerHot = recipe.steamPerHotCoolant();
+        long maxHot = steamPerHot >= outputBudget ? 0 : outputBudget / (steamPerHot + 1);
         HeatExchangeBatch result = HeatExchangeBatch
-            .calcUsage(available(coolant.hot(), hotInputs), waterAvailable, recipe);
-        if (result == null) return fail("invalid_value");
-        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, new FluidStack(coolant.cold(), result.hot()));
-        FluidEjectionHelper steamOutput = prepareOutputs(
-            steamOutputs,
-            new FluidStack(steamType.fluid(), result.steam()));
+            .calcUsage(Math.min(available(coolant.hot(), hotInputs), maxHot), waterAvailable, recipe);
+        if (result == null || result.hot() <= 0 || result.water() <= 0 || result.steam() <= 0)
+            return fail(result == null || result.hot() <= 0 ? "hot_fluid" : "water");
+        FluidEjectionHelper coldOutput = prepareOutputs(coldOutputs, coolant.cold(), result.hot());
+        FluidEjectionHelper steamOutput = prepareOutputs(steamOutputs, steamType.fluid(), result.steam());
         if (coldOutput == null || steamOutput == null) return fail("output_full");
-        // 准备处理输入消费
-        context.deferInput(() -> {
-            consume(coolant.hot(), result.hot(), hotInputs);
-            consume(WorkingFluids.distilledWater, result.water(), waterInputs);
-        });
-        // TODO output support long
-        queueFluidOutput(context, new FluidStack(coolant.cold(), result.hot()));
-        queueFluidOutput(context, new FluidStack(steamType.fluid(), result.steam()));
+        consume(coolant.hot(), result.hot(), hotInputs);
+        consume(WorkingFluids.distilledWater, result.water(), waterInputs);
+        queueFluidOutput(context, coolant.cold(), result.hot());
+        context.onCommit(() -> coldOutputCount = mOutputFluids == null ? 0 : mOutputFluids.length);
+        queueFluidOutput(context, steamType.fluid(), result.steam());
         inputLitresPerTick = result.hot() / (double) CYCLE_TICKS;
         waterRate = result.water() / (double) CYCLE_TICKS;
         outputLitresPerTick = result.steam() / (double) CYCLE_TICKS;
@@ -258,12 +263,27 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     }
 
     @Override
+    protected void clearCycleOutputRoutes() {
+        coldOutputCount = -1;
+    }
+
+    @Override
     protected boolean addFluidOutputs(FluidStack[] outputFluids) {
+        if (coldOutputCount < 0) return addRoutedFluidOutputs(outputFluids, coldOutputs);
         boolean complete = true;
-        for (int i = 0; i < outputFluids.length; i++) {
-            complete &= addFluidOutputs(new FluidStack[] { outputFluids[i] }, i == 0 ? coldOutputs : steamOutputs);
-        }
+        complete &= addRoutedFluidOutputs(
+            java.util.Arrays.copyOfRange(outputFluids, 0, Math.min(coldOutputCount, outputFluids.length)),
+            coldOutputs);
+        complete &= addRoutedFluidOutputs(
+            java.util.Arrays
+                .copyOfRange(outputFluids, Math.min(coldOutputCount, outputFluids.length), outputFluids.length),
+            steamOutputs);
         return complete;
+    }
+
+    private boolean addRoutedFluidOutputs(FluidStack[] outputs, List<IOutputHatch> hatches) {
+        if (outputs.length == 0) return true;
+        return super.addFluidOutputs(outputs, hatches);
     }
 
     private HeatExchangeRule selectRecipe() {
@@ -283,6 +303,7 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     public void saveNBTData(NBTTagCompound nbt) {
         super.saveNBTData(nbt);
         nbt.setString("tnExchangeRecipe", selected == null ? "" : selected.id());
+        nbt.setInteger("tnColdOutputCount", coldOutputCount);
     }
 
     @Override
@@ -294,6 +315,12 @@ public final class MTEHeatExchangeStation extends TNCCycleMachineBase<MTEHeatExc
     public void loadNBTData(NBTTagCompound nbt) {
         super.loadNBTData(nbt);
         selected = HeatExchangeRules.find(nbt.getString("tnExchangeRecipe"));
+        // Older cycles used the first pending stack for cold coolant. Preserve that
+        // boundary only when loading an old save; new cycles persist the exact split.
+        int pendingCount = mOutputFluids == null ? 0 : mOutputFluids.length;
+        coldOutputCount = nbt.hasKey("tnColdOutputCount")
+            ? Math.max(-1, Math.min(nbt.getInteger("tnColdOutputCount"), pendingCount))
+            : mOutputFluids == null ? -1 : Math.min(1, pendingCount);
     }
 
     @Override

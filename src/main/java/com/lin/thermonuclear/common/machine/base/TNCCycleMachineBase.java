@@ -2,10 +2,9 @@ package com.lin.thermonuclear.common.machine.base;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import net.minecraft.item.ItemStack;
@@ -20,18 +19,20 @@ import com.lin.thermonuclear.utils.StartupProgress;
 
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
-import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
+import gregtech.api.util.FluidEjectionHelper;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.common.tileentities.machines.IDualInputHatch;
-import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 
 public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> extends ThermonuclearMultiblockBase<T> {
 
     public static final int CYCLE_TICKS = 20;
+    protected static final int MAX_PENDING_STACKS = 65_536;
+    protected static final long MAX_FLUID_OUTPUT = (long) Integer.MAX_VALUE * MAX_PENDING_STACKS;
 
     protected final StartupProgress startup = new StartupProgress();
     protected double fullLoadEUt;
@@ -42,6 +43,7 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     protected boolean cycleAdvancesStartup = true;
     private boolean hadStructure;
     private CycleContext cycle;
+    private CycleInputCandidates candidates;
     private boolean prepared;
     private boolean productionCycle;
 
@@ -114,27 +116,90 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         producedEUt = 0;
     }
 
-    // TODO output support long
-    protected final void queueFluidOutput(CycleContext context, FluidStack output) {
-        FluidStack pending = output.copy();
+    protected final FluidStack[] splitFluidOutput(Fluid fluid, long amount) {
+        return splitFluidOutput(new FluidStack(fluid, 1), amount);
+    }
+
+    protected final FluidStack[] splitFluidOutput(FluidStack template, long amount) {
+        if (template == null) throw new IllegalArgumentException("Cannot split a null fluid");
+        if (amount < 0) throw new IllegalArgumentException("Negative fluid output");
+        long count = amount == 0 ? 0 : (amount - 1) / Integer.MAX_VALUE + 1;
+        if (count > MAX_PENDING_STACKS) throw new CycleContext.OutputLimitException(true);
+        return amount == 0 ? new FluidStack[0] : GTUtility.splitFluidStack(template, amount);
+    }
+
+    protected final void queueFluidOutput(CycleContext context, Fluid fluid, long amount) {
+        queueFluidOutput(context, new FluidStack(fluid, 1), amount);
+    }
+
+    protected final void queueFluidOutput(CycleContext context, FluidStack template, long amount) {
+        FluidStack[] pending = splitFluidOutput(template, amount);
+        context.reserveFluidOutputs(pending.length, MAX_PENDING_STACKS);
         if (!productionCycle) {
             // 待机状态下不会处理输出，需要自行进行输出
-            context.onCommit(() -> addFluidOutputs(new FluidStack[] { pending }));
+            context.onCommit(() -> addFluidOutputs(pending));
             return;
         }
-        context.onCommit(() -> {
-            int size = mOutputFluids == null ? 0 : mOutputFluids.length;
-            mOutputFluids = mOutputFluids == null ? new FluidStack[1] : Arrays.copyOf(mOutputFluids, size + 1);
-            mOutputFluids[size] = pending;
-        });
+        context.onCommit(() -> { mOutputFluids = append(mOutputFluids, pending); });
+    }
+
+    private static FluidStack[] append(FluidStack[] current, FluidStack[] added) {
+        int size = current == null ? 0 : current.length;
+        FluidStack[] result = Arrays.copyOf(current == null ? new FluidStack[0] : current, size + added.length);
+        System.arraycopy(added, 0, result, size, added.length);
+        return result;
+    }
+
+    protected final FluidEjectionHelper prepareOutputs(List<? extends gregtech.api.interfaces.IOutputHatch> hatches,
+        Fluid fluid, long amount) {
+        return prepareOutputs(hatches, new FluidStack(fluid, 1), amount);
+    }
+
+    protected final FluidEjectionHelper prepareOutputs(List<? extends gregtech.api.interfaces.IOutputHatch> hatches,
+        FluidStack template, long amount) {
+        FluidStack[] outputs = splitFluidOutput(template, amount);
+        if (outputs.length == 0) return null;
+        FluidEjectionHelper helper = cycleContext().fluidOutputCheck(hatches);
+        return helper.ejectFluids(Arrays.asList(outputs), 1) == 1 ? helper : null;
     }
 
     protected final void queueItemOutput(CycleContext context, ItemStack output) {
-        ItemStack pending = output.copy();
+        queueItemOutputs(context, new ItemStack[] { output });
+    }
+
+    protected final ItemStack[] splitItemOutput(ItemStack template, long amount) {
+        if (template == null) throw new IllegalArgumentException("Cannot split a null item");
+        if (amount < 0) throw new IllegalArgumentException("Negative item output");
+        long count = amount == 0 ? 0 : (amount - 1) / Integer.MAX_VALUE + 1;
+        if (count > MAX_PENDING_STACKS) throw new CycleContext.OutputLimitException(false);
+        ItemStack[] outputs = new ItemStack[(int) count];
+        long remaining = amount;
+        for (int i = 0; i < outputs.length; i++) {
+            int size = (int) Math.min(remaining, Integer.MAX_VALUE);
+            outputs[i] = GTUtility.copyAmountUnsafe(size, template);
+            remaining -= size;
+        }
+        return outputs;
+    }
+
+    protected final void queueItemOutput(CycleContext context, ItemStack template, long amount) {
+        queueItemOutputs(context, splitItemOutput(template, amount));
+    }
+
+    protected final void queueItemOutputs(CycleContext context, ItemStack[] pending) {
+        context.reserveItemOutputs(pending.length, MAX_PENDING_STACKS);
+        ItemStack[] copies = new ItemStack[pending.length];
+        for (int i = 0; i < pending.length; i++) {
+            if (pending[i] == null || pending[i].stackSize <= 0)
+                throw new IllegalArgumentException("Invalid item output");
+            copies[i] = pending[i].copy();
+        }
         context.onCommit(() -> {
             int size = mOutputItems == null ? 0 : mOutputItems.length;
-            mOutputItems = mOutputItems == null ? new ItemStack[1] : Arrays.copyOf(mOutputItems, size + 1);
-            mOutputItems[size] = pending;
+            ItemStack[] outputs = Arrays
+                .copyOf(mOutputItems == null ? new ItemStack[0] : mOutputItems, size + copies.length);
+            System.arraycopy(copies, 0, outputs, size, copies.length);
+            mOutputItems = outputs;
         });
     }
 
@@ -230,11 +295,37 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
     }
 
     protected final long available(Fluid fluid) {
-        return availableFromStacks(fluid, cycleContext().availableFluids());
+        return available(fluid == null ? null : new FluidStack(fluid, 1), null);
     }
 
     protected final void consume(Fluid fluid, long amount) {
-        consumeFromStacks(fluid, amount, cycleContext().availableFluids());
+        consume(new FluidStack(fluid, 1), amount, null);
+    }
+
+    protected final long available(Fluid fluid, List<MTEHatch> hatches) {
+        return available(fluid == null ? null : new FluidStack(fluid, 1), hatches);
+    }
+
+    protected final long available(FluidStack template, List<MTEHatch> hatches) {
+        return cycleContext().fluidInputs()
+            .available(template, hatches);
+    }
+
+    protected final void consume(Fluid fluid, long amount, List<MTEHatch> hatches) {
+        consume(new FluidStack(fluid, 1), amount, hatches);
+    }
+
+    protected final void consume(FluidStack template, long amount, List<MTEHatch> hatches) {
+        cycleContext().fluidInputs()
+            .reserve(template, amount, hatches);
+    }
+
+    protected List<List<MTEHatch>> fluidInputPartitions() {
+        List<MTEHatch> hatches = new ArrayList<>(mInputHatches);
+        for (IDualInputHatch hatch : mDualInputHatches) {
+            if (hatch instanceof MTEHatch input) hatches.add(input);
+        }
+        return Collections.singletonList(hatches);
     }
 
     @Override
@@ -245,9 +336,8 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         }
         super.startRecipeProcessing();
         try {
-            List<FluidStack> fluids = new ArrayList<>(getStoredFluids());
-            for (IDualInputHatch hatch : mDualInputHatches) fluids.addAll(Arrays.asList(hatch.getAllFluids()));
-            cycle = new CycleContext(fluids, collectItems());
+            candidates = new CycleInputCandidates(fluidInputPartitions(), mInputBusses, this::isFluidOnlyDualInput);
+            cycle = candidates.next();
             prepared = false;
         } catch (RuntimeException | Error exception) {
             checkRecipeResult = SimpleCheckRecipeResult.ofFailure("thermonuclear.status.processing_failed");
@@ -255,25 +345,11 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
                 super.endRecipeProcessing();
             } catch (RuntimeException | Error cleanupFailure) {
                 exception.addSuppressed(cleanupFailure);
+            } finally {
+                candidates = null;
             }
             throw exception;
         }
-    }
-
-    private List<ItemStack> collectItems() {
-        List<ItemStack> items = new ArrayList<>();
-        for (IDualInputHatch hatch : mDualInputHatches) items.addAll(Arrays.asList(hatch.getAllItems()));
-        Set<GTUtility.ItemId> meItems = new HashSet<>();
-        for (MTEHatchInputBus bus : mInputBusses) {
-            if (!bus.isValid()) continue;
-            for (int slot = 0; slot < bus.getSizeInventory(); slot++) {
-                ItemStack stack = bus.getStackInSlot(slot);
-                if (stack == null || stack.stackSize <= 0) continue;
-                if (bus instanceof MTEHatchInputBusME && !meItems.add(GTUtility.ItemId.createNoCopy(stack))) continue;
-                items.add(stack);
-            }
-        }
-        return items;
     }
 
     @Override
@@ -287,25 +363,46 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
         if (prepared) throw new IllegalStateException("Processing cycle was already prepared");
         prepared = true;
         productionCycle = advancesStartup;
-        if (productionCycle) {
-            mOutputItems = null;
-            mOutputFluids = null;
-            clearCycleOutputRoutes();
-        }
-        operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
-        cycleAdvancesStartup = advancesStartup;
+        String failure = null;
         try {
-            beforeProcessingCycle(cycleContext());
-            if (!processor.test(cycleContext())) return failureResult();
-            cycleContext().applyInputs();
-            if (advancesStartup) {
-                mMaxProgresstime = CYCLE_TICKS;
-                mProgresstime = 0;
-                mEUt = 0;
-                syncStartupEfficiency();
-                status = "running";
+            while (true) {
+                if (productionCycle) {
+                    mOutputItems = null;
+                    mOutputFluids = null;
+                    clearCycleOutputRoutes();
+                }
+                operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
+                cycleAdvancesStartup = advancesStartup;
+                beforeProcessingCycle(cycleContext());
+                boolean successful;
+                try {
+                    successful = processor.test(cycleContext());
+                } catch (CycleContext.OutputLimitException exception) {
+                    successful = fail(exception.fluid ? "output_full" : "spent_full");
+                }
+                if (successful) {
+                    if (!cycleContext().applyInputs()) {
+                        status = "processing_failed";
+                        return failureResult();
+                    }
+                    if (advancesStartup) {
+                        mMaxProgresstime = CYCLE_TICKS;
+                        mProgresstime = 0;
+                        mEUt = 0;
+                        syncStartupEfficiency();
+                        status = "running";
+                    }
+                    return operatingEUt > 0 ? CheckRecipeResultRegistry.GENERATING
+                        : CheckRecipeResultRegistry.SUCCESSFUL;
+                }
+                if (failure == null || inputMissing(failure)) failure = status;
+                if (!candidates.hasNext()) {
+                    status = failure;
+                    return failureResult();
+                }
+                cycle.rollback();
+                cycle = candidates.next();
             }
-            return operatingEUt > 0 ? CheckRecipeResultRegistry.GENERATING : CheckRecipeResultRegistry.SUCCESSFUL;
         } catch (RuntimeException | Error exception) {
             checkRecipeResult = SimpleCheckRecipeResult.ofFailure("thermonuclear.status.processing_failed");
             try {
@@ -323,6 +420,13 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
             case "spent_full" -> CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
             case "output_full" -> CheckRecipeResultRegistry.FLUID_OUTPUT_FULL;
             default -> SimpleCheckRecipeResult.ofFailure("thermonuclear.status." + status);
+        };
+    }
+
+    private static boolean inputMissing(String status) {
+        return switch (status) {
+            case "fuel", "steam", "hot_fluid", "water" -> true;
+            default -> false;
         };
     }
 
@@ -381,9 +485,11 @@ public abstract class TNCCycleMachineBase<T extends TNCCycleMachineBase<T>> exte
                     operatingEUt = inputLitresPerTick = outputLitresPerTick = fullLoadEUt = 0;
                 }
                 cycle = null;
+                candidates = null;
                 prepared = false;
                 productionCycle = false;
             }
         }
     }
+
 }

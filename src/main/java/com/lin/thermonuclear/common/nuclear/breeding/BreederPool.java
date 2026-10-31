@@ -6,6 +6,8 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.ObjLongConsumer;
+import java.util.function.ToLongFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -36,31 +38,22 @@ public final class BreederPool {
         return count;
     }
 
-    /** Stages copies in the pool; physical input stacks are only consumed after the host transaction succeeds. */
-    public Runnable prepareLoad(List<ItemStack> inputs, int maxRods) {
+    /** Stages pool copies and registers consumption with the host's complete input plan. */
+    public void prepareLoad(List<ItemStack> inputs, int maxRods, ToLongFunction<ItemStack> remaining,
+        ObjLongConsumer<ItemStack> reserve) {
         int available = maxRods - workingCount() - completedCount();
-        List<ItemStack> sources = new ArrayList<>();
-        List<Integer> amounts = new ArrayList<>();
         Set<ItemStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack source : inputs) {
             if (available <= 0) break;
             if (source == null || source.stackSize <= 0 || !GTBreederRod.accepts(source) || !seen.add(source)) continue;
-            int amount = Math.min(available, source.stackSize);
+            int amount = (int) Math.min(available, remaining.applyAsLong(source));
+            if (amount <= 0) continue;
+            reserve.accept(source, amount);
             ItemStack batch = source.copy();
             batch.stackSize = amount;
             add(working, batch);
-            sources.add(source);
-            amounts.add(amount);
             available -= amount;
         }
-        return () -> {
-            for (int i = 0; i < sources.size(); i++) {
-                if (sources.get(i).stackSize < amounts.get(i)) {
-                    throw new IllegalStateException("Breeder input changed during recipe processing");
-                }
-            }
-            for (int i = 0; i < sources.size(); i++) sources.get(i).stackSize -= amounts.get(i);
-        };
     }
 
     public void advance(long pulses) {

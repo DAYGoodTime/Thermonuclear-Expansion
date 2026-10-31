@@ -18,4 +18,9 @@ public class MathUtil {
     public static long saturatingAdd(long a, long b) {
         return a > Long.MAX_VALUE - b ? Long.MAX_VALUE : a + b;
     }
+
+    /** Multiplies nonnegative quantities, saturating at the long limit. */
+    public static long saturatingMultiply(long a, long b) {
+        return a > 0 && b > Long.MAX_VALUE / a ? Long.MAX_VALUE : a * b;
+    }
 }

@@ -6,6 +6,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.ObjLongConsumer;
+import java.util.function.ToLongFunction;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -17,12 +19,12 @@ public final class FuelBatch {
     private FuelBatch() {}
 
     static Plan prepare(List<ItemStack> inputs, List<FuelRodAdapter> adapters, int maxRods,
-        Map<ItemStack, Integer> reserved) {
+        Map<ItemStack, Long> reserved, ToLongFunction<ItemStack> available) {
         if (maxRods <= 0) throw new IllegalArgumentException("Invalid fuel batch limit");
         ItemStack selected = null;
         int lowestLifetime = Integer.MAX_VALUE;
         for (ItemStack stack : inputs) {
-            if (stack == null || stack.stackSize <= reserved.getOrDefault(stack, 0)) continue;
+            if (stack == null || available.applyAsLong(stack) <= reserved.getOrDefault(stack, 0L)) continue;
             FuelRodAdapter adapter = findAdapter(stack, adapters);
             if (adapter == null) continue;
             int lifetime = adapter.remainingCycles(stack);
@@ -40,13 +42,13 @@ public final class FuelBatch {
         Set<ItemStack> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ItemStack stack : inputs) {
             if (stack == null || stack.stackSize <= 0 || !sameType(batch, stack) || !seen.add(stack)) continue;
-            int available = stack.stackSize - reserved.getOrDefault(stack, 0);
-            if (available <= 0) continue;
-            int amount = Math.min(maxRods - batch.stackSize, available);
+            long remaining = available.applyAsLong(stack) - reserved.getOrDefault(stack, 0L);
+            if (remaining <= 0) continue;
+            int amount = (int) Math.min(maxRods - batch.stackSize, remaining);
             sources.add(stack);
             amounts.add(amount);
             batch.stackSize += amount;
-            reserved.put(stack, reserved.getOrDefault(stack, 0) + amount);
+            reserved.put(stack, reserved.getOrDefault(stack, 0L) + amount);
             if (batch.stackSize == maxRods) break;
         }
         return new Plan(batch, sources, amounts);
@@ -64,7 +66,6 @@ public final class FuelBatch {
         public final ItemStack fuel;
         private final List<ItemStack> sources;
         private final List<Integer> amounts;
-        private boolean consumed;
 
         private Plan(ItemStack fuel, List<ItemStack> sources, List<Integer> amounts) {
             this.fuel = fuel;
@@ -72,26 +73,12 @@ public final class FuelBatch {
             this.amounts = amounts;
         }
 
-        static void consumeInputs(List<Plan> plans) {
-            Map<ItemStack, Integer> totals = new IdentityHashMap<>();
+        static void reserveInputs(List<Plan> plans, ObjLongConsumer<ItemStack> reserve) {
             for (Plan plan : plans) {
-                if (plan.consumed) throw new IllegalStateException("Fuel inputs already consumed");
                 for (int i = 0; i < plan.sources.size(); i++) {
-                    ItemStack source = plan.sources.get(i);
-                    totals.put(source, totals.getOrDefault(source, 0) + plan.amounts.get(i));
+                    reserve.accept(plan.sources.get(i), plan.amounts.get(i));
                 }
             }
-            // Validate the combined reservation before changing any input, including sources shared by batches.
-            for (Map.Entry<ItemStack, Integer> entry : totals.entrySet()) {
-                if (entry.getKey().stackSize < entry.getValue()) {
-                    throw new IllegalStateException("Fuel input changed during recipe processing");
-                }
-            }
-            // Mutate GT recipe references, not physical slots: ME and DEBUG use virtual stacks.
-            for (Map.Entry<ItemStack, Integer> entry : totals.entrySet()) {
-                entry.getKey().stackSize -= entry.getValue();
-            }
-            for (Plan plan : plans) plan.consumed = true;
         }
     }
 

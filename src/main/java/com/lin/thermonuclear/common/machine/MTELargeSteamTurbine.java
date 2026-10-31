@@ -10,7 +10,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
-import net.minecraftforge.fluids.FluidStack;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -103,9 +102,13 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
     }
 
     private static IStructureElement<MTELargeSteamTurbine> fluidHatch(boolean input, int hint) {
-        return GTStructureUtility.buildHatchAdder(MTELargeSteamTurbine.class)
-            .anyOf(input ? HatchElement.InputHatch : HatchElement.OutputHatch)
-            .casingIndex(CASING.textureId)
+        var builder = GTStructureUtility.buildHatchAdder(MTELargeSteamTurbine.class)
+            .anyOf(input ? HatchElement.InputHatch : HatchElement.OutputHatch);
+        if (input) {
+            builder.hatchItemFilter(machine -> stack -> isFluidInputItem(stack))
+                .shouldSkip((machine, tile) -> tile != null && isFluidInputCandidate(tile.getMetaTileEntity()));
+        }
+        return builder.casingIndex(CASING.textureId)
             .hint(hint)
             .exclusive()
             .build();
@@ -232,7 +235,9 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         }
         if (currentFuel == null) return fail(unsupportedSteam ? "shaft_steam_unsupported" : "steam");
         long steamAvailable = available(currentFuel.getWorkingFluid());
-        long steamUsed = Math.min(steamLimitPerCycle, steamAvailable);
+        long steamUsed = Math.min(
+            Math.min(steamLimitPerCycle, steamAvailable),
+            MathUtil.saturatingMultiply(MAX_FLUID_OUTPUT, HeatExchangeBatch.STEAM_PER_WATER));
         double euFullLoad = steamUsed * currentFuel.euPerLitre()
             * Config.largeSteamTurbine.turbineGenerationMultiple
             * ((shaftTier >= 2) ? 1.5 : 1);
@@ -240,12 +245,10 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         fullLoadEUt = euFullLoad / CYCLE_TICKS;
         long waterOutput = steamUsed / HeatExchangeBatch.STEAM_PER_WATER;
         if (waterOutput <= 0) return fail("steam");
-        // TODO long support
-        FluidEjectionHelper outputs = prepareOutputs(
-            new FluidStack(WorkingFluids.distilledWater, MathUtil.getIntClamp(waterOutput)));
+        FluidEjectionHelper outputs = prepareOutputs(getOutputHatches(), WorkingFluids.distilledWater, waterOutput);
         if (outputs == null) return fail("output_full");
-        context.deferInput(() -> consume(currentFuel.getWorkingFluid(), steamUsed));
-        queueFluidOutput(context, new FluidStack(WorkingFluids.distilledWater, MathUtil.getIntClamp(waterOutput)));
+        consume(currentFuel.getWorkingFluid(), steamUsed);
+        queueFluidOutput(context, WorkingFluids.distilledWater, waterOutput);
         inputLitresPerTick = (double) steamUsed / CYCLE_TICKS;
         operatingEUt = fullLoadEUt;
         return true;
@@ -334,7 +337,7 @@ public final class MTELargeSteamTurbine extends TNCCycleMachineBase<MTELargeStea
         addStartupInfo(info);
         addGenerationInfo(info);
         info.put("turbine_steam_type", currentFuel == null ? "thermonuclear.recipe.none" : currentFuel.nameKey());
-        info.put("steam_cycle_limit", Long.toString(steamLimitPerCycle));
+        info.put("steam_cycle_limit", decimal(steamLimitPerCycle));
         info.put("steam_input", decimalPerCycle(inputLitresPerTick));
         return info;
     }
